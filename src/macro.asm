@@ -95,6 +95,24 @@ ENDC
 	ENDC
 ENDM
 
+; =============== mIncJunkFrom ===============
+; Includes the tail of a junk area after new source has consumed its first bytes.
+; IN
+; - \1: Filename without extension
+; - \2: Starting byte offset
+MACRO mIncJunkFrom
+IF LABEL_JUNK
+Padding_\@:
+ENDC
+	IF !SKIP_JUNK
+		IF !REV_VER_2
+			INCBIN STRCAT("padding/", \1, ".bin"), \2
+		ELSE
+			INCBIN STRCAT("padding_en/", \1, ".bin"), \2
+		ENDC
+	ENDC
+ENDM
+
 ; =============== dp ===============
 ; Shorthand for far pointers in standard order.
 MACRO dp
@@ -164,6 +182,34 @@ MACRO mMvIn_ChkEasy
 	call MoveInputS_CheckEasyMoveKeys
 	jp   c, \1 ; SELECT + B pressed? If so, jump
 	jp   z, \2 ; SELECT + A pressed? If so, jump
+ENDM
+
+; =============== mMvIn_ChkEasyDir ===============
+; Adds facing-relative SELECT taps to the original SELECT+A/B shortcuts.
+; Up+SELECT and neutral SELECT are intentionally not assigned.
+; IN
+; - 1: Move key for SELECT + B
+; - 2: Move key for SELECT + A
+; - 3: Move key for forward + SELECT tap
+; - 4: Move key for back + SELECT tap
+; - 5: Move key for down + SELECT tap
+MACRO mMvIn_ChkEasyDir
+	IF !REV_VER_2
+	call MoveInputS_CheckEasyMoveTapKeys
+	dec  a
+	jp   z, \1
+	dec  a
+	jp   z, \2
+	dec  a
+	jp   z, \3
+	dec  a
+	jp   z, \4
+	dec  a
+	jp   z, \5
+	ELSE
+		; Keep revision 2 bank layouts within their much smaller junk areas.
+		mMvIn_ChkEasy \1, \2
+	ENDC
 ENDM
 
 ; =============== mMvIn_ChkGA ===============

@@ -418,7 +418,7 @@ MoveInputReader_Goenitz:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasy .startPunchSuper, MoveInit_Goenitz_Yamidoukoku
+	mMvIn_ChkEasyDir .startPunchSuper, MoveInit_Goenitz_Yamidoukoku, MoveInit_Goenitz_Hyouga, MoveInit_Goenitz_WanpyouTokobuse, MoveInit_Goenitz_YonokazeNear
 	mMvIn_ChkGA Goenitz, .chkPunch, .chkKick
 .chkPunch:
 	; DBDF+P -> Shinyaotome Mizuchi / Shinyaotome Jissoukoku 
@@ -1942,7 +1942,7 @@ ENDC
 IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunk "L0A7F58"
+	mIncJunkFrom "L0A7F58", $0E
 ELSE
 	mIncJunk "L0A7FC9"
 ENDC

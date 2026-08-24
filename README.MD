@@ -13,6 +13,41 @@ To assemble, run one of the included batch scripts:
 - **build-en.cmd** for the English version. To verify this, provide a ROM named "*King of Fighters, The - Heat of Battle (Europe) (SGB Enhanced).gb*" as "*original_en.gb*". `sha1: 1B5AC034B1333B3340FBDC5C128BC12ABD310043`
 - **build-nojunk.cmd** for a version of the game without padding areas. Currently, it builds a Japanese-language version running on the English version's engine.
 
+On Unix-like systems, enter the pinned RGBDS 0.7.0 environment and use the
+portable build script:
+
+```sh
+nix-shell
+./build.sh jp
+```
+
+GitHub Actions also builds the modified ROM on every push and pull request.
+Run **Build modified ROM** manually from the Actions page when needed, then
+download the `ntkof96-options-all-dips-ai-fixed-select-tap-specials` artifact.
+It contains the `.gb` file and `SHA256SUMS`.
+
+## Modified Japanese build
+
+The Japanese configuration builds a gameplay-options edition with all hidden
+fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
+TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original time,
+difficulty, BGM, and SFX settings. HIDDEN CHR controls both the boss and extra
+character unlock flags. Punch and kick strength uses the original tap/hold
+logic, including for CPU-controlled fighters.
+
+POWER UP matches the original logo cheat by enabling both meter power-up and
+duplicate-team DIP flags when switched on; TEAM DUPL may then be adjusted
+independently. Directional EASY MOVE shortcuts request heavy moves, so moves
+with hidden-heavy variants select them at maximum POW.
+
+SGB TEST can be toggled on any system. On Super Game Boy hardware, enable it
+with Right and press A to enter the original SGB sound editor.
+
+With EASY MOVE enabled, `SELECT+A` and `SELECT+B` keep each fighter's original
+shortcuts. Hold forward, back, or down relative to the fighter's facing and tap
+then release `SELECT` for three additional special moves. Up plus `SELECT` and
+neutral `SELECT` are intentionally left unchanged.
+
 ## 
 Once again, thanks to lazigamer for the debug emulator used to generate the initial CDL.
 ## 

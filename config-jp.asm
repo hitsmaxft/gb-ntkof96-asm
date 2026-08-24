@@ -8,7 +8,9 @@ DEF OPTIMIZE     EQU 0 ; Additional optimizations
 DEF NO_CPU_AI    EQU 0 ; Disable CPU Opponent AI (but not the CPU-specific actions inside moves)
 DEF INF_TIMER    EQU 0 ; Default with infinite timer 
 DEF AIRTHROW_CPU EQU 0 ; Enables the player to air-throw the CPU, which is arbitrarily disabled.
-DEF DEFAULT_DIPS EQU $00 ; $E0 ; Default dip switch settings
+; Unlock all hidden fighters by default.
+; POWER UP and EASY MOVES remain user-selectable and default to off.
+DEF DEFAULT_DIPS EQU $C0
 
 DEF REV_VER_2    EQU 0 ; If set, use the second revision of the game.
 DEF REV_TAUNT    EQU 0 ; If set, use the ridiculous taunt logic of the English version

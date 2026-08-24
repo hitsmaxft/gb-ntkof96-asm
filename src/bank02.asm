@@ -5487,7 +5487,7 @@ MoveInputReader_Ryo:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasy MoveInit_Ryo_RyuKoRanbu, MoveInit_Ryo_MouKoRaiJinGou
+	mMvIn_ChkEasyDir MoveInit_Ryo_RyuKoRanbu, MoveInit_Ryo_MouKoRaiJinGou, MoveInit_Ryo_KoHou, MoveInit_Ryo_HienShippuuKyaku, MoveInit_Ryo_KoOuKen
 	mMvIn_ChkGA Ryo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -6143,7 +6143,7 @@ MoveInputReader_Robert:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Robert_RyuKoRanbu, MoveInit_Robert_RyuuGa_Hidden
+	mMvIn_ChkEasyDir MoveInit_Robert_RyuKoRanbu, MoveInit_Robert_RyuuGa_Hidden, MoveInit_Robert_RyuuGa, MoveInit_Robert_HienShippuKyaku, MoveInit_Robert_RyuuGekiKen
 	mMvIn_ChkGA Robert, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -7115,7 +7115,7 @@ MoveInputReader_Leona:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasy MoveInit_Leona_VSlasher, MoveInit_Leona_BalticLauncher
+	mMvIn_ChkEasyDir MoveInit_Leona_VSlasher, MoveInit_Leona_BalticLauncher, MoveInit_Leona_GrandSabre, MoveInit_Leona_XCalibur, MoveInit_Leona_MoonSlasher
 	mMvIn_ChkGA Leona, .chkPunch, .chkKick
 .chkPunch:
 	; O.Leona only!
@@ -8045,7 +8045,7 @@ MoveInputReader_MrKarate:
 	
 .chkGround:
 	;             SELECT + B                    SELECT + A
-	mMvIn_ChkEasy MoveInit_MrKarate_RyukoRanbu, MoveInit_MrKarate_Zenretsuken
+	mMvIn_ChkEasyDir MoveInit_MrKarate_RyukoRanbu, MoveInit_MrKarate_Zenretsuken, MoveInit_MrKarate_HienShippuuKyaku, MoveInit_MrKarate_ShouranKyaku, MoveInit_MrKarate_KoOuKen
 	mMvIn_ChkGA MrKarate, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -9841,7 +9841,7 @@ ENDC
 ; Junk area below.
 ; Contains duplicate move code.
 IF !REV_VER_2
-	mIncJunk "L027EBF"
+	mIncJunkFrom "L027EBF", $38
 ELSE
 	mIncJunk "L027F70"
 ENDC

@@ -1,0 +1,72 @@
+name: Build modified ROM
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-rom:
+    name: Build Japanese ROM
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install RGBDS build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bison build-essential flex libpng-dev pkg-config
+
+      - name: Build pinned RGBDS 0.7.0
+        env:
+          RGBDS_VERSION: "0.7.0"
+          RGBDS_SHA256: "ef04d24d7a79c05ffadac0c08214f59b8d8812c7d1052a585e5ab0145f093b30"
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/rgbds-${RGBDS_VERSION}.tar.gz"
+          source_dir="$RUNNER_TEMP/rgbds-${RGBDS_VERSION}"
+          install_dir="$RUNNER_TEMP/rgbds-install"
+
+          curl --fail --location --retry 3 \
+            "https://github.com/gbdev/rgbds/archive/refs/tags/v${RGBDS_VERSION}.tar.gz" \
+            --output "$archive"
+          echo "$RGBDS_SHA256  $archive" | sha256sum --check
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP"
+          make --directory "$source_dir" --jobs "$(nproc)"
+          make --directory "$source_dir" install PREFIX="$install_dir"
+          echo "$install_dir/bin" >> "$GITHUB_PATH"
+
+      - name: Verify toolchain
+        run: |
+          test "$(rgbasm --version)" = "rgbasm v0.7.0"
+          bash -n build.sh
+
+      - name: Build ROM
+        run: ./build.sh jp
+
+      - name: Package ROM and checksums
+        run: |
+          set -euo pipefail
+          test "$(stat --format='%s' kof96.gb)" = "524288"
+          mkdir --parents dist
+          cp kof96.gb dist/ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb
+          (
+            cd dist
+            sha256sum ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb > SHA256SUMS
+          )
+
+      - name: Upload ROM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntkof96-options-all-dips-ai-fixed-select-tap-specials
+          path: |
+            dist/ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb
+            dist/SHA256SUMS
+          if-no-files-found: error
+          compression-level: 0

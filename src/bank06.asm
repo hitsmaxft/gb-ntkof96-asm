@@ -60,7 +60,7 @@ MoveInputReader_Kyo:
 ; GROUND SPECIALS
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Kyo_UraOrochiNagi, MoveInit_Kyo_NueTumi
+	mMvIn_ChkEasyDir MoveInit_Kyo_UraOrochiNagi, MoveInit_Kyo_NueTumi, MoveInit_Kyo_OniYaki, MoveInit_Kyo_RedKick, MoveInit_Kyo_AraKami
 	mMvIn_ChkGA Kyo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -1577,7 +1577,7 @@ MoveInputReader_Terry:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Terry_PowerGeyser, MoveInit_Terry_RisingTackle
+	mMvIn_ChkEasyDir MoveInit_Terry_PowerGeyser, MoveInit_Terry_RisingTackle, MoveInit_Terry_BurnKnuckle, MoveInit_Terry_CrackShot, MoveInit_Terry_PowerWave
 	mMvIn_ChkGA Terry, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -2332,7 +2332,7 @@ MoveInputReader_Mai:
 	
 .chkGround:
 	;             SELECT + B                            SELECT + A
-	mMvIn_ChkEasy MoveInit_Mai_ChoHissatsuShinobibachi, MoveInit_Mai_HishoRyuEnJin
+	mMvIn_ChkEasyDir MoveInit_Mai_ChoHissatsuShinobibachi, MoveInit_Mai_HishoRyuEnJin, MoveInit_Mai_HissatsuShinobibachi, MoveInit_Mai_RyuEnBu, MoveInit_Mai_KaChoSen
 	mMvIn_ChkGA Mai, .chkPunch, .chkKick
 .chkPunch:
 	; FDB+P -> Chijou Musasabi no Mai 
@@ -3230,7 +3230,7 @@ MoveInputReader_Athena:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasy MoveInit_Athena_ShCrystGround, MoveInit_Athena_PsychoReflector
+	mMvIn_ChkEasyDir MoveInit_Athena_ShCrystGround, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoSword, MoveInit_Athena_PsychoTeleport, MoveInit_Athena_PsychoBall
 	mMvIn_ChkGA Athena, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -5899,7 +5899,7 @@ MoveInputReader_Andy:
 	
 .chkGround:
 	;             SELECT + B                 SELECT + A
-	mMvIn_ChkEasy MoveInit_Andy_ChoReppaDan, MoveInit_Andy_HiShoKen
+	mMvIn_ChkEasyDir MoveInit_Andy_ChoReppaDan, MoveInit_Andy_HiShoKen, MoveInit_Andy_ZanEiKen, MoveInit_Andy_KuHaDan, MoveInit_Andy_ShoRyuDan
 	mMvIn_ChkGA Andy, .chkPunch, .chkKick
 
 .chkPunch:
@@ -6653,7 +6653,7 @@ MoveInputReader_MrBig:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasy MoveInit_MrBig_BlasterWave, MoveInit_MrBig_DrumShot
+	mMvIn_ChkEasyDir MoveInit_MrBig_BlasterWave, MoveInit_MrBig_DrumShot, MoveInit_MrBig_CaliforniaRomance, MoveInit_MrBig_CrossDiving, MoveInit_MrBig_GroundBlaster
 	mMvIn_ChkGA MrBig, .chkPunch, .chkKick
 .chkPunch:
 	; DFDF+P -> Blaster Wave
@@ -7301,7 +7301,7 @@ MoveInputReader_Geese:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Geese_RagingStorm, MoveInit_Geese_AtemiNage
+	mMvIn_ChkEasyDir MoveInit_Geese_RagingStorm, MoveInit_Geese_AtemiNage, MoveInit_Geese_JaEiKen, MoveInit_Geese_Reppuken, MoveInit_Geese_HishouNichirinZan
 	mMvIn_ChkGA Geese, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -8159,7 +8159,7 @@ ENDC
 ; =============== END OF BANK ===============
 ; Junk area with broken copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunk "L067E72"
+	mIncJunkFrom "L067E72", $62
 ELSE
 	mIncJunk "L067FEA"
 ENDC

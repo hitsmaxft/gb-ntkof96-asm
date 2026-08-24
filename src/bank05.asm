@@ -17,9 +17,9 @@ MoveInputReader_Iori:
 .chkGround:
 	;             SELECT + B                SELECT + A
 IF !REV_VER_2
-	mMvIn_ChkEasy MoveInit_Iori_KinYaOtome, MoveInit_Iori_KinYaOtomeEscapeD
+	mMvIn_ChkEasyDir MoveInit_Iori_KinYaOtome, MoveInit_Iori_KinYaOtomeEscapeD, MoveInit_Iori_OniYaki, MoveInit_Iori_YamiBarai, MoveInit_Iori_AoiHana
 ELSE
-	mMvIn_ChkEasy MoveInit_Iori_KinYaOtome, MoveInit_Iori_ScumGale
+	mMvIn_ChkEasyDir MoveInit_Iori_KinYaOtome, MoveInit_Iori_ScumGale, MoveInit_Iori_OniYaki, MoveInit_Iori_YamiBarai, MoveInit_Iori_AoiHana
 ENDC
 	mMvIn_ChkGA Iori, .chkPunch, .chkKick
 .chkPunch:
@@ -1300,7 +1300,7 @@ MoveInputReader_Mature:
 	jp   MoveInputReader_Mature_NoMove
 .chkGround:
 	;             SELECT + B                   SELECT + A
-	mMvIn_ChkEasy MoveInit_Mature_HeavensGate, MoveInit_Mature_Decide
+	mMvIn_ChkEasyDir MoveInit_Mature_HeavensGate, MoveInit_Mature_Decide, MoveInit_Mature_Despair, MoveInit_Mature_DeathRow, MoveInit_Mature_MetalMassacre
 	mMvIn_ChkGA Mature, .chkPunch, .chkKick
 .chkPunch:
 	; BDF+P -> Decide
@@ -2252,7 +2252,7 @@ MoveInputReader_Kagura:
 	
 .chkGround:
 	;             SELECT + B                     SELECT + A
-	mMvIn_ChkEasy MoveInit_Chizuru_ReigiIshizue, MoveInit_Chizuru_TenjinKotowari
+	mMvIn_ChkEasyDir MoveInit_Chizuru_ReigiIshizue, MoveInit_Chizuru_TenjinKotowari, MoveInit_Chizuru_ShinsokuNorotiHigh, MoveInit_Chizuru_TamayuraShitsune, MoveInit_Chizuru_ShinsokuNorotiLow
 	mMvIn_ChkGA Chizuru, .chkPunch, .chkKick
 .chkPunch:
 	; DBDF+P -> Ichimen Ikatsu San Rai no Fui Jin 
@@ -2895,7 +2895,7 @@ MoveInputReader_Daimon:
 ; GROUND SPECIALS
 .chkGround:
 	;             SELECT + B                      SELECT + A
-	mMvIn_ChkEasy MoveInit_Daimon_HeavenHellDrop, MoveInit_Daimon_JiraiShin
+	mMvIn_ChkEasyDir MoveInit_Daimon_HeavenHellDrop, MoveInit_Daimon_JiraiShin, MoveInit_Daimon_ChouOosotoGari, MoveInit_Daimon_CloudTosser, MoveInit_Daimon_ChouUkemi
 	mMvIn_ChkGA Daimon, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -3634,7 +3634,7 @@ ENDC
 ; =============== END OF BANK ===============
 ; Junk area below, with partial copy of the code above.
 IF !REV_VER_2
-	mIncJunk "L057ED2"
+	mIncJunkFrom "L057ED2", $38
 ELSE
 	mIncJunk "L057FEE"
 ENDC

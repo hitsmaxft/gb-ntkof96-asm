@@ -14020,7 +14020,6 @@ MoveInputS_CanStartSpecialMove:
 	bit  PF0B_SPECMOVE, [hl]	; Is the bit set?
 	jp   nz, .retNoMove		; If so, return
 
-
 	ld   hl, iPlInfo_Flags1
 	add  hl, bc				; Seek to iPlInfo_Flags1
 
@@ -16688,9 +16687,86 @@ MoveInput_DU:
 	db $FF         ; Max len
 ; =============== END OF BANK ===============
 ; Junk area below.
-; Contains broken duplicate of the code starting around BasicInput_StartLightKick.
-IF !REV_VER_2
-	mIncJunk "L003EF4"
-ELSE
-	mIncJunk "L003F4E"
+; The easy-move helper below replaces the start of the original junk bytes.
+; The unconsumed tail is included so both supported ROM layouts keep their size.
+OptionHack_Bank00_Start:
+
+; Checks the simplified ground easy-move controls.
+; SELECT+B and SELECT+A keep their original held-key semantics.
+; The remaining shortcuts trigger on a newly pressed SELECT with no A/B held.
+; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 forward, 4 back, 5 down.
+MoveInputS_CheckEasyMoveTapKeys:
+	ld   a, [wDipSwitch]
+	bit  DIPB_EASY_MOVES, a
+	jr   z, .none
+
+	; Preserve the original SELECT+B shortcut, including held directions.
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   a, [hl]
+	and  KEY_SELECT|KEY_B
+	cp   KEY_SELECT|KEY_B
+	jr   z, .selectB
+	ld   a, [hl]
+	and  KEY_SELECT|KEY_A
+	cp   KEY_SELECT|KEY_A
+	jr   z, .selectA
+
+	; Start a tap shortcut on the SELECT press edge. Releasing SELECT after the
+	; tap requires no extra handling.
+	ld   hl, iPlInfo_JoyNewKeys
+	add  hl, bc
+	bit  KEYB_SELECT, [hl]
+	jr   z, .none
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   a, [hl]
+	and  KEY_A|KEY_B
+	jr   nz, .none
+
+	call Play_Pl_GetDirKeys_ByXFlipR
+	bit  KEYB_UP, a
+	jr   nz, .none
+	bit  KEYB_DOWN, a
+	jr   nz, .down
+	bit  KEYB_RIGHT, a
+	jr   nz, .forward
+	bit  KEYB_LEFT, a
+	jr   nz, .back
+.none:
+	xor  a
+	ret
+.selectB:
+	ld   a, $01
+	ret
+.selectA:
+	ld   a, $02
+	ret
+.forward:
+	ld   a, $03
+	jr   .setHeavy
+.back:
+	ld   a, $04
+	jr   .setHeavy
+.down:
+	ld   a, $05
+	; Directional SELECT shortcuts deliberately request the heavy version.
+	; At max POW with POWER UP enabled this selects the hidden-heavy branch.
+.setHeavy:
+	push af
+		ld   hl, iPlInfo_Flags2
+		add  hl, bc
+		set  PF2B_HEAVY, [hl]
+	pop  af
+	ret
+
+OptionHack_Bank00_End:
+IF !SKIP_JUNK
+	IF !REV_VER_2
+		ASSERT OptionHack_Bank00_End <= $4000, "bank00 option hack exceeds Japanese padding"
+		INCBIN "padding/L003EF4.bin", OptionHack_Bank00_End-$3EF4
+	ELSE
+		ASSERT OptionHack_Bank00_End <= $4000, "bank00 option hack exceeds English padding"
+		INCBIN "padding_en/L003F4E.bin", OptionHack_Bank00_End-$3F4E
+	ENDC
 ENDC
