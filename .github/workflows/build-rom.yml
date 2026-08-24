@@ -55,18 +55,18 @@ jobs:
           set -euo pipefail
           test "$(stat --format='%s' kof96.gb)" = "524288"
           mkdir --parents dist
-          cp kof96.gb dist/ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb
+          cp kof96.gb dist/ntkof96_options_all_dips_full_pow_super_cancel_ai_fixed_select_tap_specials.gb
           (
             cd dist
-            sha256sum ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb > SHA256SUMS
+            sha256sum ntkof96_options_all_dips_full_pow_super_cancel_ai_fixed_select_tap_specials.gb > SHA256SUMS
           )
 
       - name: Upload ROM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ntkof96-options-all-dips-ai-fixed-select-tap-specials
+          name: ntkof96-options-all-dips-full-pow-super-cancel-ai-fixed-select-tap-specials
           path: |
-            dist/ntkof96_options_all_dips_ai_fixed_select_tap_specials.gb
+            dist/ntkof96_options_all_dips_full_pow_super_cancel_ai_fixed_select_tap_specials.gb
             dist/SHA256SUMS
           if-no-files-found: error
           compression-level: 0

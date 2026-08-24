@@ -23,17 +23,18 @@ nix-shell
 
 GitHub Actions also builds the modified ROM on every push and pull request.
 Run **Build modified ROM** manually from the Actions page when needed, then
-download the `ntkof96-options-all-dips-ai-fixed-select-tap-specials` artifact.
-It contains the `.gb` file and `SHA256SUMS`.
+download the
+`ntkof96-options-all-dips-full-pow-super-cancel-ai-fixed-select-tap-specials`
+artifact. It contains the `.gb` file and `SHA256SUMS`.
 
 ## Modified Japanese build
 
 The Japanese configuration builds a gameplay-options edition with all hidden
 fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
-TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original time,
-difficulty, BGM, and SFX settings. HIDDEN CHR controls both the boss and extra
-character unlock flags. Punch and kick strength uses the original tap/hold
-logic, including for CPU-controlled fighters.
+SUP CANCEL, TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original
+time, difficulty, BGM, and SFX settings. HIDDEN CHR controls both the boss and
+extra character unlock flags. Punch and kick strength uses the original
+tap/hold logic, including for CPU-controlled fighters.
 
 POWER UP matches the original logo cheat by enabling both meter power-up and
 duplicate-team DIP flags when switched on; TEAM DUPL may then be adjusted
@@ -42,6 +43,15 @@ with hidden-heavy variants select them at maximum POW.
 
 SGB TEST can be toggled on any system. On Super Game Boy hardware, enable it
 with Right and press A to enter the original SGB sound editor.
+
+SUP CANCEL defaults to `N`. When enabled, a special or super may cancel into
+another legal special or super only while the logical POW meter is full, after
+its visible attack animation has finished, and once both attack hitboxes are
+gone. The full-POW check itself does not consume meter; the target move keeps
+its ordinary meter behavior. Every non-zero damage component of the
+cancelled-into move, including later hits and projectiles, becomes
+`max(1, floor(original / 3))`. Each chained Super Cancel requires full POW
+again and scales the new move from its own original damage.
 
 With EASY MOVE enabled, `SELECT+A` and `SELECT+B` keep each fighter's original
 shortcuts. Hold forward, back, or down relative to the fighter's facing and tap

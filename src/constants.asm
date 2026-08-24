@@ -139,6 +139,7 @@ DEF ANIMSPEED_INSTANT   EQU $00 ; Close enough
 DEF ANIMSPEED_NONE      EQU $FF ; Slowest possible animation speed, set when we want manual control over the animation since it will always be done quicker than 255 frames.
 
 ; FLAGS
+DEF DIPB_SUPER_CANCEL     EQU 0 ; Allow specials/supers during non-attacking special recovery
 DEF DIPB_EASY_MOVES       EQU 2 ; SELECT+A/B plus directional SELECT taps for easy moves
 DEF DIPB_POWERUP          EQU 3 ; DIPB_POWERUP Powerup mode. POW Meter grows on its own + Unlimited super moves + move changes
 DEF DIPB_SGB_SOUND_TEST   EQU 4 ; Adds SGB S.E TEST to the options menu
@@ -297,6 +298,10 @@ DEF PF2B_AUTOGUARDMID   EQU 4 ; If set, the move automatically blocks lows
 DEF PF2B_AUTOGUARDLOW   EQU 5 ; If set, the move automatically blocks mids
 DEF PF2B_NOHURTBOX      EQU 6 ; If set, the player has no hurtbox (this separate from the collision box only here)
 DEF PF2B_NOCOLIBOX      EQU 7 ; If set, the player has no collision box
+
+; iPlInfo_SuperCancelFlags
+DEF PSCB_DAMAGE_ACTIVE  EQU 0 ; Current special was started by Super Cancel and deals reduced damage
+DEF PSCB_CANCEL_PENDING EQU 1 ; Recovery validation passed; consumed only if a new special starts
 
 ; iPlInfo_Flags3, related to the move we got attacked with
 DEF PF3B_HEAVYHIT       EQU 0 ; Used by "heavy" hits (not to be confused with heavy moves). Getting attacked shakes the player longer (doesn't cut the shake count in half).
@@ -573,12 +578,13 @@ DEF OPTION_ITEM_TIME        EQU $00
 DEF OPTION_ITEM_LEVEL       EQU $01
 DEF OPTION_ITEM_POWERUP     EQU $02
 DEF OPTION_ITEM_EASY_MOVES  EQU $03
-DEF OPTION_ITEM_TEAM_DUPL   EQU $04
-DEF OPTION_ITEM_HIDDEN_CHARS EQU $05
-DEF OPTION_ITEM_BGMTEST     EQU $06
-DEF OPTION_ITEM_SFXTEST     EQU $07
-DEF OPTION_ITEM_SGBSNDTEST  EQU $08
-DEF OPTION_ITEM_EXIT        EQU $09
+DEF OPTION_ITEM_SUPER_CANCEL EQU $04
+DEF OPTION_ITEM_TEAM_DUPL   EQU $05
+DEF OPTION_ITEM_HIDDEN_CHARS EQU $06
+DEF OPTION_ITEM_BGMTEST     EQU $07
+DEF OPTION_ITEM_SFXTEST     EQU $08
+DEF OPTION_ITEM_SGBSNDTEST  EQU $09
+DEF OPTION_ITEM_EXIT        EQU $0A
 
 ; SGB sound test options
 DEF OPTION_SITEM_ID_A       EQU $00

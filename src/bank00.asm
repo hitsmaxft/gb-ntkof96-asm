@@ -6497,6 +6497,8 @@ Play_InitRound:
 	ld   [wPlInfo_Pl2+iPlInfo_HitComboRecvSet], a
 	ld   [wPlInfo_Pl1+iPlInfo_NoSpecialTimer], a
 	ld   [wPlInfo_Pl2+iPlInfo_NoSpecialTimer], a
+	ld   [wPlInfo_Pl1+iPlInfo_SuperCancelFlags], a
+	ld   [wPlInfo_Pl2+iPlInfo_SuperCancelFlags], a
 	ld   a, $FF
 	ld   [wPlInfo_Pl1+iPlInfo_PlDistance], a
 	ld   [wPlInfo_Pl2+iPlInfo_PlDistance], a
@@ -11831,6 +11833,9 @@ Play_Pl_EndMove:
 	ld   hl, iPlInfo_IntroMoveId
 	add  hl, bc
 	ld   [hl], MOVE_SHARED_NONE
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	ld   [hl], $00
 	ret
 
 ; =============== OBJLstS_SyncXFlip ===============
@@ -14002,6 +14007,10 @@ OBJLstS_ApplyGravityVAndMoveV:
 ; - C flag: If set, validation failed
 ; - Z flag: If set, we're on the ground (only if validation passed)
 MoveInputS_CanStartSpecialMove:
+	; A pending recovery cancel is valid only for this input-reader pass.
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	res  PSCB_CANCEL_PENDING, [hl]
 
 	;
 	; If we got hit by Chizuru's super, we can only use normals.
@@ -14018,8 +14027,11 @@ MoveInputS_CanStartSpecialMove:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc				; Seek to iPlInfo_Flags0
 	bit  PF0B_SPECMOVE, [hl]	; Is the bit set?
-	jp   nz, .retNoMove		; If so, return
+	jr   z, .chkPlayerState
+	call MoveInputS_TrySuperCancel
+	jp   c, .retNoMove
 
+.chkPlayerState:
 	ld   hl, iPlInfo_Flags1
 	add  hl, bc				; Seek to iPlInfo_Flags1
 
@@ -14057,7 +14069,11 @@ MoveInputS_CanStartSpecialMove:
 	bit  PF1B_ALLOWHITCANCEL, [hl]	; Can we cancel the current move into a special/super? (off the previous hit)
 	jp   nz, .moveOk				; If so, skip (ok)
 	bit  PF1B_NOSPECSTART, [hl]		; Are we explicitly disallowed to start a new special/super?
-	jp   nz, .retNoMove				; If so, return
+	jp   z, .moveOk
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	bit  PSCB_CANCEL_PENDING, [hl]
+	jp   z, .retNoMove
 
 .moveOk:
 
@@ -14352,6 +14368,16 @@ MoveInputS_SetSpecMove_StopSpeed:
 	; Force syncronize the player's direction before starting the move
 	call OBJLstS_SyncXFlip
 
+	; Promote this input pass's pending recovery cancel to active damage state.
+	push af
+		ld   hl, iPlInfo_SuperCancelFlags
+		add  hl, bc
+		ld   a, [hl]
+		and  1 << PSCB_CANCEL_PENDING
+		rrca
+		ld   [hl], a
+	pop  af
+
 	; HL = Ptr to status flag
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
@@ -14407,6 +14433,7 @@ ENDC
 	;
 	push hl
 		call Pl_SetMove_StopSpeed
+		call Play_Pl_ScaleSuperCancelPendingDamage
 	pop  hl
 
 	;
@@ -14582,6 +14609,7 @@ Play_Pl_SetMoveDamage:
 		; DE = HL
 		push hl
 		pop  de
+		call Play_Pl_ScaleSuperCancelDamageD
 		; BC = Ptr to start of current move damage info
 		ld   hl, iPlInfo_MoveDamageVal
 		add  hl, bc
@@ -14621,6 +14649,7 @@ Play_Pl_SetMoveDamageNext:
 		; DE = HL
 		push hl
 		pop  de
+		call Play_Pl_ScaleSuperCancelDamageD
 		; BC = Ptr to start of pending move damage info
 		ld   hl, iPlInfo_MoveDamageValNext
 		add  hl, bc
@@ -16691,6 +16720,7 @@ MoveInput_DU:
 ; The unconsumed tail is included so both supported ROM layouts keep their size.
 OptionHack_Bank00_Start:
 
+IF !REV_VER_2
 ; Checks the simplified ground easy-move controls.
 ; SELECT+B and SELECT+A keep their original held-key semantics.
 ; The remaining shortcuts trigger on a newly pressed SELECT with no A/B held.
@@ -16757,6 +16787,85 @@ MoveInputS_CheckEasyMoveTapKeys:
 		ld   hl, iPlInfo_Flags2
 		add  hl, bc
 		set  PF2B_HEAVY, [hl]
+	pop  af
+	ret
+ENDC
+
+; Validates the optional recovery-only special/super cancel window.
+; OUT: carry clear on success, with PSCB_CANCEL_PENDING set.
+MoveInputS_TrySuperCancel:
+	ld   a, [wDipSwitch]
+	bit  DIPB_SUPER_CANCEL, a
+	jr   z, .no
+
+	; Use the logical meter value. The check itself never consumes POW.
+	ld   hl, iPlInfo_Pow
+	add  hl, bc
+	ld   a, [hl]
+	cp   PLAY_POW_MAX
+	jr   nz, .no
+
+	; Recovery must have no regular or forced attack hitbox.
+	ld   hl, iOBJInfo_HitboxId
+	add  hl, de
+	ldi  a, [hl]
+	or   [hl]
+	jr   nz, .no
+
+	; The visible animation must be on this move's final frame.
+	ld   hl, iOBJInfo_OBJLstPtrTblOffsetView
+	add  hl, de
+	ld   a, [hl]
+	ld   hl, iPlInfo_OBJLstPtrTblOffsetMoveEnd
+	add  hl, bc
+	cp   [hl]
+	jr   nz, .no
+
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	set  PSCB_CANCEL_PENDING, [hl]
+	xor  a
+	ret
+.no:
+	scf
+	ret
+
+; Scales the move-table damage loaded when the cancelled-into move starts.
+Play_Pl_ScaleSuperCancelPendingDamage:
+	push de
+		ld   hl, iPlInfo_MoveDamageValNext
+		add  hl, bc
+		ld   d, [hl]
+		push hl
+			call Play_Pl_ScaleSuperCancelDamageD
+		pop  hl
+		ld   [hl], d
+	pop  de
+	ret
+
+; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
+; A and E are preserved for the common current/pending damage setters.
+Play_Pl_ScaleSuperCancelDamageD:
+	push af
+		ld   hl, iPlInfo_SuperCancelFlags
+		add  hl, bc
+		bit  PSCB_DAMAGE_ACTIVE, [hl]
+		jr   z, .done
+		ld   a, d
+		or   a
+		jr   z, .done
+		ld   d, $00
+.divide:
+		sub  $03
+		jr   c, .minimum
+		inc  d
+		jr   .divide
+.minimum:
+		ld   a, d
+		or   a
+		jr   nz, .done
+		inc  d
+.done:
 	pop  af
 	ret
 

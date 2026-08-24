@@ -127,6 +127,8 @@ ENDC
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_EasyMoves
 	call TextPrinter_Instant
+	ld   hl, TextDef_Options_SuperCancel
+	call TextPrinter_Instant
 	ld   hl, TextDef_Options_TeamDupl
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_HiddenChars
@@ -885,6 +887,7 @@ Title_Mode_Options:
 	dw Options_Item_DIP
 	dw Options_Item_DIP
 	dw Options_Item_DIP
+	dw Options_Item_DIP
 	dw Options_Item_BGMTest
 	dw Options_Item_SFXTest
 	dw Options_Item_SGBSndTest
@@ -1031,7 +1034,7 @@ Options_PrintDifficulty:
 	jp   TextPrinter_Instant
 
 ; =============== Selectable DIP options ===============
-; POWER UP, EASY MOVE, TEAM DUPL and HIDDEN CHR share this handler.
+; POWER UP, EASY MOVE, SUP CANCEL, TEAM DUPL and HIDDEN CHR share this handler.
 Options_Item_DIP:
 	call Title_BlinkCursorR
 	call Options_DoCtrl
@@ -1094,7 +1097,7 @@ Options_GetDIPInfo:
 
 Options_PrintDIPs:
 	ld   hl, Options_DIPInfo
-	ld   b, Options_DIPInfo.end-Options_DIPInfo
+	ld   b, (Options_DIPInfo.end-Options_DIPInfo)/$03
 .loop:
 	ld   c, [hl]
 	inc  hl
@@ -1107,8 +1110,6 @@ Options_PrintDIPs:
 			call Options_PrintDIP
 		pop  hl
 	pop  bc
-	dec  b
-	dec  b
 	dec  b
 	jr   nz, .loop
 	ret
@@ -1130,12 +1131,14 @@ Options_DIPInfo:
 	dw $993F
 	db 1 << DIPB_EASY_MOVES
 	dw $995F
-	db 1 << DIPB_TEAM_DUPL
+	db 1 << DIPB_SUPER_CANCEL
 	dw $997F
-	db (1 << DIPB_UNLOCK_BOSS) | (1 << DIPB_UNLOCK_OTHER)
+	db 1 << DIPB_TEAM_DUPL
 	dw $999F
+	db (1 << DIPB_UNLOCK_BOSS) | (1 << DIPB_UNLOCK_OTHER)
+	dw $99BF
 	db 1 << DIPB_SGB_SOUND_TEST
-	dw $99FF
+	dw $9A1F
 .end:
 	
 ; =============== Options_Item_BGMTest ===============	
@@ -1203,7 +1206,7 @@ Options_BGMIdMapTbl:
 Options_PrintBGMId:
 	ld   a, [wOptionsBGMId]		; A = wOptionsBGMId+1
 	inc  a
-	ld   de, $99BE				; DE = Location
+	ld   de, $99DE				; DE = Location
 	ld   c, $00					; C = Tile ID base
 	call NumberPrinter_Instant
 	ret
@@ -1284,7 +1287,7 @@ Options_SFXIdMapTbl:
 Options_PrintSFXId:
 	ld   a, [wOptionsSFXId]		; A = wOptionsSFXId+1
 	inc  a
-	ld   de, $99DE
+	ld   de, $99FE
 	ld   c, $00
 	call NumberPrinter_Instant
 	ret
@@ -2331,32 +2334,38 @@ TextDef_Options_EasyMoves:
 .start:
 	db "EASY MOVE  N"
 .end:
-TextDef_Options_TeamDupl:
+TextDef_Options_SuperCancel:
 	dw $9974
+	db .end-.start
+.start:
+	db "SUP CANCEL N"
+.end:
+TextDef_Options_TeamDupl:
+	dw $9994
 	db .end-.start
 .start:
 	db "TEAM DUPL  N"
 .end:
 TextDef_Options_HiddenChars:
-	dw $9994
+	dw $99B4
 	db .end-.start
 .start:
 	db "HIDDEN CHR N"
 .end:
 TextDef_Options_BGMTest:
-	dw $99B4
+	dw $99D4
 	db .end-.start
 .start:
 	db "BGM TEST  XX"
 .end:
 TextDef_Options_SFXTest:
-	dw $99D4
+	dw $99F4
 	db .end-.start
 .start:
 	db "S.E.TEST  XX"
 .end:
 TextDef_Options_SGBSndTest:
-	dw $99F4
+	dw $9A14
 	db .end-.start
 .start:
 	db "SGB TEST   N"
@@ -5701,8 +5710,8 @@ IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
 ; [TCRF] Contains win screen text from the English version of KOF95.
-	; The expanded options menu reuses another $1E bytes of this junk area.
-	mIncJunkFrom "L1C7F4D", $9A
+	; The expanded options menu reuses $36 bytes of this junk area.
+	mIncJunkFrom "L1C7F4D", $B2
 ELSE
-	mIncJunkFrom "L1C7DCA", $9A
+	mIncJunkFrom "L1C7DCA", $B2
 ENDC

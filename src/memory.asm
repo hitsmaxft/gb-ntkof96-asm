@@ -804,6 +804,7 @@ DEF iPlInfo_ForceDizzy                          EQU $83 ; If set, the dizzy time
 DEF iPlInfo_CPUIdleTimer               EQU $86 ; Delays picking a new idle move. Until it elapses, the existing iPlInfo_CPUIdleMove is valid.
 DEF iPlInfo_CPUIdleMove                EQU $87 ; ID of the idle movement mode. (CMA_*)
 DEF iPlInfo_CPUWaitTimer               EQU $89 ; Delays CPU input logic until it elapses
+DEF iPlInfo_SuperCancelFlags           EQU $8A ; PSCB_* pending/active state for Super Cancel damage
 
 ; D-Pad Move input (MoveInput_*)
 ; Format: <iMoveInput_Length>[<iMoveInputItem*> last, <iMoveInputItem*> last-1, ...]		
