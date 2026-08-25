@@ -249,17 +249,15 @@ MoveC_Kyo_AraKami:
 		jp   .anim
 ; --------------- 114 Shiki Ara Kami - input check macro ---------------	
 MACRO mAraKami_ChkInpt
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_JoyNewKeys
 	add  hl, bc
 	ld   a, [hl]
-	bit  KEPB_B_LIGHT, a		; Pressed LP?
-	jr   nz, ._chkInput\@		; If so, jump
-	jr   ._anim\@
-._chkInput\@:
-	; FDB+P (light) -> 127 Shiki Yano Sabi
-	mMvIn_ChkDir MoveInput_FDB, .startYanoSabi
-	; DF+P (light) -> 128 Shiki Kono Kizu 
-	mMvIn_ChkDir MoveInput_DF, .startKonoKizu 
+	; A -> 127 Shiki Yano Sabi; B -> 128 Shiki Kono Kizu.
+	; Use the physical press edge so no direction or button release is required.
+	bit  KEYB_A, a
+	jp   nz, .startYanoSabi
+	bit  KEYB_B, a
+	jp   nz, .startKonoKizu
 ._anim\@:
 ENDM
 ; --------------- 114 Shiki Ara Kami - frame #2 ---------------
@@ -305,14 +303,14 @@ MACRO mKonoKizu_ChkInput
 	jp   ._startYanoSabi\@		; Otherwise, start 
 ._human\@:
 	; Human players need to press a single button to continue the move.
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_JoyNewKeys
 	add  hl, bc
 	ld   a, [hl]
 	; A -> 125 Shiki Nana Se
-	bit  KEPB_A_LIGHT, a		; Pressed light kick?
+	bit  KEYB_A, a				; Pressed kick?
 	jr   nz, ._startNanaSe\@	; If so, jump
 	; B -> 127 Shiki Yano Sabi 
-	bit  KEPB_B_LIGHT, a		; Pressed light punch?
+	bit  KEYB_B, a				; Pressed punch?
 	jr   nz, ._startYanoSabi\@	; If so, jump
 	jr   ._anim\@
 ._startYanoSabi\@:
@@ -357,14 +355,14 @@ MACRO mYanoSabi_ChkInpt
 	jp   ._startMigiriUgachi\@
 ._human\@:
 	; Human players need to press a single button to continue the move.
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_JoyNewKeys
 	add  hl, bc
 	ld   a, [hl]
 	; A -> 125 Shiki Nana Se
-	bit  KEPB_A_LIGHT, a			; Pressed light kick?
+	bit  KEYB_A, a					; Pressed kick?
 	jr   nz, ._startNanaSe\@		; If so, jump
 	; B -> Ge Shiki Migiri Ugachi
-	bit  KEPB_B_LIGHT, a			; Pressed light punch?
+	bit  KEYB_B, a					; Pressed punch?
 	jr   nz, ._startMigiriUgachi\@	; If so, jump
 	jr   ._anim\@
 ._startMigiriUgachi\@:

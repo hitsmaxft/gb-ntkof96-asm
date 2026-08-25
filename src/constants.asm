@@ -140,7 +140,7 @@ DEF ANIMSPEED_NONE      EQU $FF ; Slowest possible animation speed, set when we 
 
 ; FLAGS
 DEF DIPB_SUPER_CANCEL     EQU 0 ; Allow specials/supers during non-attacking special recovery
-DEF DIPB_EASY_MOVES       EQU 2 ; SELECT+A/B plus directional SELECT taps for easy moves
+DEF DIPB_EASY_MOVES       EQU 2 ; Timed SELECT shortcuts for easy moves
 DEF DIPB_POWERUP          EQU 3 ; DIPB_POWERUP Powerup mode. POW Meter grows on its own + Unlimited super moves + move changes
 DEF DIPB_SGB_SOUND_TEST   EQU 4 ; Adds SGB S.E TEST to the options menu
 DEF DIPB_TEAM_DUPL        EQU 5 ; Allow duplicate characters in a team

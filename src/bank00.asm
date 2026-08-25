@@ -16721,74 +16721,102 @@ MoveInput_DU:
 OptionHack_Bank00_Start:
 
 IF !REV_VER_2
-; Checks the simplified ground easy-move controls.
-; SELECT+B and SELECT+A keep their original held-key semantics.
-; The remaining shortcuts trigger on a newly pressed SELECT with no A/B held.
+; Checks the simplified easy-move controls.
+; SELECT chooses the SELECT+A move by default. Explicit SELECT+A also reaches
+; the caller's airborne assignment. Holding a direction before SELECT chooses a
+; ground directional shortcut instead.
+; Releasing SELECT before 6 frames requests light; holding it for 6 requests
+; heavy. The high nybble of iPlInfo_EasyMoveSelectState stores an encoded route,
+; while the low nybble counts down the held frames. $FF prevents repeat
+; activation while held.
 ; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 forward, 4 back, 5 down.
 MoveInputS_CheckEasyMoveTapKeys:
 	ld   a, [wDipSwitch]
 	bit  DIPB_EASY_MOVES, a
 	jr   z, .none
 
-	; Preserve the original SELECT+B shortcut, including held directions.
 	ld   hl, iPlInfo_JoyKeys
-	add  hl, bc
-	ld   a, [hl]
-	and  KEY_SELECT|KEY_B
-	cp   KEY_SELECT|KEY_B
-	jr   z, .selectB
-	ld   a, [hl]
-	and  KEY_SELECT|KEY_A
-	cp   KEY_SELECT|KEY_A
-	jr   z, .selectA
-
-	; Start a tap shortcut on the SELECT press edge. Releasing SELECT after the
-	; tap requires no extra handling.
-	ld   hl, iPlInfo_JoyNewKeys
 	add  hl, bc
 	bit  KEYB_SELECT, [hl]
-	jr   z, .none
-	ld   hl, iPlInfo_JoyKeys
+	jr   z, .released
+
+	ld   hl, iPlInfo_EasyMoveSelectState
 	add  hl, bc
 	ld   a, [hl]
-	and  KEY_A|KEY_B
-	jr   nz, .none
+	inc  a
+	jr   z, .none
+	dec  a
+	jr   nz, .held
 
+	; Explicit SELECT+B/A has priority over the directional shortcuts.
+	push hl
+		ld   hl, iPlInfo_JoyKeys
+		add  hl, bc
+		bit  KEYB_B, [hl]
+		jr   nz, .selectB
+		bit  KEYB_A, [hl]
+		jr   nz, .selectA
+	pop  hl
 	call Play_Pl_GetDirKeys_ByXFlipR
-	bit  KEYB_UP, a
-	jr   nz, .none
 	bit  KEYB_DOWN, a
 	jr   nz, .down
 	bit  KEYB_RIGHT, a
 	jr   nz, .forward
 	bit  KEYB_LEFT, a
 	jr   nz, .back
+	ld   a, $06 ; Neutral/Up SELECT defaults to SELECT+A.
+.storeRoute:
+	ld   [hl], a
+.held:
+	dec  [hl]
+	ld   a, [hl]
+	and  $0F
+	jr   nz, .none
+	ld   a, [hl]
+	ld   [hl], $FF
+	ld   hl, iPlInfo_Flags2
+	add  hl, bc
+	set  PF2B_HEAVY, [hl]
+	jr   .getRouteFromA
+
+.released:
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	ld   [hl], $00
+	or   a
+	jr   z, .none
+	cp   $FF
+	jr   z, .none
+	ld   hl, iPlInfo_Flags2
+	add  hl, bc
+	res  PF2B_HEAVY, [hl]
+.getRouteFromA:
+	swap a
+	and  $0F
+	srl  a     ; Route 1 sets carry; route 2 sets zero; 3-5 stay numeric.
+	ret
 .none:
 	xor  a
+	inc  a
 	ret
 .selectB:
-	ld   a, $01
-	ret
+	pop  hl
+	ld   a, $16
+	jr   .storeRoute
 .selectA:
-	ld   a, $02
-	ret
+	pop  hl
+	ld   a, $06
+	jr   .storeRoute
 .forward:
-	ld   a, $03
-	jr   .setHeavy
+	ld   a, $66
+	jr   .storeRoute
 .back:
-	ld   a, $04
-	jr   .setHeavy
+	ld   a, $86
+	jr   .storeRoute
 .down:
-	ld   a, $05
-	; Directional SELECT shortcuts deliberately request the heavy version.
-	; At max POW with POWER UP enabled this selects the hidden-heavy branch.
-.setHeavy:
-	push af
-		ld   hl, iPlInfo_Flags2
-		add  hl, bc
-		set  PF2B_HEAVY, [hl]
-	pop  af
-	ret
+	ld   a, $A6
+	jr   .storeRoute
 ENDC
 
 ; Validates the optional recovery-only special/super cancel window.

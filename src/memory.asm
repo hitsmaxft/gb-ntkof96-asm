@@ -800,6 +800,7 @@ DEF iPlInfo_OIori_KinYaOtome_LoopCount          EQU $83
 DEF iPlInfo_Ryo_HienShippuKyaku_Unused_83       EQU $83 ; Nonexisting
 DEF iPlInfo_Hit_SwoopUp_OkSpeedY                EQU $83
 DEF iPlInfo_ForceDizzy                          EQU $83 ; If set, the dizzy time is infinite until getting knocked down.
+DEF iPlInfo_EasyMoveSelectState                 EQU $85 ; Easy Move SELECT encoded route (high nybble) and held-frame countdown (low nybble); $FF after heavy activation
 ; CPU block
 DEF iPlInfo_CPUIdleTimer               EQU $86 ; Delays picking a new idle move. Until it elapses, the existing iPlInfo_CPUIdleMove is valid.
 DEF iPlInfo_CPUIdleMove                EQU $87 ; ID of the idle movement mode. (CMA_*)

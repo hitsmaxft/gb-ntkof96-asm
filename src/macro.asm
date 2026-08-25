@@ -179,14 +179,19 @@ ENDM									; Otherwise, assume air
 ; - 1: Move key for SELECT + B
 ; - 2: Move key for SELECT + A
 MACRO mMvIn_ChkEasy
-	call MoveInputS_CheckEasyMoveKeys
+	IF !REV_VER_2
+		call MoveInputS_CheckEasyMoveTapKeys
+	ELSE
+		; Keep revision 2 bank layouts within their much smaller junk areas.
+		call MoveInputS_CheckEasyMoveKeys
+	ENDC
 	jp   c, \1 ; SELECT + B pressed? If so, jump
 	jp   z, \2 ; SELECT + A pressed? If so, jump
 ENDM
 
 ; =============== mMvIn_ChkEasyDir ===============
-; Adds facing-relative SELECT taps to the original SELECT+A/B shortcuts.
-; Up+SELECT and neutral SELECT are intentionally not assigned.
+; Adds facing-relative SELECT shortcuts to the original SELECT+A/B shortcuts.
+; Neutral/Up + SELECT use the SELECT+A move.
 ; IN
 ; - 1: Move key for SELECT + B
 ; - 2: Move key for SELECT + A
@@ -196,11 +201,9 @@ ENDM
 MACRO mMvIn_ChkEasyDir
 	IF !REV_VER_2
 	call MoveInputS_CheckEasyMoveTapKeys
-	dec  a
-	jp   z, \1
-	dec  a
+	jp   c, \1
 	jp   z, \2
-	dec  a
+	sub  $03
 	jp   z, \3
 	dec  a
 	jp   z, \4

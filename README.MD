@@ -53,10 +53,13 @@ cancelled-into move, including later hits and projectiles, becomes
 `max(1, floor(original / 3))`. Each chained Super Cancel requires full POW
 again and scales the new move from its own original damage.
 
-With EASY MOVE enabled, `SELECT+A` and `SELECT+B` keep each fighter's original
-shortcuts. Hold forward, back, or down relative to the fighter's facing and tap
-then release `SELECT` for three additional special moves. Up plus `SELECT` and
-neutral `SELECT` are intentionally left unchanged.
+With EASY MOVE enabled, pressing `SELECT` uses the fighter's original ground
+`SELECT+A` shortcut by default. `SELECT+A` and `SELECT+B` still choose the two
+original shortcuts, including each fighter's airborne `SELECT+A` assignment
+while jumping. Holding forward, back, or down relative to the fighter's facing
+chooses one of three additional ground moves. Release `SELECT` before 6 frames
+for the light version, or hold it for 6 frames for the corresponding heavy
+version.
 
 ## 
 Once again, thanks to lazigamer for the debug emulator used to generate the initial CDL.
