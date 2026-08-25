@@ -14020,9 +14020,6 @@ OBJLstS_ApplyGravityVAndMoveV:
 ; - C flag: If set, validation failed
 ; - Z flag: If set, we're on the ground (only if validation passed)
 MoveInputS_CanStartSpecialMove:
-	; Update source phase before testing this input-reader pass.
-	call MoveInputS_UpdateMaxChainSource
-
 	; A pending chain is valid only for this input-reader pass.
 	ld   hl, iPlInfo_MaxChainState
 	add  hl, bc
@@ -16822,15 +16819,6 @@ ENDC
 
 ; MAX Chain source/target logic lives in bank $04's reclaimed junk area.
 ; These wrappers preserve the player pointer while FarCall temporarily uses B.
-MoveInputS_UpdateMaxChainSource:
-	push bc
-		ld   c, b
-		ld   b, BANK(MoveInputS_UpdateMaxChainSource_Banked)
-		ld   hl, MoveInputS_UpdateMaxChainSource_Banked
-		call FarCall
-	pop  bc
-	ret
-
 MoveInputS_TryMaxChain:
 	push bc
 		ld   c, b

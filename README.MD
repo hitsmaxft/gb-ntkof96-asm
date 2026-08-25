@@ -45,10 +45,11 @@ SGB TEST can be toggled on any system. On Super Game Boy hardware, enable it
 with Right and press A to enter the original SGB sound editor.
 
 MAX CHAIN defaults to `N`. While MAX mode is active, it allows special to
-special, special to super, and super to special links after the source becomes
-active, is confirmed by a hit/guard/projectile, or completes a safe utility
-transition. The active/recovery window remains open for the rest of that move,
-so Ryo's Ko-Ou Ken is no longer tied to its incorrect move-table end offset.
+special, special to super, and super to special links only after the current
+source's player or owned-projectile hitbox connects with the opponent, including
+a guarded connection. The confirmed window remains open for the rest of that
+move, so Ryo's Ko-Ou Ken is no longer tied to its incorrect move-table end
+offset, but a whiff never opens MAX CHAIN.
 Same-family links, super to super, throws, and opponent-locking sequences are
 rejected, and a chain is limited to two links. MAX CHAIN applies only to player
 input; CPU fighters retain their original AI routing so POWER UP cannot turn

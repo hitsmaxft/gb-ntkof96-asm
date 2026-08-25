@@ -1121,69 +1121,8 @@ TextC_CutsceneMrKarateDefeat2:
 ENDC
 
 ; =============== MAX Chain banked helpers ===============
-; Bank-zero wrappers pass the original wPlInfo high byte in C. DE remains the
-; player OBJInfo pointer where required.
+; Bank-zero wrappers pass the original wPlInfo high byte in C.
 OptionHack_Bank04_Start:
-
-MoveInputS_UpdateMaxChainSource_Banked:
-	ld   b, c
-	ld   c, $00
-	ld   hl, iPlInfo_Flags0
-	add  hl, bc
-	bit  PF0B_SPECMOVE, [hl]
-	ret  z
-	ld   hl, iPlInfo_Flags2
-	add  hl, bc
-	bit  PF2B_MOVESTART, [hl]
-	ret  nz
-
-	; A direct hit or guard confirmation is already latched by the base game.
-	ld   hl, iPlInfo_Flags1
-	add  hl, bc
-	bit  PF1B_ALLOWHITCANCEL, [hl]
-	jr   z, .chkHitbox
-	ld   hl, iPlInfo_MaxChainState
-	add  hl, bc
-	set  MCSB_HIT_CONFIRMED, [hl]
-.chkHitbox:
-	ld   hl, iOBJInfo_HitboxId
-	add  hl, de
-	ldi  a, [hl]
-	or   [hl]
-	jr   z, .chkUtility
-	ld   hl, iPlInfo_MaxChainState
-	add  hl, bc
-	set  MCSB_ACTIVE_SEEN, [hl]
-	ret
-.chkUtility:
-	; Utility recovery opens after one visible transition, but only for a
-	; zero-damage move that did not copy damage to a projectile/effect.
-	ld   hl, iOBJInfo_OBJLstPtrTblOffsetView
-	add  hl, de
-	ld   a, [hl]
-	or   a
-	ret  z
-	ld   hl, iPlInfo_MoveDamageVal
-	add  hl, bc
-	ld   a, [hl]
-	or   a
-	ret  nz
-	ld   hl, iPlInfo_MoveDamageValNext
-	add  hl, bc
-	ld   a, [hl]
-	or   a
-	ret  nz
-	ld   hl, iPlInfo_MoveId
-	add  hl, bc
-	ld   a, [hl]
-	ld   hl, iPlInfo_MaxChainProjectileMoveId
-	add  hl, bc
-	cp   [hl]
-	ret  z
-	ld   hl, iPlInfo_MaxChainState
-	add  hl, bc
-	set  MCSB_UTILITY_READY, [hl]
-	ret
 
 ; OUT: carry clear with MCSB_CANCEL_PENDING set when this source may chain.
 MoveInputS_TryMaxChain_Banked:
@@ -1210,8 +1149,7 @@ MoveInputS_TryMaxChain_Banked:
 	jr   c, .no
 	ld   hl, iPlInfo_MaxChainState
 	add  hl, bc
-	ld   a, [hl]
-	and  (1 << MCSB_ACTIVE_SEEN) | (1 << MCSB_HIT_CONFIRMED) | (1 << MCSB_UTILITY_READY)
+	bit  MCSB_HIT_CONFIRMED, [hl]
 	jr   z, .no
 	ld   a, [hl]
 	and  MCS_CHAIN_DEPTH_MASK

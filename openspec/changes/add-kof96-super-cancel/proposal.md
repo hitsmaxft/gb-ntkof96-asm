@@ -10,21 +10,22 @@ frame. Ryo's Ko-Ou Ken demonstrates the failure directly because its `$08`
 target still has an attack hitbox while its actual recovery continues through
 later frames, leaving no frame that can pass both checks.
 
-The mode should reward MAX-state routing and experimentation. Cancels should
-become available once the source move has committed to its attack, remain
-available through its active and recovery phases, and use explicit resource,
+The mode should reward confirmed MAX-state routing and experimentation.
+Cancels should become available only after the source hitbox actually connects,
+remain available through the rest of that move, and use explicit resource,
 chain, and damage rules instead of an unreliable animation-offset heuristic.
 
 ## What Changes
 
 - Rename the OPTION item from `SUP CANCEL` to `MAX CHAIN`, retaining its
   independent DIP bit and disabled default.
-- Replace the final-frame/no-hitbox predicate with a latched source-move phase:
-  an attack-bearing special becomes cancellable as soon as its first regular or
-  forced hitbox appears and stays cancellable for the rest of that move.
-- Open the same window when the current move records a direct or projectile hit
-  or guard confirmation. For specials that never produce a player hitbox, open
-  after their first completed animation transition unless the source is unsafe.
+- Replace the final-frame/no-hitbox predicate with per-source hit confirmation:
+  a special or super becomes cancellable only when its player hitbox or owned
+  projectile actually connects, including a guarded connection, and stays
+  cancellable for the rest of that move.
+- Never open MAX Chain from a merely active hitbox, a whiff, or a no-hitbox
+  utility transition. Clear confirmation on every accepted target so each link
+  must independently connect before another cancel.
 - Permit special-to-special, special-to-super, and super-to-special routes.
   Reject super-to-super routes, a consecutive route into the same move family,
   and a third cancel in the same chain.

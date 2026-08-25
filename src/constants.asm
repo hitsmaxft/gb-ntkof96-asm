@@ -302,12 +302,11 @@ DEF PF2B_NOCOLIBOX      EQU 7 ; If set, the player has no collision box
 ; iPlInfo_MaxChainState
 DEF MCSB_DAMAGE_ACTIVE  EQU 0 ; Current move belongs to a MAX Chain and deals scaled damage
 DEF MCSB_CANCEL_PENDING EQU 1 ; Source validation passed for this input-reader pass
-DEF MCSB_ACTIVE_SEEN    EQU 2 ; A regular/forced player hitbox has appeared
+DEF MCSB_RESERVED2      EQU 2
 DEF MCSB_HIT_CONFIRMED  EQU 3 ; The current source hit, was guarded, or its projectile connected
 DEF MCSB_CHAIN_DEPTH0   EQU 4 ; Two-bit link depth, values 0-2
 DEF MCSB_CHAIN_DEPTH1   EQU 5
-DEF MCSB_UTILITY_READY  EQU 6 ; A zero-damage, non-projectile utility move completed a transition
-DEF MCSB_TARGET_PREVALIDATED EQU MCSB_UTILITY_READY ; Transient reuse after source phase is consumed
+DEF MCSB_TARGET_PREVALIDATED EQU 6 ; Transient target marker for a stack-sensitive initializer
 DEF MCSB_INPUT_READER   EQU 7 ; Target validation is running from a character input reader
 DEF MCS_CHAIN_DEPTH_MASK EQU (1 << MCSB_CHAIN_DEPTH0) | (1 << MCSB_CHAIN_DEPTH1)
 DEF MAX_CHAIN_COST_SPECIAL EQU $08

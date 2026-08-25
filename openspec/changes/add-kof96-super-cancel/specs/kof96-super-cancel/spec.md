@@ -8,7 +8,7 @@ independent Super Cancel DIP bit, and the option SHALL default to disabled.
 #### Scenario: Enable MAX Chain
 
 - **WHEN** the player changes `MAX CHAIN` from `N` to `Y`
-- **THEN** phase-based special and super routing is enabled without changing any other OPTION value
+- **THEN** hit-confirmed special and super routing is enabled without changing any other OPTION value
 
 #### Scenario: Leave MAX Chain disabled
 
@@ -39,7 +39,7 @@ cost `$10`.
 
 #### Scenario: Reject insufficient MAX duration
 
-- **WHEN** the phase and command are valid but the remaining MAX duration is below the applicable route cost
+- **WHEN** hit confirmation and the command are valid but the remaining MAX duration is below the applicable route cost
 - **THEN** the target move does not start and MAX duration is unchanged
 
 #### Scenario: Do not charge a failed command
@@ -52,46 +52,14 @@ cost `$10`.
 - **WHEN** an accepted route cost equals the remaining `iPlInfo_MaxPow`
 - **THEN** MAX duration reaches zero through the normal termination path and does not wrap to `$FF`
 
-### Requirement: Active-and-recovery cancel window
+### Requirement: Per-source hit-confirmed cancel window
 
-An attack-bearing special or super SHALL become a valid MAX Chain source on the
-first frame where its regular or forced player hitbox is non-zero. It SHALL
-remain a valid source through its later active and recovery frames without
-requiring the current hitbox to be zero or the visible animation offset to equal
-`iPlInfo_OBJLstPtrTblOffsetMoveEnd`.
-
-#### Scenario: Cancel on the first active frame
-
-- **WHEN** a legal command is accepted on the first frame where the source exposes a regular or forced hitbox
-- **THEN** the target move starts even though the source hitbox is still active
-
-#### Scenario: Cancel during later active frames
-
-- **WHEN** the source previously exposed a hitbox and still has an active hitbox now
-- **THEN** a legal target may start
-
-#### Scenario: Cancel throughout recovery
-
-- **WHEN** the source previously exposed a hitbox and is now in any later non-attacking recovery frame
-- **THEN** a legal target may start without an exact `MoveEnd` offset match
-
-#### Scenario: Reject uncommitted startup
-
-- **WHEN** the source has not exposed a hitbox, confirmed a hit or guard, or completed the utility-move transition rule
-- **THEN** MAX Chain does not start another move
-
-#### Scenario: Remember an earlier active frame
-
-- **WHEN** the source exposed a hitbox on an earlier frame but the player first attempts MAX Chain during later recovery
-- **THEN** the latched source phase allows a legal target without requiring an earlier cancel attempt
-
-### Requirement: Hit, guard, projectile, and utility opening
-
-The game SHALL latch confirmation for the current source move after its direct
-or owned-projectile attack hits or is guarded. Confirmation SHALL open MAX Chain
-for that source. A source that never exposes a player hitbox SHALL instead open
-after its first completed visible animation transition unless it is an unsafe
-source.
+The game SHALL latch confirmation for the current source move only after its
+direct or owned-projectile hitbox actually connects with the opponent, including
+a guarded connection. Confirmation SHALL remain valid through the rest of that
+source move without requiring the visible animation offset to equal
+`iPlInfo_OBJLstPtrTblOffsetMoveEnd`. Merely exposing a hitbox, whiffing, or
+completing a no-hitbox utility transition SHALL NOT open MAX Chain.
 
 #### Scenario: Direct hit or guard confirmation
 
@@ -103,10 +71,25 @@ source.
 - **WHEN** a projectile belonging to the current source hits the opponent or is guarded
 - **THEN** the owner records confirmation and accepts a legal MAX Chain route while the source move is still executing
 
-#### Scenario: No-hitbox utility move
+#### Scenario: Cancel during confirmed recovery
 
-- **WHEN** a safe special has never exposed a player hitbox and completes its first visible animation transition
-- **THEN** it becomes a valid MAX Chain source
+- **WHEN** the source connected on an earlier active frame and is now in a later recovery frame
+- **THEN** a legal target may start without an exact `MoveEnd` offset match
+
+#### Scenario: Reject a whiff
+
+- **WHEN** the source exposes its hitbox but never connects with the opponent
+- **THEN** MAX Chain does not start another move during active frames or recovery
+
+#### Scenario: Require a new hit after every link
+
+- **WHEN** a confirmed source starts a MAX Chain target and that new target has not connected
+- **THEN** the target cannot MAX Chain again using confirmation inherited from the prior source
+
+#### Scenario: Reject no-hitbox utility transitions
+
+- **WHEN** a special completes animation transitions without any player or owned-projectile hitbox connection
+- **THEN** it does not become a valid MAX Chain source
 
 ### Requirement: Route and chain restrictions
 
@@ -116,7 +99,7 @@ same move family, and any route beyond two accepted links in one chain.
 
 #### Scenario: Chain two different special families
 
-- **WHEN** the player routes special A into special B and then into special C with valid phases, commands, and resources
+- **WHEN** the player routes special A into special B and then into special C with a new confirmed connection, valid command, and sufficient resource for each link
 - **THEN** both links are accepted and the chain depth becomes two
 
 #### Scenario: Reject the third link

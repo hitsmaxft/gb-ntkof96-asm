@@ -7,15 +7,15 @@
 
 ## 2. Per-source state
 
-- [x] 2.1 Replace final-frame/no-hitbox recovery validation with latched
-  `ACTIVE_SEEN`, `HIT_CONFIRMED`, and `UTILITY_READY` source state updated every
-  player/input-reader pass, independently of whether a cancel was attempted.
+- [x] 2.1 Replace final-frame/no-hitbox recovery validation with per-source
+  `HIT_CONFIRMED` state set only by an actual direct or owned-projectile
+  connection, including guard.
 - [x] 2.2 Latch direct hit and guard confirmation for the current source without
   treating a stale `PF1B_ALLOWHITCANCEL` from a prior move as confirmation.
 - [x] 2.3 Add owner-side projectile hit/guard confirmation.
-- [x] 2.4 Preserve chain depth during a MAX Chain transition, reset per-source
-  phase state for the new move, and reset the whole state on normal start, move
-  end, interruption, and round init.
+- [x] 2.4 Preserve chain depth during a MAX Chain transition, clear confirmation
+  for the new move so every link must connect independently, and reset the whole
+  state on normal start, move end, interruption, and round init.
 - [x] 2.5 Replace the current whole-byte pending-to-active assignment with
   bit-preserving state updates.
 
@@ -51,14 +51,14 @@
 
 ## 5. Verification and delivery
 
-- [ ] 5.1 Add static tests for phase latching, per-source confirmation, route
+- [ ] 5.1 Add static tests for strict per-source confirmation, whiff rejection, route
   matrix, same-family grouping, chain reset, costs, and all damage inputs.
 - [ ] 5.2 Generate a roster source-coverage report classifying every implemented
-  special/super as attack-bearing, safe utility, or denied/exceptional.
+  special/super by direct/projectile confirmation path or denied/exceptional.
 - [ ] 5.3 Rebuild Japanese and English variants with pinned RGBDS 0.7.0 and
   verify deterministic ROM/header checksums and disabled-mode equivalence.
-- [ ] 5.4 Emulator-test representative active, hit, guard, whiff, recovery,
-  projectile, utility, throw, multi-hit, super, and two-link routes.
+- [ ] 5.4 Emulator-test representative hit, guard, whiff, confirmed recovery,
+  projectile, utility rejection, throw, multi-hit, super, and two-link routes.
 - [ ] 5.5 Complete a roster-level emulator pass, record remaining physical
   hardware limits separately, then update README, artifact naming, hashes, and
   release packaging.

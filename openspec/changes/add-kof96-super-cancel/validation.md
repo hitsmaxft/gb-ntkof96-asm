@@ -8,13 +8,13 @@ physical-hardware claim is made.
 Current build artifacts:
 
 - Japanese `kof96.gb`: SHA-256
-  `77807a112d10859a518754b2d9718be2b8f6dee044cb2505a57f42aa4cfd2341`,
-  SHA-1 `d819d0a3e448849b83fdf899282b24b19655bb3d`, header checksum
-  `$C6`, global checksum `$7B40`
+  `937fc171ae1fc232d81484ce52f426bdeb44920968e037ec41b8e050e86d361c`,
+  SHA-1 `4f21832eb970b5ba9b91f1bd82062036d610f04d`, header checksum
+  `$C6`, global checksum `$688B`
 - English validation build: SHA-256
-  `b02d81cf625d4d983b27dbe7f2fca4be373d1a6e2e6eb9527c7d966152af6ba6`,
-  SHA-1 `dcf841c9abe1bc4dd20a6d5e57536c2efb198090`, header checksum
-  `$CD`, global checksum `$D158`
+  `4e910a4c094ac766a740b321141a4441635defd47ff3ca131952d74a5464c757`,
+  SHA-1 `77d79ce6bdbd205f44bbcc2cb13c24492566ea6d`, header checksum
+  `$CD`, global checksum `$9C3B`
 - Both are 524288 bytes and pass independent header/global checksum
   recalculation. Two clean Japanese rebuilds were byte-identical.
 
@@ -42,13 +42,13 @@ Current build artifacts:
   - super-to-super rejected;
   - same-family light/heavy and super/desperation routes rejected;
   - third links rejected.
-- Verify startup remains locked, the first hitbox frame opens immediately,
-  later active and recovery frames remain open, and no comparison with
-  `iPlInfo_OBJLstPtrTblOffsetMoveEnd` is required.
-- Verify `ACTIVE_SEEN` is latched without a cancel attempt on the active frame,
-  then permits the player's first attempt during later recovery.
+- Verify startup and every whiff remain locked even after a player hitbox has
+  appeared; only an actual direct/projectile connection opens the window.
+- Verify a confirmed connection remains usable through later recovery without
+  comparing against `iPlInfo_OBJLstPtrTblOffsetMoveEnd`.
 - Verify direct and projectile hit/guard confirmation belongs to the current
-  source and cannot leak from a prior normal or prior chain link.
+  source and cannot leak from a prior normal or prior chain link. In particular,
+  stale `PF1B_ALLOWHITCANCEL` must not confirm a newly chained target.
 - Verify failed parsing, target illegality, insufficient MAX, denied sources,
   and depth rejection do not charge MAX duration.
 - Verify accepted routes charge exactly once and update the visible MAX target.
@@ -66,23 +66,26 @@ Current build artifacts:
 - Verify initial, current, pending, later multi-hit, and projectile paths use the
   correct tier and reset after the chain ends.
 - Produce a roster report with one classification for every reachable special
-  and super source: `ACTIVE_SEEN`, `UTILITY_READY`, or denied/exceptional.
+  and super source: direct confirmation, owned-projectile confirmation, or
+  denied/exceptional.
 
 ## Emulator Acceptance Matrix
 
-At minimum, record commands, source/target move IDs, frame/phase, hit state,
+At minimum, record commands, source/target move IDs, frame, hit state,
 chain depth, MAX before/after, and damage before/after for these cases:
 
-- Ryo Ko-Ou Ken into Ko Hou during its first and second active frames, on hit,
-  on guard, on whiff, and during both recovery frames.
+- Ryo Ko-Ou Ken into Ko Hou on hit and guard during active/recovery, plus whiff
+  attempts during active and recovery that must remain rejected.
 - An ordinary projectile special into a legal non-projectile move while the
   projectile remains active.
 - A projectile-confirmed route whose owner sprite has no active player hitbox.
-- A safe no-hitbox utility move before and after its first animation transition.
+- A no-hitbox utility move before and after its first animation transition;
+  both attempts must remain rejected without a connection.
 - A command throw and an opponent-locking multi-hit/cinematic move, both of
   which must remain denied while locked.
 - A special-to-super route and a super-to-special route with exact `$10` cost.
-- Two different accepted links followed by a rejected third link.
+- Two different accepted links, each requiring its own hit/guard confirmation,
+  followed by a rejected third link.
 - Same-family L-to-H, H-to-L, S-to-D, and D-to-S attempts, all rejected.
 - Option disabled, insufficient MAX duration, interrupted source, round reset,
   and normal post-chain move damage.
