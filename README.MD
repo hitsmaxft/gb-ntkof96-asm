@@ -50,7 +50,9 @@ active, is confirmed by a hit/guard/projectile, or completes a safe utility
 transition. The active/recovery window remains open for the rest of that move,
 so Ryo's Ko-Ou Ken is no longer tied to its incorrect move-table end offset.
 Same-family links, super to super, throws, and opponent-locking sequences are
-rejected, and a chain is limited to two links.
+rejected, and a chain is limited to two links. MAX CHAIN applies only to player
+input; CPU fighters retain their original AI routing so POWER UP cannot turn
+hard COM behavior into an endless super-cancel loop.
 
 Special-to-special links spend `$08` from the visible MAX timer; routes that
 cross the special/super boundary spend `$10`. The first chained move deals

@@ -37,6 +37,8 @@
 - [x] 3.6 Set target special/super flags exactly, including clearing
   `PF0B_SUPERMOVE` on super-to-special and replacing the canceled source super's
   deferred meter emptying with the `$10` route charge.
+- [x] 3.7 Exclude CPU-controlled fighters from MAX Chain source eligibility so
+  POWER UP cannot produce a hard-COM super-cancel loop.
 
 ## 4. Damage
 

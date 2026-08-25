@@ -43,6 +43,10 @@ cost is visible in the existing MAX bar and naturally limits routing time.
   `iPlInfo_MaxPow` from `$00` to `$FF`.
 - A target super retains its ordinary meter, health, and desperation checks.
   MAX Chain adds no exemption.
+- Gate source eligibility on player control. The CPU already synthesizes
+  character commands through the same readers; allowing it into MAX Chain
+  under POWER UP removes the intended resource brake and makes hard COM loop
+  special-to-super routes. CPU fighters therefore retain the original AI path.
 
 ### Source phase and confirmation
 

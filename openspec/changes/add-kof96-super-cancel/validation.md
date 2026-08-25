@@ -8,13 +8,13 @@ physical-hardware claim is made.
 Current build artifacts:
 
 - Japanese `kof96.gb`: SHA-256
-  `3a110fbc3a44be7a8154dbd4b8ff0e28abc06992887ede31aadcadc8b84a2cf9`,
-  SHA-1 `a8fef2e7de7dcedaaaab5c2f629a5f440d94d6db`, header checksum
-  `$C6`, global checksum `$7B6D`
+  `77807a112d10859a518754b2d9718be2b8f6dee044cb2505a57f42aa4cfd2341`,
+  SHA-1 `d819d0a3e448849b83fdf899282b24b19655bb3d`, header checksum
+  `$C6`, global checksum `$7B40`
 - English validation build: SHA-256
-  `5278d8437a01079ddff7bce3b59b237cacd774d572c32ec81802f91c68c90875`,
-  SHA-1 `28720859f247dcc9c0ca0536b14e3097cc9a8c73`, header checksum
-  `$CD`, global checksum `$D741`
+  `b02d81cf625d4d983b27dbe7f2fca4be373d1a6e2e6eb9527c7d966152af6ba6`,
+  SHA-1 `dcf841c9abe1bc4dd20a6d5e57536c2efb198090`, header checksum
+  `$CD`, global checksum `$D158`
 - Both are 524288 bytes and pass independent header/global checksum
   recalculation. Two clean Japanese rebuilds were byte-identical.
 
@@ -32,6 +32,8 @@ Current build artifacts:
 ## Static Acceptance Plan
 
 - Verify `MAX CHAIN` keeps independent DIP bit 0 and defaults to `N`.
+- Verify CPU-controlled fighters never enter MAX Chain, including hard COM with
+  both POWER UP and MAX CHAIN enabled.
 - Verify disabled mode does not change input-reader, damage, MAX duration, or
   move-route behavior relative to the prior options build.
 - Exhaustively test the route matrix:

@@ -37,6 +37,9 @@ chain, and damage rules instead of an unreliable animation-offset heuristic.
   quarters and the second to one half, always from each target move's original
   damage rather than compounding prior scaling.
 - Preserve prior gameplay when `MAX CHAIN` is disabled.
+- Apply MAX Chain only to player-controlled input. CPU fighters keep their
+  original routing, preventing POWER UP's infinite meter from producing a
+  hard-COM super-cancel loop.
 
 ## Impact
 

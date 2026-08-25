@@ -1189,6 +1189,12 @@ MoveInputS_UpdateMaxChainSource_Banked:
 MoveInputS_TryMaxChain_Banked:
 	ld   b, c
 	ld   c, $00
+	; CPU input generation is intentionally excluded. With POWER UP's infinite
+	; meter, hard AI otherwise re-enters this path continuously and loops supers.
+	ld   hl, iPlInfo_Flags0
+	add  hl, bc
+	bit  PF0B_CPU, [hl]
+	jr   nz, .no
 	ld   a, [wDipSwitch]
 	bit  DIPB_MAX_CHAIN, a
 	jr   z, .no

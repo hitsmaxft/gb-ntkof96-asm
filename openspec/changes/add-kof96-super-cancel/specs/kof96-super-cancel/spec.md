@@ -15,6 +15,11 @@ independent Super Cancel DIP bit, and the option SHALL default to disabled.
 - **WHEN** `MAX CHAIN` is `N`
 - **THEN** special start legality, move damage, MAX duration, and move routing remain equivalent to the prior options build
 
+#### Scenario: Keep CPU routing unchanged
+
+- **WHEN** a CPU-controlled fighter is running, including hard COM with POWER UP enabled
+- **THEN** it does not enter MAX Chain and continues to use the original AI move-routing rules
+
 ### Requirement: MAX duration as cancel resource
 
 The game SHALL require sufficient `iPlInfo_MaxPow` for every MAX Chain link and
