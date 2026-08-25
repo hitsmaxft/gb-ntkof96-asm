@@ -127,7 +127,7 @@ ENDC
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_EasyMoves
 	call TextPrinter_Instant
-	ld   hl, TextDef_Options_SuperCancel
+	ld   hl, TextDef_Options_MaxChain
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_TeamDupl
 	call TextPrinter_Instant
@@ -1034,7 +1034,7 @@ Options_PrintDifficulty:
 	jp   TextPrinter_Instant
 
 ; =============== Selectable DIP options ===============
-; POWER UP, EASY MOVE, SUP CANCEL, TEAM DUPL and HIDDEN CHR share this handler.
+; POWER UP, EASY MOVE, MAX CHAIN, TEAM DUPL and HIDDEN CHR share this handler.
 Options_Item_DIP:
 	call Title_BlinkCursorR
 	call Options_DoCtrl
@@ -1131,8 +1131,8 @@ Options_DIPInfo:
 	dw $993F
 	db 1 << DIPB_EASY_MOVES
 	dw $995F
-	db 1 << DIPB_SUPER_CANCEL
-	dw $997F
+	db 1 << DIPB_MAX_CHAIN
+	dw $997E
 	db 1 << DIPB_TEAM_DUPL
 	dw $999F
 	db (1 << DIPB_UNLOCK_BOSS) | (1 << DIPB_UNLOCK_OTHER)
@@ -2334,11 +2334,11 @@ TextDef_Options_EasyMoves:
 .start:
 	db "EASY MOVE  N"
 .end:
-TextDef_Options_SuperCancel:
+TextDef_Options_MaxChain:
 	dw $9974
 	db .end-.start
 .start:
-	db "SUP CANCEL N"
+	db "MAX CHAIN N"
 .end:
 TextDef_Options_TeamDupl:
 	dw $9994

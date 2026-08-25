@@ -1120,9 +1120,266 @@ TextC_CutsceneMrKarateDefeat2:
 .end:
 ENDC
 
-IF !REV_VER_2
-	; =============== END OF BANK ===============
-	mIncJunk "L047E37"
-ELSE
-	mIncJunk "L047B60"
+; =============== MAX Chain banked helpers ===============
+; Bank-zero wrappers pass the original wPlInfo high byte in C. DE remains the
+; player OBJInfo pointer where required.
+OptionHack_Bank04_Start:
+
+MoveInputS_UpdateMaxChainSource_Banked:
+	ld   b, c
+	ld   c, $00
+	ld   hl, iPlInfo_Flags0
+	add  hl, bc
+	bit  PF0B_SPECMOVE, [hl]
+	ret  z
+	ld   hl, iPlInfo_Flags2
+	add  hl, bc
+	bit  PF2B_MOVESTART, [hl]
+	ret  nz
+
+	; A direct hit or guard confirmation is already latched by the base game.
+	ld   hl, iPlInfo_Flags1
+	add  hl, bc
+	bit  PF1B_ALLOWHITCANCEL, [hl]
+	jr   z, .chkHitbox
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	set  MCSB_HIT_CONFIRMED, [hl]
+.chkHitbox:
+	ld   hl, iOBJInfo_HitboxId
+	add  hl, de
+	ldi  a, [hl]
+	or   [hl]
+	jr   z, .chkUtility
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	set  MCSB_ACTIVE_SEEN, [hl]
+	ret
+.chkUtility:
+	; Utility recovery opens after one visible transition, but only for a
+	; zero-damage move that did not copy damage to a projectile/effect.
+	ld   hl, iOBJInfo_OBJLstPtrTblOffsetView
+	add  hl, de
+	ld   a, [hl]
+	or   a
+	ret  z
+	ld   hl, iPlInfo_MoveDamageVal
+	add  hl, bc
+	ld   a, [hl]
+	or   a
+	ret  nz
+	ld   hl, iPlInfo_MoveDamageValNext
+	add  hl, bc
+	ld   a, [hl]
+	or   a
+	ret  nz
+	ld   hl, iPlInfo_MoveId
+	add  hl, bc
+	ld   a, [hl]
+	ld   hl, iPlInfo_MaxChainProjectileMoveId
+	add  hl, bc
+	cp   [hl]
+	ret  z
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	set  MCSB_UTILITY_READY, [hl]
+	ret
+
+; OUT: carry clear with MCSB_CANCEL_PENDING set when this source may chain.
+MoveInputS_TryMaxChain_Banked:
+	ld   b, c
+	ld   c, $00
+	ld   a, [wDipSwitch]
+	bit  DIPB_MAX_CHAIN, a
+	jr   z, .no
+	ld   hl, iPlInfo_Pow
+	add  hl, bc
+	ld   a, [hl]
+	cp   PLAY_POW_MAX
+	jr   nz, .no
+	ld   hl, iPlInfo_MaxPow
+	add  hl, bc
+	ld   a, [hl]
+	cp   MAX_CHAIN_COST_SPECIAL
+	jr   c, .no
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	ld   a, [hl]
+	and  (1 << MCSB_ACTIVE_SEEN) | (1 << MCSB_HIT_CONFIRMED) | (1 << MCSB_UTILITY_READY)
+	jr   z, .no
+	ld   a, [hl]
+	and  MCS_CHAIN_DEPTH_MASK
+	cp   MAX_CHAIN_DEPTH_2
+	jr   nc, .no
+	ld   a, [wPlayPlThrowActId]
+	or   a
+	jr   nz, .no
+	; Do not break an opponent-locking multi-hit sequence.
+	ld   hl, iPlInfo_Flags1Other
+	add  hl, bc
+	bit  PF1B_HITRECV, [hl]
+	jr   z, .yes
+	ld   hl, iPlInfo_HitTypeIdOther
+	add  hl, bc
+	ld   a, [hl]
+	cp   HITTYPE_HIT_MULTI0
+	jr   c, .yes
+	cp   HITTYPE_HIT_MULTIGS + 1
+	jr   c, .no
+.yes:
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	set  MCSB_CANCEL_PENDING, [hl]
+	xor  a
+	ret
+.no:
+	scf
+	ret
+
+; IN: D = selected target move. OUT: carry set rejects it.
+MoveInputS_ValidateMaxChainTarget_Banked:
+	ld   b, c
+	ld   c, $00
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	bit  MCSB_INPUT_READER, [hl]
+	jr   z, .ok
+	bit  MCSB_CANCEL_PENDING, [hl]
+	jr   nz, .chain
+	; A stack-sensitive initializer may prevalidate and mark the target with
+	; bit 6. Its later common setter consumes the marker without charging twice.
+	bit  MCSB_TARGET_PREVALIDATED, [hl]
+	jr   z, .freshInput
+	res  MCSB_TARGET_PREVALIDATED, [hl]
+	jr   .ok
+.freshInput:
+	; A normal input-selected special begins a fresh chain.
+	ld   [hl], 1 << MCSB_INPUT_READER
+	jr   .ok
+.chain:
+	ld   a, d
+	cp   MOVE_SPEC_0_L
+	jr   c, .reject
+	ld   hl, iPlInfo_MoveId
+	add  hl, bc
+	ld   e, [hl]
+	cp   e
+	jr   z, .reject
+	xor  e
+	cp   $02
+	jr   z, .reject
+
+	; Super -> super is deliberately excluded. Other three route classes pass.
+	ld   hl, iPlInfo_Flags0
+	add  hl, bc
+	bit  PF0B_SUPERMOVE, [hl]
+	jr   z, .specialSource
+	ld   a, d
+	cp   MOVE_SUPER_START
+	jr   nc, .reject
+	ld   e, MAX_CHAIN_COST_CROSS
+	jr   .chkCost
+.specialSource:
+	ld   e, MAX_CHAIN_COST_SPECIAL
+	ld   a, d
+	cp   MOVE_SUPER_START
+	jr   c, .chkCost
+	ld   e, MAX_CHAIN_COST_CROSS
+.chkCost:
+	ld   hl, iPlInfo_MaxPow
+	add  hl, bc
+	ld   a, [hl]
+	cp   e
+	jr   c, .reject
+
+	; Commit meter and state only after every route check has passed.
+	sub  e
+	ld   [hl], a
+	jr   nz, .setState
+	ld   hl, iPlInfo_MaxPowDecSpeed
+	add  hl, bc
+	ld   [hl], $00
+.setState:
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	ld   a, [hl]
+	and  MCS_CHAIN_DEPTH_MASK
+	add  $10
+	and  MCS_CHAIN_DEPTH_MASK
+	or   (1 << MCSB_INPUT_READER) | (1 << MCSB_DAMAGE_ACTIVE) | (1 << MCSB_TARGET_PREVALIDATED)
+	ld   [hl], a
+
+	; A chained special replaces a super source, so suppress its deferred
+	; full-meter emptying; the $10 link charge above is the route cost.
+	ld   a, d
+	cp   MOVE_SUPER_START
+	jr   nc, .ok
+	ld   hl, iPlInfo_Flags0
+	add  hl, bc
+	res  PF0B_SUPERMOVE, [hl]
+.ok:
+	or   a
+	ret
+.reject:
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	res  MCSB_CANCEL_PENDING, [hl]
+	scf
+	ret
+
+; IN/OUT: D = original/scaled damage. Zero remains zero.
+Play_Pl_ScaleMaxChainDamageD_Banked:
+	ld   b, c
+	ld   c, $00
+	ld   a, d
+	or   a
+	ret  z
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	ld   a, [hl]
+	and  MCS_CHAIN_DEPTH_MASK
+	cp   $10
+	jr   z, .depth1
+	cp   $20
+	ret  nz
+.depth2:
+	srl  d
+	ret  nz
+	inc  d
+	ret
+.depth1:
+	; floor(3D/4) = D - ceil(D/4), clamped to one.
+	push hl
+		ld   a, d
+		and  $03
+		ld   a, d
+		srl  a
+		srl  a
+		jr   z, .quarterReady
+		; A zero quotient still needs a ceil adjustment for D=1..3.
+.quarterReady:
+		ld   l, a
+		ld   a, d
+		and  $03
+		jr   z, .subtract
+		inc  l
+.subtract:
+		ld   a, d
+		sub  l
+		ld   d, a
+	pop  hl
+	ret  nz
+	inc  d
+	ret
+
+OptionHack_Bank04_End:
+
+IF !SKIP_JUNK
+	IF !REV_VER_2
+		ASSERT OptionHack_Bank04_End-OptionHack_Bank04_Start <= $01C9, "bank04 MAX Chain code exceeds Japanese padding"
+		INCBIN "padding/L047E37.bin", OptionHack_Bank04_End-OptionHack_Bank04_Start
+	ELSE
+		ASSERT OptionHack_Bank04_End-OptionHack_Bank04_Start <= $049F, "bank04 MAX Chain code exceeds English padding"
+		INCBIN "padding_en/L047B60.bin", OptionHack_Bank04_End-OptionHack_Bank04_Start
+	ENDC
 ENDC

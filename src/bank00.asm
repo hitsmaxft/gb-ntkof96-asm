@@ -6497,8 +6497,12 @@ Play_InitRound:
 	ld   [wPlInfo_Pl2+iPlInfo_HitComboRecvSet], a
 	ld   [wPlInfo_Pl1+iPlInfo_NoSpecialTimer], a
 	ld   [wPlInfo_Pl2+iPlInfo_NoSpecialTimer], a
-	ld   [wPlInfo_Pl1+iPlInfo_SuperCancelFlags], a
-	ld   [wPlInfo_Pl2+iPlInfo_SuperCancelFlags], a
+	ld   [wPlInfo_Pl1+iPlInfo_MaxChainState], a
+	ld   [wPlInfo_Pl2+iPlInfo_MaxChainState], a
+	ld   [wPlInfo_Pl1+iPlInfo_MaxChainProjectileMoveId], a
+	ld   [wPlInfo_Pl2+iPlInfo_MaxChainProjectileMoveId], a
+	ld   [wPlInfo_Pl1+iPlInfo_MaxChainTargetMoveId], a
+	ld   [wPlInfo_Pl2+iPlInfo_MaxChainTargetMoveId], a
 	ld   a, $FF
 	ld   [wPlInfo_Pl1+iPlInfo_PlDistance], a
 	ld   [wPlInfo_Pl2+iPlInfo_PlDistance], a
@@ -11833,7 +11837,7 @@ Play_Pl_EndMove:
 	ld   hl, iPlInfo_IntroMoveId
 	add  hl, bc
 	ld   [hl], MOVE_SHARED_NONE
-	ld   hl, iPlInfo_SuperCancelFlags
+	ld   hl, iPlInfo_MaxChainState
 	add  hl, bc
 	ld   [hl], $00
 	ret
@@ -11895,7 +11899,16 @@ Play_Pl_ExecSpecMoveInputCode:
 
 	ldh  a, [hROMBank]	; Save current bank
 	push af
+		ld   hl, iPlInfo_MaxChainState
+		add  hl, bc
+		set  MCSB_INPUT_READER, [hl]
 		call .exec		; Run the code. Was a new move started?
+		push af
+			ld   hl, iPlInfo_MaxChainState
+			add  hl, bc
+			res  MCSB_INPUT_READER, [hl]
+			res  MCSB_CANCEL_PENDING, [hl]
+		pop  af
 		jp   c, .retSet	; If so, jump
 .retClear:
 	pop  af
@@ -14007,10 +14020,13 @@ OBJLstS_ApplyGravityVAndMoveV:
 ; - C flag: If set, validation failed
 ; - Z flag: If set, we're on the ground (only if validation passed)
 MoveInputS_CanStartSpecialMove:
-	; A pending recovery cancel is valid only for this input-reader pass.
-	ld   hl, iPlInfo_SuperCancelFlags
+	; Update source phase before testing this input-reader pass.
+	call MoveInputS_UpdateMaxChainSource
+
+	; A pending chain is valid only for this input-reader pass.
+	ld   hl, iPlInfo_MaxChainState
 	add  hl, bc
-	res  PSCB_CANCEL_PENDING, [hl]
+	res  MCSB_CANCEL_PENDING, [hl]
 
 	;
 	; If we got hit by Chizuru's super, we can only use normals.
@@ -14028,7 +14044,7 @@ MoveInputS_CanStartSpecialMove:
 	add  hl, bc				; Seek to iPlInfo_Flags0
 	bit  PF0B_SPECMOVE, [hl]	; Is the bit set?
 	jr   z, .chkPlayerState
-	call MoveInputS_TrySuperCancel
+	call MoveInputS_TryMaxChain
 	jp   c, .retNoMove
 
 .chkPlayerState:
@@ -14070,9 +14086,9 @@ MoveInputS_CanStartSpecialMove:
 	jp   nz, .moveOk				; If so, skip (ok)
 	bit  PF1B_NOSPECSTART, [hl]		; Are we explicitly disallowed to start a new special/super?
 	jp   z, .moveOk
-	ld   hl, iPlInfo_SuperCancelFlags
+	ld   hl, iPlInfo_MaxChainState
 	add  hl, bc
-	bit  PSCB_CANCEL_PENDING, [hl]
+	bit  MCSB_CANCEL_PENDING, [hl]
 	jp   z, .retNoMove
 
 .moveOk:
@@ -14365,18 +14381,17 @@ MoveInputS_CheckSuperDesperation:
 ; - BC: Ptr to wPlInfo structure
 ; - DE: Ptr to respective wOBJInfo structure
 MoveInputS_SetSpecMove_StopSpeed:
+	; Input-selected MAX Chain targets are validated before any move side effect.
+	; On rejection, discard this routine's return and return "no move" directly
+	; to Play_Pl_ExecSpecMoveInputCode.
+	call MoveInputS_ValidateMaxChainTarget
+	jr   nc, .targetOk
+	pop  hl
+	or   a
+	ret
+.targetOk:
 	; Force syncronize the player's direction before starting the move
 	call OBJLstS_SyncXFlip
-
-	; Promote this input pass's pending recovery cancel to active damage state.
-	push af
-		ld   hl, iPlInfo_SuperCancelFlags
-		add  hl, bc
-		ld   a, [hl]
-		and  1 << PSCB_CANCEL_PENDING
-		rrca
-		ld   [hl], a
-	pop  af
 
 	; HL = Ptr to status flag
 	ld   hl, iPlInfo_Flags0
@@ -14433,7 +14448,7 @@ ENDC
 	;
 	push hl
 		call Pl_SetMove_StopSpeed
-		call Play_Pl_ScaleSuperCancelPendingDamage
+		call Play_Pl_ScaleMaxChainPendingDamage
 	pop  hl
 
 	;
@@ -14609,7 +14624,7 @@ Play_Pl_SetMoveDamage:
 		; DE = HL
 		push hl
 		pop  de
-		call Play_Pl_ScaleSuperCancelDamageD
+		call Play_Pl_ScaleMaxChainDamageD
 		; BC = Ptr to start of current move damage info
 		ld   hl, iPlInfo_MoveDamageVal
 		add  hl, bc
@@ -14649,7 +14664,7 @@ Play_Pl_SetMoveDamageNext:
 		; DE = HL
 		push hl
 		pop  de
-		call Play_Pl_ScaleSuperCancelDamageD
+		call Play_Pl_ScaleMaxChainDamageD
 		; BC = Ptr to start of pending move damage info
 		ld   hl, iPlInfo_MoveDamageValNext
 		add  hl, bc
@@ -14677,6 +14692,14 @@ Play_Pl_SetMoveDamageNext:
 ; - BC: Ptr to wPlInfo
 ; - DE: Ptr to respective wOBJInfo
 Play_Proj_CopyMoveDamageFromPl:
+	; Remember which move owns this projectile/effect. Projectile collision
+	; confirms MAX Chain only while that same source move is still current.
+	ld   hl, iPlInfo_MoveId
+	add  hl, bc
+	ld   a, [hl]
+	ld   hl, iPlInfo_MaxChainProjectileMoveId
+	add  hl, bc
+	ld   [hl], a
 	push bc
 		; Copy over the three bytes.
 		; This works because the move damage fields are stored contiguously
@@ -15149,6 +15172,12 @@ MoveInputS_TryStartCommandThrow_AllColi:
 ; OUT
 ; - C: If set, the command throw can start
 MoveInputS_TryStartCommandThrow_StdColi:
+	; Command throws are never legal MAX Chain targets. Reject before the
+	; multi-frame throw handshake can alter either player.
+	ld   hl, iPlInfo_MaxChainState
+	add  hl, bc
+	bit  MCSB_CANCEL_PENDING, [hl]
+	jp   nz, MoveInputS_TryStartCommandThrow.noThrow
 	; If a throw is in progress, return
 	ld   a, [wPlayPlThrowActId]
 	cp   PLAY_THROWACT_NONE								; ThrowActId != NONE?
@@ -16791,81 +16820,62 @@ MoveInputS_CheckEasyMoveTapKeys:
 	ret
 ENDC
 
-; Validates the optional recovery-only special/super cancel window.
-; OUT: carry clear on success, with PSCB_CANCEL_PENDING set.
-MoveInputS_TrySuperCancel:
-	ld   a, [wDipSwitch]
-	bit  DIPB_SUPER_CANCEL, a
-	jr   z, .no
-
-	; Use the logical meter value. The check itself never consumes POW.
-	ld   hl, iPlInfo_Pow
-	add  hl, bc
-	ld   a, [hl]
-	cp   PLAY_POW_MAX
-	jr   nz, .no
-
-	; Recovery must have no regular or forced attack hitbox.
-	ld   hl, iOBJInfo_HitboxId
-	add  hl, de
-	ldi  a, [hl]
-	or   [hl]
-	jr   nz, .no
-
-	; The visible animation must be on this move's final frame.
-	ld   hl, iOBJInfo_OBJLstPtrTblOffsetView
-	add  hl, de
-	ld   a, [hl]
-	ld   hl, iPlInfo_OBJLstPtrTblOffsetMoveEnd
-	add  hl, bc
-	cp   [hl]
-	jr   nz, .no
-
-	ld   hl, iPlInfo_SuperCancelFlags
-	add  hl, bc
-	set  PSCB_CANCEL_PENDING, [hl]
-	xor  a
-	ret
-.no:
-	scf
+; MAX Chain source/target logic lives in bank $04's reclaimed junk area.
+; These wrappers preserve the player pointer while FarCall temporarily uses B.
+MoveInputS_UpdateMaxChainSource:
+	push bc
+		ld   c, b
+		ld   b, BANK(MoveInputS_UpdateMaxChainSource_Banked)
+		ld   hl, MoveInputS_UpdateMaxChainSource_Banked
+		call FarCall
+	pop  bc
 	ret
 
-; Scales the move-table damage loaded when the cancelled-into move starts.
-Play_Pl_ScaleSuperCancelPendingDamage:
+MoveInputS_TryMaxChain:
+	push bc
+		ld   c, b
+		ld   b, BANK(MoveInputS_TryMaxChain_Banked)
+		ld   hl, MoveInputS_TryMaxChain_Banked
+		call FarCall
+	pop  bc
+	ret
+
+; IN/OUT: A = target Move ID. Carry set rejects an input-selected target.
+MoveInputS_ValidateMaxChainTarget:
+	push bc
+		push de
+			ld   d, a
+			ld   c, b
+			ld   b, BANK(MoveInputS_ValidateMaxChainTarget_Banked)
+			ld   hl, MoveInputS_ValidateMaxChainTarget_Banked
+			call FarCall
+			ld   a, d
+		pop  de
+	pop  bc
+	ret
+
+; Scales the move-table damage loaded when a chained-into move starts.
+Play_Pl_ScaleMaxChainPendingDamage:
 	push de
 		ld   hl, iPlInfo_MoveDamageValNext
 		add  hl, bc
 		ld   d, [hl]
 		push hl
-			call Play_Pl_ScaleSuperCancelDamageD
+			call Play_Pl_ScaleMaxChainDamageD
 		pop  hl
 		ld   [hl], d
 	pop  de
 	ret
 
-; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
-; A and E are preserved for the common current/pending damage setters.
-Play_Pl_ScaleSuperCancelDamageD:
+; IN/OUT: D = damage. A and E are preserved.
+Play_Pl_ScaleMaxChainDamageD:
 	push af
-		ld   hl, iPlInfo_SuperCancelFlags
-		add  hl, bc
-		bit  PSCB_DAMAGE_ACTIVE, [hl]
-		jr   z, .done
-		ld   a, d
-		or   a
-		jr   z, .done
-		ld   d, $00
-.divide:
-		sub  $03
-		jr   c, .minimum
-		inc  d
-		jr   .divide
-.minimum:
-		ld   a, d
-		or   a
-		jr   nz, .done
-		inc  d
-.done:
+		push bc
+			ld   c, b
+			ld   b, BANK(Play_Pl_ScaleMaxChainDamageD_Banked)
+			ld   hl, Play_Pl_ScaleMaxChainDamageD_Banked
+			call FarCall
+		pop  bc
 	pop  af
 	ret
 

@@ -977,6 +977,9 @@ Play_DoMisc_ResetDamage:
 	ld   [wPlInfo_Pl1+iPlInfo_PhysHitRecv], a	; Unmark damage received flag
 	ld   hl, wPlInfo_Pl2+iPlInfo_Flags1
 	set  PF1B_ALLOWHITCANCEL, [hl] 				; Allow the opponent to start a new special off the hit
+	ld   hl, wPlInfo_Pl2+iPlInfo_MaxChainState
+	set  MCSB_HIT_CONFIRMED, [hl]
+	ld   hl, wPlInfo_Pl2+iPlInfo_Flags1
 	inc  hl
 	res  PF2B_NODAMAGERATE, [hl]				; Clear on first hit
 	
@@ -990,6 +993,9 @@ Play_DoMisc_ResetDamage:
 	ld   [wPlInfo_Pl2+iPlInfo_PhysHitRecv], a
 	ld   hl, wPlInfo_Pl1+iPlInfo_Flags1
 	set  PF1B_ALLOWHITCANCEL, [hl]
+	ld   hl, wPlInfo_Pl1+iPlInfo_MaxChainState
+	set  MCSB_HIT_CONFIRMED, [hl]
+	ld   hl, wPlInfo_Pl1+iPlInfo_Flags1
 	inc  hl
 	res  PF2B_NODAMAGERATE, [hl]
 	
@@ -1770,6 +1776,13 @@ Play_DoPlColi_1PProj2PChar:
 	ld   hl, wPlInfo_Pl1+iPlInfo_ColiFlags
 	set  PCFB_PROJHITOTHER, [hl]
 	set  PCFB_PUSHEDOTHER, [hl]
+	ld   a, [wPlInfo_Pl1+iPlInfo_MaxChainProjectileMoveId]
+	ld   hl, wPlInfo_Pl1+iPlInfo_MoveId
+	cp   [hl]
+	jr   nz, .skipMaxChainConfirm
+	ld   hl, wPlInfo_Pl1+iPlInfo_MaxChainState
+	set  MCSB_HIT_CONFIRMED, [hl]
+.skipMaxChainConfirm:
 	; 2P received a hit by a projectile
 	ld   hl, wPlInfo_Pl2+iPlInfo_ColiFlags
 	set  PCFB_PUSHED, [hl]
@@ -1833,6 +1846,13 @@ Play_DoPlColi_1PChar2PProj:
 	ld   hl, wPlInfo_Pl2+iPlInfo_ColiFlags
 	set  PCFB_PROJHITOTHER, [hl]
 	set  PCFB_PUSHEDOTHER, [hl]
+	ld   a, [wPlInfo_Pl2+iPlInfo_MaxChainProjectileMoveId]
+	ld   hl, wPlInfo_Pl2+iPlInfo_MoveId
+	cp   [hl]
+	jr   nz, .skipMaxChainConfirm
+	ld   hl, wPlInfo_Pl2+iPlInfo_MaxChainState
+	set  MCSB_HIT_CONFIRMED, [hl]
+.skipMaxChainConfirm:
 	; 1P received a hit by a projectile
 	ld   hl, wPlInfo_Pl1+iPlInfo_ColiFlags
 	set  PCFB_PUSHED, [hl]
@@ -5763,8 +5783,9 @@ Play_WriteBtnKeysToBuffer1P: mWriteBtnKeysToBuffer wPlInfo_Pl1
 Play_WriteBtnKeysToBuffer2P: mWriteBtnKeysToBuffer wPlInfo_Pl2
 ; =============== END OF BANK ===============
 ; Junk area below with incomplete copies of the above subroutines.
+OptionHack_Bank01_End:
 IF !REV_VER_2
-	mIncJunk "L017FA8"
+	mIncJunkFrom "L017FA8", $2C
 ELSE
-	mIncJunk "L017F98"
+	mIncJunkFrom "L017F98", $2C
 ENDC

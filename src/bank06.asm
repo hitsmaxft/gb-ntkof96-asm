@@ -7343,6 +7343,12 @@ MoveInit_Geese_HishouNichirinZan:
 ; =============== MoveInit_Geese_ShippuKen ===============	
 MoveInit_Geese_ShippuKen:
 	call Play_Pl_ClearJoyDirBuffer
+	mMvIn_GetLH MOVE_GEESE_SHIPPU_KEN_L, MOVE_GEESE_SHIPPU_KEN_H
+	call MoveInputS_ValidateMaxChainTarget
+	jp   c, MoveInputReader_Geese_NoMove
+	ld   hl, iPlInfo_MaxChainTargetMoveId
+	add  hl, bc
+	ld   [hl], a
 	
 	; Preserve the player's momentum when starting the move
 	ld   hl, iOBJInfo_SpeedX
@@ -7356,7 +7362,9 @@ MoveInit_Geese_ShippuKen:
 				ld   a, [hl]
 				push af				; Save iOBJInfo_SpeedYSub
 					push hl				; Save OBJInfo ptr
-						mMvIn_GetLH MOVE_GEESE_SHIPPU_KEN_L, MOVE_GEESE_SHIPPU_KEN_H
+						ld   hl, iPlInfo_MaxChainTargetMoveId
+						add  hl, bc
+						ld   a, [hl]
 						call MoveInputS_SetSpecMove_StopSpeed
 						call Play_Proj_CopyMoveDamageFromPl
 					pop  hl				; Restore OBJInfo ptr
@@ -8159,7 +8167,7 @@ ENDC
 ; =============== END OF BANK ===============
 ; Junk area with broken copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunkFrom "L067E72", $62
+	mIncJunkFrom "L067E72", $72
 ELSE
-	mIncJunk "L067FEA"
+	mIncJunkFrom "L067FEA", $10
 ENDC

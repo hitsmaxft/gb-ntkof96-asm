@@ -1,40 +1,98 @@
-## Validation
+## Validation Status
 
-- Toolchain: pinned RGBDS 0.7.0.
-- Japanese ROM: deterministic SHA-1
-  `5f00e42bfbb446ef33eef9e0b1e0b772c68a3606` and SHA-256
-  `5e08171e776fae3257ebe5c28510eff81db1f75508dcc93d65e0b30afd828be6`;
-  header checksum `C6`, global checksum `5FBC`.
-- English ROM: deterministic SHA-256
-  `31bec4f5b68306341716e00bdf8cf945e1b15a78bd6935cc55abe1173c00105e`;
-  header checksum `CD`, global checksum `900D`.
-- The Super Cancel validator begins with machine code that checks DIP bit 0,
-  reads logical `iPlInfo_Pow` at offset `$50`, and compares it with
-  `PLAY_POW_MAX` (`$28`) before hitbox and final-frame checks. This gate contains
-  no POW write or subroutine call, so failed and successful prerequisite checks
-  do not themselves consume meter.
-- The ROM DIP table is exactly `08 3F 99 04 5F 99 01 7F 99 20 9F 99 C0 BF
-  99 10 1F 9A`; Super Cancel therefore uses independent bit 0 and the Japanese
-  default `$C0` leaves it disabled.
-- The damage-divider implementation matches `0` for zero and
-  `max(1, floor(value / 3))` for every input from 1 through 255.
-- Initial move-table damage and both common current/pending damage setters are
-  scaled. Projectile setup copies the already-scaled pending fields; the only
-  direct projectile-damage writes outside that path set damage to zero.
-- Standing and crouching normal input code is byte-identical to the prior
-  Super Cancel ROM, with SHA-256 values
-  `b013bbab615fc318293285b9bdb8ee93dccdb5cd889dc36faf0fce4c3a392dba`
-  and `bcc49620190bd85c8a0305a297d098d1ce985279bb090b446797cdd740edf7dc`.
-  The prior relocation-aware comparison against the original ROM remains valid
-  because the full-POW gate was added after these routines.
-- `bank03.asm` remains unchanged. The COM AI machine-code region is
-  byte-identical to the prior Super Cancel ROM, SHA-256
-  `c044146569c53411aa7c18e8753068468213071e4f8a92638f2e12d0c9a49a02`.
-- Japanese and English builds, `git diff --check`, `bash -n build.sh`, workflow
-  YAML parsing, `shell.nix` parsing, ROM size, and both ROM checksum algorithms
-  pass.
+MAX Chain is implemented and both full Japanese and English ROM variants
+assemble with pinned RGBDS 0.7.0. Static/build evidence does not complete the
+emulator acceptance matrix; roster gameplay validation remains open and no
+physical-hardware claim is made.
 
-No Game Boy emulator or hardware runner is installed in the available
-environment. Full-POW runtime gating, recovery-window timing, roster-specific
-final-frame behavior, and play feel therefore remain runtime playtest items
-rather than claimed dynamic evidence.
+Current build artifacts:
+
+- Japanese `kof96.gb`: SHA-256
+  `3a110fbc3a44be7a8154dbd4b8ff0e28abc06992887ede31aadcadc8b84a2cf9`,
+  SHA-1 `a8fef2e7de7dcedaaaab5c2f629a5f440d94d6db`, header checksum
+  `$C6`, global checksum `$7B6D`
+- English validation build: SHA-256
+  `5278d8437a01079ddff7bce3b59b237cacd774d572c32ec81802f91c68c90875`,
+  SHA-1 `28720859f247dcc9c0ca0536b14e3097cc9a8c73`, header checksum
+  `$CD`, global checksum `$D741`
+- Both are 524288 bytes and pass independent header/global checksum
+  recalculation. Two clean Japanese rebuilds were byte-identical.
+
+## Confirmed Current-Design Failure
+
+- The old validator requires both a zero current hitbox and visible animation
+  offset equality with `iPlInfo_OBJLstPtrTblOffsetMoveEnd`.
+- Ryo's light and heavy Ko-Ou Ken entries store `$08` as that target.
+- Visible frame `$08` still uses hitbox `COLIBOX_2C`, while later `$0C` and `$10`
+  recovery frames no longer equal the target. The move ends from custom code on
+  frame `$10`.
+- Therefore no Ko-Ou Ken frame can satisfy both old conditions. This is a
+  deterministic source and current-ROM finding, not an input-timing inference.
+
+## Static Acceptance Plan
+
+- Verify `MAX CHAIN` keeps independent DIP bit 0 and defaults to `N`.
+- Verify disabled mode does not change input-reader, damage, MAX duration, or
+  move-route behavior relative to the prior options build.
+- Exhaustively test the route matrix:
+  - special-to-special accepted at cost `$08`;
+  - special-to-super and super-to-special accepted at cost `$10`;
+  - super-to-super rejected;
+  - same-family light/heavy and super/desperation routes rejected;
+  - third links rejected.
+- Verify startup remains locked, the first hitbox frame opens immediately,
+  later active and recovery frames remain open, and no comparison with
+  `iPlInfo_OBJLstPtrTblOffsetMoveEnd` is required.
+- Verify `ACTIVE_SEEN` is latched without a cancel attempt on the active frame,
+  then permits the player's first attempt during later recovery.
+- Verify direct and projectile hit/guard confirmation belongs to the current
+  source and cannot leak from a prior normal or prior chain link.
+- Verify failed parsing, target illegality, insufficient MAX, denied sources,
+  and depth rejection do not charge MAX duration.
+- Verify accepted routes charge exactly once and update the visible MAX target.
+- Verify exact-to-zero cost follows the MAX fade/termination path and never lets
+  the periodic decrement wrap `iPlInfo_MaxPow` to `$FF`.
+- Verify post-command route rejection returns before character-specific target
+  effects, move animation, or MAX state are changed. The completed command may
+  already have been removed from the reader buffer before target selection.
+- Verify super-to-special clears `PF0B_SUPERMOVE`, does not retain super sparkle
+  or end-of-move behavior, and uses the `$10` route charge in place of the
+  canceled source super's deferred meter emptying.
+- Exhaustively test damage values 0 through 255 for both tiers:
+  - depth 1: zero or `max(1, floor(value * 3 / 4))`;
+  - depth 2: zero or `max(1, floor(value / 2))`.
+- Verify initial, current, pending, later multi-hit, and projectile paths use the
+  correct tier and reset after the chain ends.
+- Produce a roster report with one classification for every reachable special
+  and super source: `ACTIVE_SEEN`, `UTILITY_READY`, or denied/exceptional.
+
+## Emulator Acceptance Matrix
+
+At minimum, record commands, source/target move IDs, frame/phase, hit state,
+chain depth, MAX before/after, and damage before/after for these cases:
+
+- Ryo Ko-Ou Ken into Ko Hou during its first and second active frames, on hit,
+  on guard, on whiff, and during both recovery frames.
+- An ordinary projectile special into a legal non-projectile move while the
+  projectile remains active.
+- A projectile-confirmed route whose owner sprite has no active player hitbox.
+- A safe no-hitbox utility move before and after its first animation transition.
+- A command throw and an opponent-locking multi-hit/cinematic move, both of
+  which must remain denied while locked.
+- A special-to-super route and a super-to-special route with exact `$10` cost.
+- Two different accepted links followed by a rejected third link.
+- Same-family L-to-H, H-to-L, S-to-D, and D-to-S attempts, all rejected.
+- Option disabled, insufficient MAX duration, interrupted source, round reset,
+  and normal post-chain move damage.
+
+## Build and Artifact Gates
+
+- Build Japanese and English variants with pinned RGBDS 0.7.0.
+- Pass `git diff --check`, shell/workflow syntax checks, ROM size validation,
+  header checksum validation, and deterministic rebuild comparison.
+- Record build SHA-1/SHA-256 and global/header checksums as static evidence;
+  do not promote them to release-acceptance evidence until the runtime matrix
+  passes.
+- Keep emulator evidence, physical hardware evidence, and static/build evidence
+  separate. Physical hardware is desirable but not a substitute for the
+  required roster-level emulator matrix.

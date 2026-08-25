@@ -139,7 +139,7 @@ DEF ANIMSPEED_INSTANT   EQU $00 ; Close enough
 DEF ANIMSPEED_NONE      EQU $FF ; Slowest possible animation speed, set when we want manual control over the animation since it will always be done quicker than 255 frames.
 
 ; FLAGS
-DEF DIPB_SUPER_CANCEL     EQU 0 ; Allow specials/supers during non-attacking special recovery
+DEF DIPB_MAX_CHAIN        EQU 0 ; Spend MAX time to chain specials and supers
 DEF DIPB_EASY_MOVES       EQU 2 ; SELECT+A/B plus directional SELECT taps for easy moves
 DEF DIPB_POWERUP          EQU 3 ; DIPB_POWERUP Powerup mode. POW Meter grows on its own + Unlimited super moves + move changes
 DEF DIPB_SGB_SOUND_TEST   EQU 4 ; Adds SGB S.E TEST to the options menu
@@ -299,9 +299,20 @@ DEF PF2B_AUTOGUARDLOW   EQU 5 ; If set, the move automatically blocks mids
 DEF PF2B_NOHURTBOX      EQU 6 ; If set, the player has no hurtbox (this separate from the collision box only here)
 DEF PF2B_NOCOLIBOX      EQU 7 ; If set, the player has no collision box
 
-; iPlInfo_SuperCancelFlags
-DEF PSCB_DAMAGE_ACTIVE  EQU 0 ; Current special was started by Super Cancel and deals reduced damage
-DEF PSCB_CANCEL_PENDING EQU 1 ; Recovery validation passed; consumed only if a new special starts
+; iPlInfo_MaxChainState
+DEF MCSB_DAMAGE_ACTIVE  EQU 0 ; Current move belongs to a MAX Chain and deals scaled damage
+DEF MCSB_CANCEL_PENDING EQU 1 ; Source validation passed for this input-reader pass
+DEF MCSB_ACTIVE_SEEN    EQU 2 ; A regular/forced player hitbox has appeared
+DEF MCSB_HIT_CONFIRMED  EQU 3 ; The current source hit, was guarded, or its projectile connected
+DEF MCSB_CHAIN_DEPTH0   EQU 4 ; Two-bit link depth, values 0-2
+DEF MCSB_CHAIN_DEPTH1   EQU 5
+DEF MCSB_UTILITY_READY  EQU 6 ; A zero-damage, non-projectile utility move completed a transition
+DEF MCSB_TARGET_PREVALIDATED EQU MCSB_UTILITY_READY ; Transient reuse after source phase is consumed
+DEF MCSB_INPUT_READER   EQU 7 ; Target validation is running from a character input reader
+DEF MCS_CHAIN_DEPTH_MASK EQU (1 << MCSB_CHAIN_DEPTH0) | (1 << MCSB_CHAIN_DEPTH1)
+DEF MAX_CHAIN_COST_SPECIAL EQU $08
+DEF MAX_CHAIN_COST_CROSS   EQU $10
+DEF MAX_CHAIN_DEPTH_2      EQU $20
 
 ; iPlInfo_Flags3, related to the move we got attacked with
 DEF PF3B_HEAVYHIT       EQU 0 ; Used by "heavy" hits (not to be confused with heavy moves). Getting attacked shakes the player longer (doesn't cut the shake count in half).
@@ -578,7 +589,7 @@ DEF OPTION_ITEM_TIME        EQU $00
 DEF OPTION_ITEM_LEVEL       EQU $01
 DEF OPTION_ITEM_POWERUP     EQU $02
 DEF OPTION_ITEM_EASY_MOVES  EQU $03
-DEF OPTION_ITEM_SUPER_CANCEL EQU $04
+DEF OPTION_ITEM_MAX_CHAIN    EQU $04
 DEF OPTION_ITEM_TEAM_DUPL   EQU $05
 DEF OPTION_ITEM_HIDDEN_CHARS EQU $06
 DEF OPTION_ITEM_BGMTEST     EQU $07
