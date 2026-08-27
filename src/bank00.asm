@@ -789,6 +789,8 @@ Task_CreateAt:
 	push af
 	push bc
 	push de
+	; Keep the state pointer across Play_Pl_GetDirKeys_ByXFlipR, which leaves HL
+	; pointing at iOBJInfo_OBJLstFlags.
 	push hl
 	call Task_IndexTask
 	ld   [hl], TASK_EXEC_NEW
@@ -16756,7 +16758,6 @@ MoveInputS_CheckEasyMoveTapKeys:
 		jr   nz, .selectB
 		bit  KEYB_A, [hl]
 		jr   nz, .selectA
-	pop  hl
 	call Play_Pl_GetDirKeys_ByXFlipR
 	bit  KEYB_DOWN, a
 	jr   nz, .down
@@ -16766,6 +16767,7 @@ MoveInputS_CheckEasyMoveTapKeys:
 	jr   nz, .back
 	ld   a, $06 ; Neutral/Up SELECT defaults to SELECT+A.
 .storeRoute:
+	pop  hl
 	ld   [hl], a
 .held:
 	dec  [hl]
@@ -16801,11 +16803,9 @@ MoveInputS_CheckEasyMoveTapKeys:
 	inc  a
 	ret
 .selectB:
-	pop  hl
 	ld   a, $16
 	jr   .storeRoute
 .selectA:
-	pop  hl
 	ld   a, $06
 	jr   .storeRoute
 .forward:
