@@ -61,6 +61,13 @@ chooses one of three additional ground moves. Release `SELECT` before 6 frames
 for the light version, or hold it for 6 frames for the corresponding heavy
 version.
 
+Kyo's Ara Kami and Doku Kami follow-ups use buffered physical A/B presses, with
+no directional input required. After Ara Kami, A starts Yano Sabi and B starts
+Kono Kizu; their following stages continue to use A/B for the distinct routes.
+After Doku Kami, A starts Tumi Yomi while B goes directly to Batu Yomi, and
+either button can continue from Tumi Yomi into Batu Yomi. A consumed press is
+cleared between stages so holding a button cannot automatically run the chain.
+
 ## 
 Once again, thanks to lazigamer for the debug emulator used to generate the initial CDL.
 ## 

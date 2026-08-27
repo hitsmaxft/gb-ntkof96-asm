@@ -1298,11 +1298,6 @@ DEF PLAY_THROWOP_UNUSED_BOTH EQU $02 ; [TCRF] Unused, works on both.
 DEF PLAY_THROWDIR_F EQU $00
 DEF PLAY_THROWDIR_B EQU $01
 
-; iPlInfo_Kyo_AraKami_SubInputMask for MOVE_KYO_ARA_KAMI_H
-DEF MSIB_K0S0_P    EQU 0 ; 401 Shiki Tumi Yomi - Light punch pressed
-DEF MSIB_K0S0_DB   EQU 1 ; 401 Shiki Tumi Yomi - DB input performed
-DEF MSIB_K0S1_P    EQU 2 ; 402 Shiki Batu Yomi - Light punch pressed
-
 ; iPlInfo_Chizuru_ShinsokuNoroti_ChainedMove
 DEF PCMB_CHIZURU_TEN_ZUI_L EQU 0
 DEF PCMB_CHIZURU_TEN_ZUI_H EQU 1

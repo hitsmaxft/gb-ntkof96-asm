@@ -770,7 +770,7 @@ DEF iPlInfo_OBJInfoYOther              EQU $81 ; Copy of iOBJInfo_Y
 DEF iPlInfo_PowOther                   EQU $82
 ; Custom, move-specific
 DEF iPlInfo_RunningJump                         EQU $83 ; If set, the last jump was started during a forward run (move MOVE_SHARED_RUN_F)
-DEF iPlInfo_Kyo_AraKami_SubInputMask            EQU $83 ; Flags which inputs were performed for the submoves
+DEF iPlInfo_Kyo_AraKami_SubInputMask            EQU $83 ; Latched physical A/B presses for Ara Kami and Doku Kami submoves
 DEF iPlInfo_Kyo_NueTumi_AutoguardShakeDone      EQU $83 ; Marks if the powerup hitstop was done. Seems pointless.
 DEF iPlInfo_Kyo_UraOrochiNagi_ChargeTimer       EQU $83 ; Animation loop limit when charging the move.
 DEF iPlInfo_Daimon_HeavenHellDrop_GrabLoopsLeft EQU $83 ; How many 180 grab loops are performed
