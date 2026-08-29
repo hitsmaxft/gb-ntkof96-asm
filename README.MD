@@ -34,6 +34,14 @@ ROM image. Banks `$20-$3F` are reserved for imported character code, animation
 tables, sprite mappings, graphics, portraits, and expanded selection-screen
 assets.
 
+The KOF95 source reference is pinned to Kak2X/kof95 commit
+`d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08`. With that repository checked out
+next to this one, regenerate the compact 16x24 mixed-roster portraits with:
+
+```sh
+python3 tools/build_mixkof_portraits.py
+```
+
 The Japanese configuration builds a gameplay-options edition with all hidden
 fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
 SUP CANCEL, TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original

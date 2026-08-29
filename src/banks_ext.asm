@@ -2,7 +2,13 @@
 ; Replace each bank's filler incrementally as imported assets are integrated.
 
 SECTION "bank20", ROMX, BANK[$20]
-	ds $4000, $FF
+MixKOF_CharSelPortraits:
+MixKOF_CharSelPortraits_Base:
+	INCBIN "data/gfx/charsel_mix_base.bin"
+MixKOF_CharSelPortraits_Variants:
+	INCBIN "data/gfx/charsel_mix_variants.bin"
+MixKOF_CharSelPortraits_End:
+	ds $4000-(MixKOF_CharSelPortraits_End-MixKOF_CharSelPortraits), $FF
 SECTION "bank21", ROMX, BANK[$21]
 	ds $4000, $FF
 SECTION "bank22", ROMX, BANK[$22]

@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Build the compact mixed-roster character-select portrait assets.
+
+The original games store every portrait as nine consecutive Game Boy 2bpp
+tiles (24x24 pixels). The mixed 8x4 grid keeps the full 24-pixel height and
+crops four pixels from each horizontal edge, producing six tiles (16x24).
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+from pathlib import Path
+
+
+EXPECTED_KOF95_COMMIT = "d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08"
+TILE_BYTES = 16
+PORTRAIT_24_TILES = 9
+PORTRAIT_16X24_TILES = 6
+
+# Visible KOF96 slots followed by the twelve characters unique to KOF95.
+KOF95_UNIQUE_INDICES = (1, 3, 5, 6, 7, 9, 10, 13, 14, 15, 16, 17)
+
+# Kyo, Ryo, Terry, Athena, Mai and Iori. These are loaded dynamically into
+# their KOF96 portrait slots when START changes the character version.
+KOF95_SHARED_INDICES = (0, 2, 4, 8, 11, 12)
+
+
+def decompress_lzss(source: bytes, output_size: int) -> bytes:
+    """Decode the game's LZSS stream, stopping at the exact required size."""
+    command_count = (((source[1] & 0x3F) << 8) | source[0]) + 1
+    split = 4 - ((source[1] >> 6) & 0x03)
+    length_mask = (1 << split) - 1
+    source_pos = 2
+    output = bytearray()
+
+    for _ in range(command_count):
+        command_mask = source[source_pos]
+        source_pos += 1
+        for bit in range(7, -1, -1):
+            if len(output) >= output_size:
+                return bytes(output)
+            if command_mask & (1 << bit):
+                token = source[source_pos]
+                source_pos += 1
+                offset = -((token >> split) + 1)
+                length = (token & length_mask) + 1
+                for _ in range(length):
+                    if len(output) >= output_size:
+                        return bytes(output)
+                    output.append(output[offset])
+            else:
+                output.append(source[source_pos])
+                source_pos += 1
+
+    if len(output) < output_size:
+        raise ValueError(f"LZSS output is {len(output)} bytes, expected {output_size}")
+    return bytes(output[:output_size])
+
+
+def decode_tile(source: bytes, tile_index: int) -> list[list[int]]:
+    offset = tile_index * TILE_BYTES
+    result = [[0] * 8 for _ in range(8)]
+    for y in range(8):
+        low = source[offset + y * 2]
+        high = source[offset + y * 2 + 1]
+        for x in range(8):
+            bit = 7 - x
+            result[y][x] = ((high >> bit) & 1) * 2 + ((low >> bit) & 1)
+    return result
+
+
+def decode_portrait(source: bytes, portrait_index: int) -> list[list[int]]:
+    result = [[0] * 24 for _ in range(24)]
+    first_tile = portrait_index * PORTRAIT_24_TILES
+    for local_tile in range(PORTRAIT_24_TILES):
+        tile = decode_tile(source, first_tile + local_tile)
+        tile_x = (local_tile % 3) * 8
+        tile_y = (local_tile // 3) * 8
+        for y in range(8):
+            result[tile_y + y][tile_x : tile_x + 8] = tile[y]
+    return result
+
+
+def encode_tile(pixels: list[list[int]]) -> bytes:
+    result = bytearray()
+    for row in pixels:
+        low = 0
+        high = 0
+        for x, value in enumerate(row):
+            bit = 7 - x
+            low |= (value & 1) << bit
+            high |= ((value >> 1) & 1) << bit
+        result.extend((low, high))
+    return bytes(result)
+
+
+def compact_portrait(source: bytes, portrait_index: int) -> bytes:
+    portrait = decode_portrait(source, portrait_index)
+    cropped = [row[4:20] for row in portrait]
+    result = bytearray()
+    for tile_y in range(3):
+        for tile_x in range(2):
+            tile = [row[tile_x * 8 : tile_x * 8 + 8] for row in cropped[tile_y * 8 : tile_y * 8 + 8]]
+            result.extend(encode_tile(tile))
+    assert len(result) == PORTRAIT_16X24_TILES * TILE_BYTES
+    return bytes(result)
+
+
+def git_head(repository: Path) -> str:
+    return subprocess.check_output(
+        ("git", "-C", str(repository), "rev-parse", "HEAD"), text=True
+    ).strip()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--kof95-dir", type=Path, default=Path("../kof95"))
+    parser.add_argument("--allow-different-revision", action="store_true")
+    args = parser.parse_args()
+
+    project = Path(__file__).resolve().parents[1]
+    kof95 = args.kof95_dir.resolve()
+    revision = git_head(kof95)
+    if revision != EXPECTED_KOF95_COMMIT and not args.allow_different_revision:
+        raise SystemExit(
+            f"kof95 is at {revision}; expected {EXPECTED_KOF95_COMMIT}. "
+            "Pass --allow-different-revision only for an intentional vendor update."
+        )
+
+    kof96_bg0 = (project / "data/gfx/charsel_bg0.bin").read_bytes()
+    kof96_bg1 = decompress_lzss(
+        (project / "data/gfx/charsel_bg1.lzc").read_bytes(), 120 * TILE_BYTES
+    )
+    kof96_portraits = kof96_bg0 + kof96_bg1[: 81 * TILE_BYTES]
+
+    kof95_bg0 = (kof95 / "data/gfx/charsel_bg0.bin").read_bytes()
+    kof95_bg1 = (kof95 / "data/gfx/charsel_bg1.bin").read_bytes()
+    kof95_portraits = kof95_bg0 + kof95_bg1[: 81 * TILE_BYTES]
+
+    base = bytearray()
+    for index in range(18):
+        base.extend(compact_portrait(kof96_portraits, index))
+    for index in KOF95_UNIQUE_INDICES:
+        base.extend(compact_portrait(kof95_portraits, index))
+
+    variants = bytearray()
+    for index in KOF95_SHARED_INDICES:
+        variants.extend(compact_portrait(kof95_portraits, index))
+    # The final 39 tiles of the decompressed KOF96 BG1 block contain the three
+    # existing START variants followed by unrelated selection-screen graphics.
+    special_portraits = kof96_bg1[81 * TILE_BYTES : 108 * TILE_BYTES]
+    for index in range(3):
+        variants.extend(compact_portrait(special_portraits, index))
+
+    output_dir = project / "data/gfx"
+    base_path = output_dir / "charsel_mix_base.bin"
+    variants_path = output_dir / "charsel_mix_variants.bin"
+    base_path.write_bytes(base)
+    variants_path.write_bytes(variants)
+
+    print(f"vendor={revision}")
+    print(f"{base_path.relative_to(project)}: {len(base)} bytes, 30 portraits")
+    print(f"{variants_path.relative_to(project)}: {len(variants)} bytes, 9 portraits")
+
+
+if __name__ == "__main__":
+    main()
