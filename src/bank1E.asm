@@ -1210,11 +1210,6 @@ ENDR
 ; OUT
 ; - C flag: If set, the request was denied
 CharSel_StartPortraitFlip:
-	; The characters accessible through tile flipping are all unlockables
-	ld   a, [wDipSwitch]
-	bit  DIPB_UNLOCK_OTHER, a	; Are all characters unlocked?
-	jr   z, .notDone			; If not, return
-	
 	; Use player-specific vars.
 	; Palette lines are different between players, just like with the cursors, to avoid palette conflicts.
 	ld   a, [wCharSelCurPl]
@@ -1266,104 +1261,173 @@ CharSel_StartPortraitFlip:
 ; OUT
 ; - C flag: If set, we can't do it
 CharSel_StartPortraitFlip_CheckChar:
-	; Determine what to do based on these hardcoded positions
-	ld   a, [hl]			; Read wCharSelP*CursorPos
-	cp   CHARSEL_ID_IORI	; Over Iori's position?
-	jp   z, .iori			; If so, switch between Iori and O. Iori
-	cp   CHARSEL_ID_CHIZURU	; Over Chizuru's position?
-	jp   z, .chizuru		; If so, switch between Chizuru and Kagura
-	cp   CHARSEL_ID_LEONA	; Over Leona's position?
-	jp   z, .leona			; If so, switch between Leona and O. Leona
-	; Otherwise, the tile's not flippable
-	scf	
-	ret
-; =============== mStartFlipPortrait ===============
-; Generates code to start flipping a specific portrait.
-; IN
-; - 1: Ptr to OBJInfo for tile flip
-; - 2: Normal character id (CHAR_ID_*)
-; - 3: Normal portrait id (CHARSEL_ID_*)
-; - 4: Normal tile id base
-; - 5: Alternate char id (CHAR_ID_*)
-; - 6: Alternate portrait id (CHARSEL_ID_*)
-; - 7: Alternate tile id base
-MACRO mStartFlipPortrait
+	; Save inputs needed while walking the descriptor table.
+	ld   a, b
+	ld   [wCharSelVariantOBJFlags], a
+	ld   a, e
+	ld   [wCharSelVariantCursorOBJPtr], a
+	ld   a, d
+	ld   [wCharSelVariantCursorOBJPtr+1], a
+	ld   a, [hl]
+	ld   [wCharSelVariantCursorPos], a
 
-	; Not applicable if this tile flip is in progress already.
-	push af
-		ld   a, [\1+iOBJInfo_Status]
-		bit  OSTB_VISIBLE, a		; Is the tile flip sprite visible?
-		jp   nz, .retFail			; If so, return
-	pop  af
-	
-	; Initialize common things (set data in cursor wOBJInfo, blank out portrait)
-	ld   c, LOW(\1-wOBJInfo_IoriFlip)	; C = Offset to correct wOBJInfo from wOBJInfo_IoriFlip (the first one)
-	call .initAndGetArgs	; Init things and get HL, A
-	; - HL: Ptr to wCharSelIdMapTbl entry.
-	; - A: Character ID currently selectable at this position
-	
-	
-	; Toggle between original and alterate depending on the currently active character.
-	cp   \2/2	; Is normal character selectable?
-	jr   z, .setAlt_\@	; If so, jump (switch to alternate)
-.setNorm_\@:
-	;
-	; Switch from alternate to normal portrait
-	;
-	
-	; Set normal character ID (ie: CHAR_ID_IORI) to wCharSelIdMapTbl entry
-	ld   [hl], \2/2		
-	
-	; Display and start tile flipping anim (alt to norm)
-	ld   de, \1
-	call .setFlipToNorm
-	
-	; Save in the tile flip wOBJInfo the arguments to CharSel_DrawPortrait.
-	; It will be called with these args when the new portrait gets drawn once the tile flip animation ends.
-	ld   hl, \1+iOBJInfo_CharSelFlip_PortraitId
-	ld   [hl], \3	; Portrait ID (ie: CHARSEL_ID_IORI)
+	; Find the descriptor for this portrait. Each entry has a four-byte
+	; header followed by three bytes per selectable character version.
+	ld   hl, .variantTbl
+.findDesc:
+	ldi  a, [hl]
+	cp   $FF
+	jp   z, .retFail
+	ld   c, a
+	ld   a, [wCharSelVariantCursorPos]
+	cp   c
+	jr   z, .descFound
+	inc  hl                         ; Skip tile-flip OBJInfo offset
+	inc  hl                         ; Skip requirement flags
+	ldi  a, [hl]                   ; A = Number of variants
+.skipVariants:
 	inc  hl
-	ld   [hl], \4	; Tile ID
-	jp   .retOk
-.setAlt_\@:
-	;
-	; Switch from normal to alternate portrait
-	;
-	
-	; Set alternate character ID (ie: CHAR_ID_OIORI) to wCharSelIdMapTbl entry
-	ld   [hl], \5/2
-	
-	; Display and start tile flipping anim (norm to alt)
-	ld   de, \1
+	inc  hl
+	inc  hl
+	dec  a
+	jr   nz, .skipVariants
+	jr   .findDesc
+
+.descFound:
+	ldi  a, [hl]                   ; Tile-flip OBJInfo offset
+	ld   [wCharSelVariantFlipOffset], a
+	ldi  a, [hl]                   ; Requirement flags
+	bit  0, a                      ; Requires HIDDEN CHR?
+	jr   z, .requirementsMet
+	ld   a, [wDipSwitch]
+	bit  DIPB_UNLOCK_OTHER, a
+	jp   z, .retFail
+.requirementsMet:
+	ldi  a, [hl]                   ; Number of variants
+	ld   [wCharSelVariantWork], a
+	ld   a, l
+	ld   [wCharSelVariantDescPtr], a
+	ld   a, h
+	ld   [wCharSelVariantDescPtr+1], a
+
+	; Do not start another animation on the same flip object.
+	ld   a, [wCharSelVariantFlipOffset]
+	ld   e, a
+	ld   d, HIGH(wOBJInfo_IoriFlip)
+	ld   hl, iOBJInfo_Status
+	add  hl, de
+	bit  OSTB_VISIBLE, [hl]
+	jp   nz, .retFail
+
+	; Hide the cursor, clear the old portrait and get its active character ID.
+	ld   a, [wCharSelVariantCursorOBJPtr]
+	ld   e, a
+	ld   a, [wCharSelVariantCursorOBJPtr+1]
+	ld   d, a
+	ld   a, [wCharSelVariantFlipOffset]
+	ld   c, a
+	ld   a, [wCharSelVariantOBJFlags]
+	ld   b, a
+	ld   a, [wCharSelVariantCursorPos]
+	call .initAndGetArgs
+	ld   c, a                      ; C = Current character ID
+	ld   a, l
+	ld   [wCharSelVariantIdMapPtr], a
+	ld   a, h
+	ld   [wCharSelVariantIdMapPtr+1], a
+
+	; Locate the current version, then select the following one. Wrapping back
+	; to entry zero uses the reverse flip animation; all other transitions use
+	; the forward animation, which also supports future three-way cycles.
+	ld   a, [wCharSelVariantDescPtr]
+	ld   l, a
+	ld   a, [wCharSelVariantDescPtr+1]
+	ld   h, a
+	ld   a, [wCharSelVariantWork]
+	ld   b, a
+.findCurrent:
+	ld   a, [hl]
+	cp   c
+	jr   z, .currentFound
+	inc  hl
+	inc  hl
+	inc  hl
+	dec  b
+	jr   nz, .findCurrent
+	; An invalid map entry recovers to the first version.
+	jr   .selectFirst
+.currentFound:
+	inc  hl
+	inc  hl
+	inc  hl
+	dec  b
+	jr   z, .selectFirst
+	ld   a, $01                    ; Forward flip
+	jr   .select
+.selectFirst:
+	ld   a, [wCharSelVariantDescPtr]
+	ld   l, a
+	ld   a, [wCharSelVariantDescPtr+1]
+	ld   h, a
+	xor  a                         ; Reverse flip when wrapping
+.select:
+	ld   [wCharSelVariantWork], a
+	ldi  a, [hl]                   ; New character ID
+	push hl
+		ld   c, a
+		ld   a, [wCharSelVariantIdMapPtr]
+		ld   l, a
+		ld   a, [wCharSelVariantIdMapPtr+1]
+		ld   h, a
+		ld   [hl], c
+	pop  hl
+	ldi  a, [hl]
+	ld   [wCharSelVariantPortraitId], a
+	ld   a, [hl]
+	ld   [wCharSelVariantTileId], a
+
+	; Start the correct flip animation and save the redraw arguments.
+	ld   a, [wCharSelVariantFlipOffset]
+	ld   e, a
+	ld   d, HIGH(wOBJInfo_IoriFlip)
+	ld   a, [wCharSelVariantOBJFlags]
+	ld   b, a
+	ld   a, [wCharSelVariantWork]
+	or   a
+	jr   z, .startFlipToNorm
 	call .setFlipToAlt
-	
-	; Like the other part
-	ld   hl, \1+iOBJInfo_CharSelFlip_PortraitId
-	ld   [hl], \6	; Portrait ID (ie: CHARSEL_ID_SPEC_OIORI)
-	inc  hl
-	ld   [hl], \7	; Tile ID
-ENDM
-	
-
-.iori:
-	;                 | OBJINFO            | NORMAL                                       | ALT
-	;                 |                    | CHAR ID          PORTRAIT ID         TILE ID | CHAR ID         PORTRAIT ID             TILE ID
-	mStartFlipPortrait wOBJInfo_IoriFlip   , CHAR_ID_IORI   , CHARSEL_ID_IORI   , $2D     , CHAR_ID_OIORI , CHARSEL_ID_SPEC_OIORI , $A2
-	jp   .retOk
-.leona:
-	mStartFlipPortrait wOBJInfo_LeonaFlip  , CHAR_ID_LEONA  , CHARSEL_ID_LEONA  , $99     , CHAR_ID_OLEONA, CHARSEL_ID_SPEC_OLEONA, $AB
-	jp   .retOk	
-.chizuru:
-	mStartFlipPortrait wOBJInfo_ChizuruFlip, CHAR_ID_CHIZURU, CHARSEL_ID_CHIZURU, $75     , CHAR_ID_KAGURA, CHARSEL_ID_SPEC_KAGURA, $B4
+	jr   .saveRedrawArgs
+.startFlipToNorm:
+	call .setFlipToNorm
+.saveRedrawArgs:
+	ld   hl, iOBJInfo_CharSelFlip_PortraitId
+	add  hl, de
+	ld   a, [wCharSelVariantPortraitId]
+	ldi  [hl], a
+	ld   a, [wCharSelVariantTileId]
+	ld   [hl], a
 .retOk:
 	; Tile flip was started (C flag clear)
 	xor  a
 	ret
 .retFail:
-	; Error (C flag set)
-	pop  af
 	scf  
 	ret 
+
+; Portrait variant descriptor format:
+; cursor ID, flip OBJInfo offset, requirement flags, variant count,
+; then [character ID, portrait ID, base BG tile] for every version.
+.variantTbl:
+	db CHARSEL_ID_IORI, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_IORI/2,  CHARSEL_ID_IORI,       $2D
+	db CHAR_ID_OIORI/2, CHARSEL_ID_SPEC_OIORI, $A2
+	db CHARSEL_ID_LEONA, LOW(wOBJInfo_LeonaFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_LEONA/2,  CHARSEL_ID_LEONA,       $99
+	db CHAR_ID_OLEONA/2, CHARSEL_ID_SPEC_OLEONA, $AB
+	db CHARSEL_ID_CHIZURU, LOW(wOBJInfo_ChizuruFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_CHIZURU/2, CHARSEL_ID_CHIZURU,     $75
+	db CHAR_ID_KAGURA/2,  CHARSEL_ID_SPEC_KAGURA, $B4
+	db $FF
 	
 ; =============== .initAndGetArgs ===============
 ; Contains the init code shared across all tile flips, and returns out needed vars.
@@ -5345,4 +5409,6 @@ OptionHack_Bank1E_End:
 	
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunkFrom "L1E7F62", $36+(OptionHack_Bank1E_End-OptionHack_Bank1E_Start)
+	; The table-driven portrait variant dispatcher consumes another $3A bytes
+	; from this original junk tail.
+	mIncJunkFrom "L1E7F62", $70+(OptionHack_Bank1E_End-OptionHack_Bank1E_Start)

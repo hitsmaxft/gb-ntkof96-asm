@@ -259,6 +259,16 @@ wCharSelP2CursorMode        :db ; EQU $C1B5
 wCharSelCurPl               :db ; EQU $C1B6 ; Player num currently handled in the character select screen.
 wCharSelRandomDelay1P       :db ; EQU $C1B7 ; Delay until the CPU autopicks the next character
 wCharSelRandomDelay2P       :db ; EQU $C1B8 ; Delay until the CPU autopicks the next character
+; Temporary state for table-driven START portrait variants.
+wCharSelVariantDescPtr      :ds 2
+wCharSelVariantCursorOBJPtr :ds 2
+wCharSelVariantIdMapPtr     :ds 2
+wCharSelVariantFlipOffset   :db
+wCharSelVariantOBJFlags     :db
+wCharSelVariantWork         :db ; Variant count while searching, then flip direction
+wCharSelVariantCursorPos    :db
+wCharSelVariantPortraitId   :db
+wCharSelVariantTileId       :db
 
 NEXTU
 ;
