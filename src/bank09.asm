@@ -17,7 +17,7 @@ MoveInputReader_Krauser:
 	
 .chkGround:
 	;             SELECT + B                   SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Krauser_KaiserWave, MoveInit_Krauser_KaiserKick, MoveInit_Krauser_LegTomahawk, MoveInit_Krauser_KaiserDuelSobat, MoveInit_Krauser_LowBlitzBall
+	mMvIn_ChkEasyDir MoveInit_Krauser_LegTomahawk, MoveInit_Krauser_KaiserKick, MoveInit_Krauser_KaiserDuelSobat, MoveInit_Krauser_LowBlitzBall, MoveInit_Krauser_HighBlitzBall, MoveInit_Krauser_KaiserWave, MoveInputReader_Krauser_NoMove
 	mMvIn_ChkGA Krauser, .chkPunch, .chkKick
 .chkPunch:
 	; FDBF+P (close) -> Kaiser Suplex
@@ -1125,7 +1125,7 @@ ENDC
 IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunkFrom "L097EA8", $0E
+	mIncJunkFrom "L097EA8", $11
 ELSE
 	mIncJunk "L097FEA"
 ENDC

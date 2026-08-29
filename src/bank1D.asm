@@ -5126,7 +5126,205 @@ ENDC
 IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunk "L1D7D66"
+OptionHack_Bank1D_Start:
+Play_Pl_ClearRoundInput_Banked:
+	ld   bc, wPlInfo_Pl1
+	call .one
+	ld   bc, wPlInfo_Pl2
+.one:
+	call Play_Pl_ClearJoyDirBuffer
+	call Play_Pl_ClearJoyBtnBuffer
+	xor  a
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   [hl], a
+	ld   hl, iPlInfo_JoyKeysLH
+	add  hl, bc
+	ld   b, iPlInfo_JoyBtnBufferOffset-iPlInfo_JoyKeysLH+1
+.loop:
+	ldi  [hl], a
+	dec  b
+	jr   nz, .loop
+	ret
+
+Play_EasyMove_ForceDirectionalHeavy_Banked:
+	ld   a, [wDipSwitch]
+	bit  DIPB_EASY_MOVES, a
+	ret  z
+	ld   bc, wPlInfo_Pl1
+	call .one
+	ld   bc, wPlInfo_Pl2
+.one:
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   a, [hl]
+	and  KEY_RIGHT|KEY_LEFT|KEY_UP|KEY_DOWN
+	cp   KEY_LEFT
+	jr   z, .horizontal
+	cp   KEY_RIGHT
+	ret  nz
+.horizontal:
+	dec  hl
+	ld   d, [hl]
+	inc  hl
+	inc  hl
+	bit  KEYB_A, d
+	jr   z, .b
+	set  KEPB_A_HEAVY, [hl]
+	push hl
+		ld   hl, iPlInfo_JoyHeavyCountA
+		add  hl, bc
+		ld   [hl], $00
+	pop  hl
+.b:
+	bit  KEYB_B, d
+	ret  z
+	set  KEPB_B_HEAVY, [hl]
+	ld   hl, iPlInfo_JoyHeavyCountB
+	add  hl, bc
+	ld   [hl], $00
+	ret
+
+; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 F, 4 DF, 5 D,
+;          6 DB, 7 B, 8 completed DF+SELECT, 9 completed DB+SELECT.
+MoveInputS_CheckEasyMoveTapKeys_Banked:
+	ld   a, [wDipSwitch]
+	bit  DIPB_EASY_MOVES, a
+	jp   z, .none
+
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	bit  KEYB_SELECT, [hl]
+	jp   z, .released
+
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	inc  a
+	jp   z, .none
+	dec  a
+	jr   nz, .held
+
+	; Explicit neutral chords are actions, not strength-selecting specials.
+	push hl
+		ld   hl, iPlInfo_JoyKeys
+		add  hl, bc
+		bit  KEYB_B, [hl]
+		jr   nz, .selectB
+		bit  KEYB_A, [hl]
+		jr   nz, .selectA
+		bit  0, d
+		jr   z, .noRoute
+
+		; A completed simplified motion takes priority over the held direction.
+		ld   hl, MoveInput_DF
+		call MoveInputS_ChkInputDir
+		jr   c, .superDF
+		ld   hl, MoveInput_DB
+		call MoveInputS_ChkInputDir
+		jr   c, .superDB
+
+		call Play_Pl_GetDirKeys_ByXFlipR
+		ld   d, a
+		and  KEY_DOWN|KEY_RIGHT
+		cp   KEY_DOWN|KEY_RIGHT
+		jr   z, .downForward
+		ld   a, d
+		and  KEY_DOWN|KEY_LEFT
+		cp   KEY_DOWN|KEY_LEFT
+		jr   z, .downBack
+		bit  KEYB_DOWN, d
+		jr   nz, .down
+		bit  KEYB_RIGHT, d
+		jr   nz, .forward
+		bit  KEYB_LEFT, d
+		jr   nz, .back
+.noRoute:
+	pop  hl
+	jr   .none
+
+.selectB:
+	bit  0, d
+	jr   z, .selectBTimed
+	pop  hl
+	ld   [hl], $FF
+	ld   a, $01
+	ret
+.selectBTimed:
+	ld   a, $16
+	jr   .storeRoute
+.selectA:
+	bit  0, d
+	jr   z, .selectATimed
+	pop  hl
+	ld   [hl], $FF
+	ld   a, $02
+	ret
+.selectATimed:
+	ld   a, $26
+	jr   .storeRoute
+.forward:
+	ld   a, $36
+	jr   .storeRoute
+.downForward:
+	ld   a, $46
+	jr   .storeRoute
+.down:
+	ld   a, $56
+	jr   .storeRoute
+.downBack:
+	ld   a, $66
+	jr   .storeRoute
+.back:
+	ld   a, $76
+	jr   .storeRoute
+.superDF:
+	ld   a, $86
+	jr   .storeRoute
+.superDB:
+	ld   a, $96
+.storeRoute:
+	pop  hl
+	ld   [hl], a
+
+.held:
+	dec  [hl]
+	ld   a, [hl]
+	and  $0F
+	jr   nz, .none
+	ld   a, [hl]
+	ld   [hl], $FF
+	push af
+		ld   hl, iPlInfo_Flags2
+		add  hl, bc
+		set  PF2B_HEAVY, [hl]
+	pop  af
+	jr   .route
+
+.released:
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	ld   [hl], $00
+	or   a
+	jr   z, .none
+	cp   $FF
+	jr   z, .none
+	push af
+		ld   hl, iPlInfo_Flags2
+		add  hl, bc
+		res  PF2B_HEAVY, [hl]
+	pop  af
+.route:
+	swap a
+	and  $0F
+	ret
+.none:
+	xor  a
+	ret
+OptionHack_Bank1D_End:
+	ASSERT OptionHack_Bank1D_End <= $8000, "bank1D option hack exceeds Japanese padding"
+	mIncJunkFrom "L1D7D66", OptionHack_Bank1D_End-OptionHack_Bank1D_Start
 ELSE
 	mIncJunk "L1D7FD8"
 ENDC

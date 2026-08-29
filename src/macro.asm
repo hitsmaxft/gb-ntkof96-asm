@@ -180,38 +180,38 @@ ENDM									; Otherwise, assume air
 ; - 2: Move key for SELECT + A
 MACRO mMvIn_ChkEasy
 	IF !REV_VER_2
-		call MoveInputS_CheckEasyMoveTapKeys
+		ld   hl, .easyTable_\@
+		call MoveInputS_DispatchEasyMoveAir
+		jr   .easyEnd_\@
+	.easyTable_\@:
+		dw \1, \2
+	.easyEnd_\@:
 	ELSE
 		; Keep revision 2 bank layouts within their much smaller junk areas.
 		call MoveInputS_CheckEasyMoveKeys
+		jp   c, \1 ; SELECT + B pressed? If so, jump
+		jp   z, \2 ; SELECT + A pressed? If so, jump
 	ENDC
-	jp   c, \1 ; SELECT + B pressed? If so, jump
-	jp   z, \2 ; SELECT + A pressed? If so, jump
 ENDM
 
 ; =============== mMvIn_ChkEasyDir ===============
-; Adds facing-relative SELECT shortcuts to the original SELECT+A/B shortcuts.
-; Neutral/Up + SELECT use the SELECT+A move.
+; Adds facing-relative SELECT shortcuts. Neutral SELECT is reserved, while
+; SELECT+A charges meter and SELECT+B taunts.
 ; IN
-; - 1: Move key for SELECT + B
-; - 2: Move key for SELECT + A
-; - 3: Move key for forward + SELECT tap
-; - 4: Move key for back + SELECT tap
-; - 5: Move key for down + SELECT tap
+; - 1-5: forward, down-forward, down, down-back, back + SELECT
+; - 6-7: completed down-forward/down-back motion + SELECT super
 MACRO mMvIn_ChkEasyDir
 	IF !REV_VER_2
-	call MoveInputS_CheckEasyMoveTapKeys
-	jp   c, \1
-	jp   z, \2
-	sub  $03
-	jp   z, \3
-	dec  a
-	jp   z, \4
-	dec  a
-	jp   z, \5
+	ld   hl, .easyTable_\@
+	call MoveInputS_DispatchEasyMoveDir
+	jr   .easyEnd_\@
+	.easyTable_\@:
+		dw MoveInputS_StartEasyTaunt, MoveInputS_StartEasyCharge
+		dw \1, \2, \3, \4, \5, \6, \7
+	.easyEnd_\@:
 	ELSE
 		; Keep revision 2 bank layouts within their much smaller junk areas.
-		mMvIn_ChkEasy \1, \2
+		mMvIn_ChkEasy \7, \1
 	ENDC
 ENDM
 

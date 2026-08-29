@@ -83,6 +83,16 @@ MoveC_Base_ChargeMeter:
 		and  a, KEY_A|KEY_B	; Holding A+B?
 		cp   KEY_A|KEY_B	
 		jp   z, .anim		; If not, jump
+		IF !REV_VER_2
+		; Easy Move charge is held with SELECT+A instead.
+		ld   a, [wDipSwitch]
+		bit  DIPB_EASY_MOVES, a
+		jr   z, .end
+		ld   a, [hl]
+		and  a, KEY_SELECT|KEY_A
+		cp   KEY_SELECT|KEY_A
+		jp   z, .anim
+		ENDC
 	.end:
 		; If we got here, the charge is over
 		call Play_Pl_EndMove
@@ -5487,7 +5497,7 @@ MoveInputReader_Ryo:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Ryo_RyuKoRanbu, MoveInit_Ryo_MouKoRaiJinGou, MoveInit_Ryo_KoHou, MoveInit_Ryo_HienShippuuKyaku, MoveInit_Ryo_KoOuKen
+	mMvIn_ChkEasyDir MoveInit_Ryo_KoOuKen, MoveInit_Ryo_KoHou, MoveInit_Ryo_KyokukenRyuRenbuKen, MoveInit_Ryo_HienShippuuKyaku, MoveInit_Ryo_MouKoRaiJinGou, MoveInputReader_Ryo_NoMove, MoveInit_Ryo_RyuKoRanbu
 	mMvIn_ChkGA Ryo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -6143,7 +6153,7 @@ MoveInputReader_Robert:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Robert_RyuKoRanbu, MoveInit_Robert_RyuuGa_Hidden, MoveInit_Robert_RyuuGa, MoveInit_Robert_HienShippuKyaku, MoveInit_Robert_RyuuGekiKen
+	mMvIn_ChkEasyDir MoveInit_Robert_RyuuGekiKen, MoveInit_Robert_RyuuGa, MoveInit_Robert_KyokugenRyuRanbuKyaku, MoveInit_Robert_HienShippuKyaku, MoveInit_Robert_RyuuGa_Hidden, MoveInputReader_Robert_NoMove, MoveInit_Robert_RyuKoRanbu
 	mMvIn_ChkGA Robert, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -7115,7 +7125,7 @@ MoveInputReader_Leona:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Leona_VSlasher, MoveInit_Leona_BalticLauncher, MoveInit_Leona_GrandSabre, MoveInit_Leona_XCalibur, MoveInit_Leona_MoonSlasher
+	mMvIn_ChkEasyDir MoveInit_Leona_GrandSabre, MoveInit_Leona_XCalibur, MoveInit_Leona_BalticLauncher, MoveInit_Leona_XCalibur, MoveInit_Leona_MoonSlasher, MoveInputReader_Leona_NoMove, MoveInit_Leona_VSlasher
 	mMvIn_ChkGA Leona, .chkPunch, .chkKick
 .chkPunch:
 	; O.Leona only!
@@ -8045,7 +8055,7 @@ MoveInputReader_MrKarate:
 	
 .chkGround:
 	;             SELECT + B                    SELECT + A
-	mMvIn_ChkEasyDir MoveInit_MrKarate_RyukoRanbu, MoveInit_MrKarate_Zenretsuken, MoveInit_MrKarate_HienShippuuKyaku, MoveInit_MrKarate_ShouranKyaku, MoveInit_MrKarate_KoOuKen
+	mMvIn_ChkEasyDir MoveInit_MrKarate_KoOuKen, MoveInit_MrKarate_Zenretsuken, MoveInit_MrKarate_KyokukenRyuRenbuKen, MoveInit_MrKarate_ShouranKyaku, MoveInit_MrKarate_HienShippuuKyaku, MoveInputReader_MrKarate_NoMove, MoveInit_MrKarate_RyukoRanbu
 	mMvIn_ChkGA MrKarate, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -9841,7 +9851,7 @@ ENDC
 ; Junk area below.
 ; Contains duplicate move code.
 IF !REV_VER_2
-	mIncJunkFrom "L027EBF", $38
+	mIncJunkFrom "L027EBF", $5F
 ELSE
 	mIncJunk "L027F70"
 ENDC

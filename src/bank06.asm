@@ -60,7 +60,7 @@ MoveInputReader_Kyo:
 ; GROUND SPECIALS
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Kyo_UraOrochiNagi, MoveInit_Kyo_NueTumi, MoveInit_Kyo_OniYaki, MoveInit_Kyo_RedKick, MoveInit_Kyo_AraKami
+	mMvIn_ChkEasyDir MoveInit_Kyo_AraKami, MoveInit_Kyo_OniYaki, MoveInit_Kyo_KototsukiYou, MoveInit_Kyo_RedKick, MoveInit_Kyo_NueTumi, MoveInit_Kyo_UraOrochiNagi, MoveInputReader_Kyo_NoMove
 	mMvIn_ChkGA Kyo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -1492,7 +1492,7 @@ MoveInputReader_Terry:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Terry_PowerGeyser, MoveInit_Terry_RisingTackle, MoveInit_Terry_BurnKnuckle, MoveInit_Terry_CrackShot, MoveInit_Terry_PowerWave
+	mMvIn_ChkEasyDir MoveInit_Terry_PowerWave, MoveInit_Terry_RisingTackle, MoveInit_Terry_PowerDunk, MoveInit_Terry_CrackShot, MoveInit_Terry_BurnKnuckle, MoveInit_Terry_PowerGeyser, MoveInputReader_Terry_NoMove
 	mMvIn_ChkGA Terry, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -2247,7 +2247,7 @@ MoveInputReader_Mai:
 	
 .chkGround:
 	;             SELECT + B                            SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Mai_ChoHissatsuShinobibachi, MoveInit_Mai_HishoRyuEnJin, MoveInit_Mai_HissatsuShinobibachi, MoveInit_Mai_RyuEnBu, MoveInit_Mai_KaChoSen
+	mMvIn_ChkEasyDir MoveInit_Mai_KaChoSen, MoveInit_Mai_HishoRyuEnJin, MoveInit_Mai_ChijouMusasabiMai, MoveInit_Mai_HissatsuShinobibachi, MoveInit_Mai_RyuEnBu, MoveInit_Mai_ChoHissatsuShinobibachi, MoveInputReader_Mai_NoMove
 	mMvIn_ChkGA Mai, .chkPunch, .chkKick
 .chkPunch:
 	; FDB+P -> Chijou Musasabi no Mai 
@@ -3145,7 +3145,7 @@ MoveInputReader_Athena:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Athena_ShCrystGround, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoSword, MoveInit_Athena_PsychoTeleport, MoveInit_Athena_PsychoBall
+	mMvIn_ChkEasyDir MoveInit_Athena_PsychoTeleport, MoveInit_Athena_PsychoSword, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoBall, MoveInputReader_Athena_NoMove, MoveInit_Athena_ShCrystGround
 	mMvIn_ChkGA Athena, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -5814,7 +5814,7 @@ MoveInputReader_Andy:
 	
 .chkGround:
 	;             SELECT + B                 SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Andy_ChoReppaDan, MoveInit_Andy_HiShoKen, MoveInit_Andy_ZanEiKen, MoveInit_Andy_KuHaDan, MoveInit_Andy_ShoRyuDan
+	mMvIn_ChkEasyDir MoveInit_Andy_ZanEiKen, MoveInit_Andy_ShoRyuDan, MoveInit_Andy_KuHaDan, MoveInit_Andy_GekiHekiHaiSuiSho, MoveInit_Andy_HiShoKen, MoveInit_Andy_ChoReppaDan, MoveInputReader_Andy_NoMove
 	mMvIn_ChkGA Andy, .chkPunch, .chkKick
 
 .chkPunch:
@@ -6568,7 +6568,7 @@ MoveInputReader_MrBig:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasyDir MoveInit_MrBig_BlasterWave, MoveInit_MrBig_DrumShot, MoveInit_MrBig_CaliforniaRomance, MoveInit_MrBig_CrossDiving, MoveInit_MrBig_GroundBlaster
+	mMvIn_ChkEasyDir MoveInit_MrBig_GroundBlaster, MoveInit_MrBig_CaliforniaRomance, MoveInit_MrBig_CrossDiving, MoveInit_MrBig_SpinningLancer, MoveInit_MrBig_DrumShot, MoveInit_MrBig_BlasterWave, MoveInputReader_MrBig_NoMove
 	mMvIn_ChkGA MrBig, .chkPunch, .chkKick
 .chkPunch:
 	; DFDF+P -> Blaster Wave
@@ -7216,7 +7216,7 @@ MoveInputReader_Geese:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Geese_RagingStorm, MoveInit_Geese_AtemiNage, MoveInit_Geese_JaEiKen, MoveInit_Geese_Reppuken, MoveInit_Geese_HishouNichirinZan
+	mMvIn_ChkEasyDir MoveInit_Geese_Reppuken, MoveInit_Geese_HishouNichirinZan, MoveInit_Geese_JaEiKen, MoveInit_Geese_AtemiNage, MoveInit_Geese_AtemiNage, MoveInit_Geese_RagingStorm, MoveInputReader_Geese_NoMove
 	mMvIn_ChkGA Geese, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper

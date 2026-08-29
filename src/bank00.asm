@@ -6442,6 +6442,9 @@ Module_Play:
 ; =============== Play_InitRound ===============
 ; Initializes the round variables, including both players.
 Play_InitRound:
+	IF !REV_VER_2
+	call Play_Pl_ClearRoundInput
+	ENDC
 
 	; Load character-specific settings
 	ld   bc, wPlInfo_Pl1
@@ -12087,6 +12090,11 @@ Play_Pl_DoBasicMoveInput:
 			jp   nz, .chkWalkR					; If so, jump
 
 			; Taunt
+			IF !REV_VER_2
+			ld   a, [wDipSwitch]
+			bit  DIPB_EASY_MOVES, a
+			jp   nz, BasicInput_StartIdle
+			ENDC
 			ld   hl, iPlInfo_JoyNewKeys
 			add  hl, bc
 			bit  KEYB_SELECT, [hl]				; Did we press SELECT?
@@ -16723,109 +16731,44 @@ MoveInput_DU:
 OptionHack_Bank00_Start:
 
 IF !REV_VER_2
-; Checks the simplified easy-move controls.
-; SELECT chooses the SELECT+A move by default. Explicit SELECT+A also reaches
-; the caller's airborne assignment. Holding a direction before SELECT chooses a
-; ground directional shortcut instead.
-; Releasing SELECT before 6 frames requests light; holding it for 6 requests
-; heavy. The high nybble of iPlInfo_EasyMoveSelectState stores an encoded route,
-; while the low nybble counts down the held frames. $FF prevents repeat
-; activation while held.
-; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 forward, 4 back, 5 down.
-MoveInputS_CheckEasyMoveTapKeys:
-	ld   a, [wDipSwitch]
-	bit  DIPB_EASY_MOVES, a
-	jr   z, .none
-
-	ld   hl, iPlInfo_JoyKeys
-	add  hl, bc
-	bit  KEYB_SELECT, [hl]
-	jr   z, .released
-
-	ld   hl, iPlInfo_EasyMoveSelectState
-	add  hl, bc
-	ld   a, [hl]
-	inc  a
-	jr   z, .none
-	dec  a
-	jr   z, .startRoute
-
-	; SELECT defaults to route A, but B may be pressed a few frames later.
-	; Both player structs are page-aligned, so keep H and switch only the field offset.
-	ld   l, iPlInfo_JoyNewKeys
-	bit  KEYB_B, [hl]
-	ld   l, iPlInfo_EasyMoveSelectState
-	jr   z, .held
-	ld   [hl], $16 ; Switch to SELECT+B and restart its six-frame hold timer.
-
-	; Explicit SELECT+B/A has priority over the directional shortcuts.
-.startRoute:
+; Banked implementation lives in the roomy Japanese bank $1D tail.
+MoveInputS_DispatchEasyMoveAir:
+	push de
+	ld   d, $00
+	jr   MoveInputS_DispatchEasyMoveDir.switch
+MoveInputS_DispatchEasyMoveDir:
+	push de
+	ld   d, $01
+.switch:
 	push hl
-		ld   hl, iPlInfo_JoyKeys
-		add  hl, bc
-		bit  KEYB_B, [hl]
-		jr   nz, .selectB
-		bit  KEYB_A, [hl]
-		jr   nz, .selectA
-	call Play_Pl_GetDirKeys_ByXFlipR
-	bit  KEYB_DOWN, a
-	jr   nz, .down
-	bit  KEYB_RIGHT, a
-	jr   nz, .forward
-	bit  KEYB_LEFT, a
-	jr   nz, .back
-	ld   a, $06 ; Neutral/Up SELECT defaults to SELECT+A.
-.storeRoute:
+	ldh  a, [hROMBank]
+	push af
+	ld   a, BANK(MoveInputS_CheckEasyMoveTapKeys_Banked)
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	call MoveInputS_CheckEasyMoveTapKeys_Banked
+	ld   e, a
+	pop  af
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	ld   a, e
 	pop  hl
-	ld   [hl], a
-.held:
-	dec  [hl]
-	ld   a, [hl]
-	and  $0F
-	jr   nz, .none
-	ld   a, [hl]
-	ld   [hl], $FF
-	ld   hl, iPlInfo_Flags2
-	add  hl, bc
-	set  PF2B_HEAVY, [hl]
-	jr   .getRouteFromA
-
-.released:
-	ld   hl, iPlInfo_EasyMoveSelectState
-	add  hl, bc
-	ld   a, [hl]
-	ld   [hl], $00
 	or   a
 	jr   z, .none
-	cp   $FF
-	jr   z, .none
-	ld   hl, iPlInfo_Flags2
-	add  hl, bc
-	res  PF2B_HEAVY, [hl]
-.getRouteFromA:
-	swap a
-	and  $0F
-	srl  a     ; Route 1 sets carry; route 2 sets zero; 3-5 stay numeric.
-	ret
+	dec  a
+	add  a
+	ld   e, a
+	ld   d, $00
+	add  hl, de
+	ldi  a, [hl]
+	ld   h, [hl]
+	ld   l, a
+	pop  de
+	pop  af ; Discard this dispatch call's return; the move returns to the reader caller.
+	jp   hl
 .none:
-	xor  a
-	inc  a
+	pop  de
 	ret
-.selectB:
-	ld   a, $16
-	jr   .storeRoute
-.selectA:
-	ld   a, $06
-	jr   .storeRoute
-.forward:
-	ld   a, $66
-	jr   .storeRoute
-.back:
-	ld   a, $86
-	jr   .storeRoute
-.down:
-	ld   a, $A6
-	jr   .storeRoute
 ENDC
 
 ; Validates the optional recovery-only special/super cancel window.
@@ -16883,6 +16826,7 @@ Play_Pl_ScaleSuperCancelPendingDamage:
 ; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
 ; A and E are preserved for the common current/pending damage setters.
 Play_Pl_ScaleSuperCancelDamageD:
+	push af
 	ldh  a, [hROMBank]
 	push af
 	ld   a, BANK(Play_Pl_ScaleSuperCancelDamageD_Banked)
@@ -16892,7 +16836,58 @@ Play_Pl_ScaleSuperCancelDamageD:
 	pop  af
 	ld   [MBC1RomBank], a
 	ldh  [hROMBank], a
+	pop  af
 	ret
+
+; Clears stale per-player input before the pre-round tasks begin executing.
+IF !REV_VER_2
+Play_Pl_ClearRoundInput:
+	ldh  a, [hROMBank]
+	push af
+	ld   a, BANK(Play_Pl_ClearRoundInput_Banked)
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	call Play_Pl_ClearRoundInput_Banked
+	pop  af
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	ret
+ENDC
+
+; In Easy Move mode, pressing A/B while holding either horizontal direction
+; immediately emits the corresponding heavy input.
+IF !REV_VER_2
+Play_EasyMove_ForceDirectionalHeavy:
+	ldh  a, [hROMBank]
+	push af
+	ld   a, BANK(Play_EasyMove_ForceDirectionalHeavy_Banked)
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	call Play_EasyMove_ForceDirectionalHeavy_Banked
+	pop  af
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	ret
+
+; The BasicInput action labels expect Play_Pl_DoBasicMoveInput's saved BC/DE
+; beneath their return address. Easy Move dispatch enters from a special input
+; reader, so provide the missing stack frame before sharing those actions.
+MoveInputS_StartEasyTaunt:
+	ld   hl, MoveInputS_StartEasyBasicDone
+	push hl
+	push bc
+	push de
+	jp   BasicInput_ChkTaunt
+MoveInputS_StartEasyCharge:
+	ld   hl, MoveInputS_StartEasyBasicDone
+	push hl
+	push bc
+	push de
+	jp   BasicInput_StartChargeMeter
+MoveInputS_StartEasyBasicDone:
+	scf
+	ret
+ENDC
 
 OptionHack_Bank00_End:
 IF !SKIP_JUNK

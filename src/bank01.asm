@@ -478,7 +478,11 @@ Play_DoPlInput:
 .training2P:
 	call Play_TrainingMode_SetCPUInput
 .end:
+	IF !REV_VER_2
+	jp   Play_EasyMove_ForceDirectionalHeavy
+	ELSE
 	ret
+	ENDC
 
 ; =============== Play_TrainingMode_UpdateHealth ===============
 ; Prevents either player from being knocked out in training mode.
@@ -5827,7 +5831,7 @@ Play_WriteBtnKeysToBuffer2P: mWriteBtnKeysToBuffer wPlInfo_Pl2
 ; =============== END OF BANK ===============
 ; Junk area below with incomplete copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunkFrom "L017FA8", $56
+	mIncJunkFrom "L017FA8", $58
 ELSE
 	mIncJunkFrom "L017F98", $56
 ENDC
