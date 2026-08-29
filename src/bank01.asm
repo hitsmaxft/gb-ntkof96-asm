@@ -189,6 +189,7 @@ Play_Main:
 	ei
 	; Here we go
 .mainLoop:
+	call Play_TrainingMode_UpdateHealth
 	call Play_ChkEnd
 	call Play_DoPlInput
 	call Play_ChkPause
@@ -342,7 +343,13 @@ Play_DoPlInput:
 	; Generate inputs for the CPU
 	ld   bc, wPlInfo_Pl1
 	ld   de, wOBJInfo_Pl1
+	ld   a, [wTrainingMode]
+	or   a
+	jr   nz, .training1P
 	call HomeCall_Play_CPU_Do
+	jr   .do2P
+.training1P:
+	call Play_TrainingMode_SetCPUInput
 	
 .do2P:
 
@@ -463,8 +470,64 @@ Play_DoPlInput:
 	; Generate inputs for the CPU
 	ld   bc, wPlInfo_Pl2
 	ld   de, wOBJInfo_Pl2
+	ld   a, [wTrainingMode]
+	or   a
+	jr   nz, .training2P
 	call HomeCall_Play_CPU_Do
+	jr   .end
+.training2P:
+	call Play_TrainingMode_SetCPUInput
 .end:
+	ret
+
+; =============== Play_TrainingMode_UpdateHealth ===============
+; Prevents either player from being knocked out in training mode.
+Play_TrainingMode_UpdateHealth:
+	ld   a, [wTrainingMode]
+	or   a
+	ret  z
+	ld   a, PLAY_HEALTH_MAX
+	ld   [wPlInfo_Pl1+iPlInfo_Health], a
+	ld   [wPlInfo_Pl1+iPlInfo_HealthVisual], a
+	ld   [wPlInfo_Pl2+iPlInfo_Health], a
+	ld   [wPlInfo_Pl2+iPlInfo_HealthVisual], a
+	ret
+
+; =============== Play_TrainingMode_SetCPUInput ===============
+; Disables normal AI. The CPU only walks forward while its opponent charges POW.
+; IN
+; - BC: Ptr to CPU wPlInfo structure
+; - DE: Ptr to CPU wOBJInfo structure
+Play_TrainingMode_SetCPUInput:
+	xor  a
+	ld   hl, iPlInfo_JoyNewKeys
+	add  hl, bc
+	ld   [hl], a
+	inc  hl ; iPlInfo_JoyKeys
+	ld   [hl], a
+	inc  hl ; iPlInfo_JoyNewKeysLH
+	ld   [hl], a
+	ld   hl, iPlInfo_JoyBufKeysLH
+	add  hl, bc
+	ld   [hl], a
+
+	ld   hl, iPlInfo_MoveIdOther
+	add  hl, bc
+	ld   a, [hl]
+	cp   MOVE_SHARED_CHARGEMETER
+	ret  nz
+
+	; Forward follows the CPU's current facing direction.
+	ld   hl, iOBJInfo_OBJLstFlags
+	add  hl, de
+	ld   a, KEY_LEFT
+	bit  SPRXB_PLDIR_R, [hl]
+	jr   z, .setForward
+	ld   a, KEY_RIGHT
+.setForward:
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   [hl], a
 	ret
 	
 ; =============== Play_ChkPause ===============
@@ -5764,7 +5827,7 @@ Play_WriteBtnKeysToBuffer2P: mWriteBtnKeysToBuffer wPlInfo_Pl2
 ; =============== END OF BANK ===============
 ; Junk area below with incomplete copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunk "L017FA8"
+	mIncJunkFrom "L017FA8", $56
 ELSE
-	mIncJunk "L017F98"
+	mIncJunkFrom "L017F98", $56
 ENDC

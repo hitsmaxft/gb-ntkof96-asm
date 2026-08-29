@@ -117,6 +117,9 @@ ENDC
 	call TextPrinter_Instant
 	ld   hl, TextDef_Menu_TeamVS
 	call TextPrinter_Instant
+	ld   b, BANK(Title_DrawTrainingText)
+	ld   hl, Title_DrawTrainingText
+	rst  $08
 	ld   hl, TextDef_Options_Title
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_Time
@@ -408,6 +411,7 @@ Title_Mode_TitleMenu:
 	; Start over SINGLE PLAY
 	ld   a, $00
 	ld   [wTitleSubMenuOptId], a
+	ld   [wTrainingMode], a
 	
 	; Next mode
 	ld   a, GM_TITLE_MODESELECT
@@ -622,6 +626,8 @@ Title_Mode_ModeSelect:
 	jp   z, .singleVS
 	cp   MODESELECT_ACT_TEAMVS
 	jp   z, .teamVS
+	cp   MODESELECT_ACT_TRAINING
+	jp   z, .training
 	ret ; We never get here
 .checkOtherPl:
 	; Check if the other player (over serial only) sent us a mode id value.
@@ -640,6 +646,13 @@ Title_Mode_ModeSelect:
 	jp   ModeSelect_PrepSingle
 .team1P:
 	ld   a, MODE_TEAM1P
+	ld   [wPlayMode], a
+	jp   ModeSelect_PrepSingle
+
+.training:
+	ld   hl, wTrainingMode
+	inc  [hl]
+	xor  a ; MODE_SINGLE1P
 	ld   [wPlayMode], a
 	jp   ModeSelect_PrepSingle
 	
@@ -756,7 +769,9 @@ ModeSelect_Unused_PrepVSCPU:
 ENDC
 	
 ModeSelect_SwitchToCharSelect:
-	call ModeSelect_CheckCPUvsCPU
+	ld   b, BANK(ModeSelect_CheckCPUvsCPU)
+	ld   hl, ModeSelect_CheckCPUvsCPU
+	rst  $08
 	
 	; Initialize character select vars
 	ld   a, $00
@@ -829,16 +844,20 @@ ModeSelect_DoCtrl:
 .moveU:
 	; Move cursor up, and wrap around
 	ld   a, [wTitleSubMenuOptId]
-	dec  a
-	and  a, $03
+	sub  a, $01
+	jr   nc, .savePos
+	ld   a, $04
+.savePos:
 	ld   [wTitleSubMenuOptId], a
 	jp   .setYPos
 .moveD:
 	; Move cursor down, and wrap around
 	ld   a, [wTitleSubMenuOptId]
 	inc  a
-	and  a, $03
-	ld   [wTitleSubMenuOptId], a
+	cp   $05
+	jr   c, .savePos
+	xor  a
+	jr   .savePos
 .setYPos:
 	; Set the cursor's Y position (Y = wTitleSubMenuOptId * 10) and show it, even if for a single frame
 	; See also: SetCursorYPos on Options_DoCtrl
@@ -1887,32 +1906,6 @@ TitleScreen_IsStartPressed:
 	ld   a, PL2				; Player 2 pressed it
 	ld   [wJoyActivePl], a
 	scf						; C = 1, pressed
-	ret
-	
-; =============== ModeSelect_CheckCPUvsCPU ===============
-; [POI] Handles the secret where holding B when selecting a mode activates a CPU vs CPU battle.
-ModeSelect_CheckCPUvsCPU:
-
-	; CPU opponents disallowed in VS modes if done through serial.
-	; It's perfectly fine if done through the SGB though.
-	ld   a, [wMisc_C025]
-	bit  MISCB_SERIAL_MODE, a		; Setting up a VS battle?
-	ret  nz							; If so, return
-	
-	; Check both controllers
-.chkPl1:
-	ldh  a, [hJoyKeys]
-	bit  KEYB_B, a					; Holding B on controller 1?
-	jp   z, .chkPl2					; If not, jump
-	ld   hl, wPlInfo_Pl1+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]				; Otherwise, set P1 as CPU
-.chkPl2:
-	ldh  a, [hJoyKeys2]
-	bit  KEYB_B, a					; Holding B on controller 2?
-	jp   z, .ret					; If not, jump
-	ld   hl, wPlInfo_Pl2+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]				; Otherwise, set P2 as CPU
-.ret:
 	ret
 	
 IF REV_VER_2
@@ -4565,7 +4558,7 @@ BGLZ_Intro_IoriCutout: INCBIN "data/bg/intro_ioricutout.lzs"
 BGLZ_Intro_KyoCutout: INCBIN "data/bg/intro_kyocutout.lzs"
 BGLZ_Intro_Sun: INCBIN "data/bg/intro_sun.lzs"
 GFXLZ_Intro_IoriRiseOBJ: INCBIN "data/gfx/intro_ioririse_obj.lzc"
-	mIncJunk "L1C6672"
+	; The original single unused padding byte is reclaimed for the expanded menu.
 	
 TextC_Win_Marker:
 IF !REV_LANG_EN
@@ -5711,7 +5704,7 @@ IF !REV_VER_2
 ; Junk area below.
 ; [TCRF] Contains win screen text from the English version of KOF95.
 	; The expanded options menu reuses $36 bytes of this junk area.
-	mIncJunkFrom "L1C7F4D", $B2
+	mIncJunkFrom "L1C7F4D", $B3
 ELSE
-	mIncJunkFrom "L1C7DCA", $B2
+	mIncJunkFrom "L1C7DCA", $B3
 ENDC

@@ -5274,7 +5274,75 @@ WinScr_CharTextPtrTbl:
 	dw TextC_Win_OIori ; CHAR_ID_OIORI
 	dw TextC_Win_OLeona ; CHAR_ID_OLEONA
 	dw TextC_Win_Kagura ; CHAR_ID_KAGURA
+
+; =============== Title_DrawTrainingText ===============
+Title_DrawTrainingText:
+	ld   hl, TextDef_Menu_Training
+	jp   TextPrinter_Instant
+
+TextDef_Menu_Training:
+	dw $9A24
+	db .end-.start
+.start:
+	db "TRAN MODE"
+.end:
+
+; =============== ModeSelect_CheckCPUvsCPU ===============
+; [POI] Handles the secret where holding B when selecting a mode activates a CPU vs CPU battle.
+ModeSelect_CheckCPUvsCPU:
+	; Training always has exactly one human and one passive CPU.
+	ld   a, [wTrainingMode]
+	or   a
+	ret  nz
+
+	; CPU opponents disallowed in VS modes if done through serial.
+	; It's perfectly fine if done through the SGB though.
+	ld   a, [wMisc_C025]
+	bit  MISCB_SERIAL_MODE, a
+	ret  nz
+
+	ldh  a, [hJoyKeys]
+	bit  KEYB_B, a
+	jp   z, .chkPl2
+	ld   hl, wPlInfo_Pl1+iPlInfo_Flags0
+	set  PF0B_CPU, [hl]
+.chkPl2:
+	ldh  a, [hJoyKeys2]
+	bit  KEYB_B, a
+	jp   z, .ret
+	ld   hl, wPlInfo_Pl2+iPlInfo_Flags0
+	set  PF0B_CPU, [hl]
+.ret:
+	ret
+
+OptionHack_Bank1E_Start:
+; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
+; A and E are preserved for the common current/pending damage setters.
+Play_Pl_ScaleSuperCancelDamageD_Banked:
+	push af
+		ld   hl, iPlInfo_SuperCancelFlags
+		add  hl, bc
+		bit  PSCB_DAMAGE_ACTIVE, [hl]
+		jr   z, .done
+		ld   a, d
+		or   a
+		jr   z, .done
+		ld   d, $00
+.divide:
+		sub  $03
+		jr   c, .minimum
+		inc  d
+		jr   .divide
+.minimum:
+		ld   a, d
+		or   a
+		jr   nz, .done
+		inc  d
+.done:
+	pop  af
+	ret
+OptionHack_Bank1E_End:
 	
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunk "L1E7F62"
+	mIncJunkFrom "L1E7F62", $36+(OptionHack_Bank1E_End-OptionHack_Bank1E_Start)

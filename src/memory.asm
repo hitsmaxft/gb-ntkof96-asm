@@ -143,7 +143,7 @@ wRoundTotal                 :db ; EQU $C164 ; Total number of rounds played sinc
 wJoyActivePl                :db ; EQU $C165 ; Determines the active player side in 1P modes. (PL*)
 wStageId                    :db ; EQU $C166 ; Stage ID. Determines music, backdrop and palette.
 wRoundNum                   :db ; EQU $C167 ; Round number in a stage
-ds 1
+wTrainingMode               :db ; EQU $C168 ; If set, enables training-mode battle rules.
 wRoundTime                  :db ; EQU $C169 ; Round timer
 wRoundTimeSub               :db ; EQU $C16A ; Round subsecond timer
 

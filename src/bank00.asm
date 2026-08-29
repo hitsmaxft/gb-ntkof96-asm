@@ -16748,9 +16748,18 @@ MoveInputS_CheckEasyMoveTapKeys:
 	inc  a
 	jr   z, .none
 	dec  a
-	jr   nz, .held
+	jr   z, .startRoute
+
+	; SELECT defaults to route A, but B may be pressed a few frames later.
+	; Both player structs are page-aligned, so keep H and switch only the field offset.
+	ld   l, iPlInfo_JoyNewKeys
+	bit  KEYB_B, [hl]
+	ld   l, iPlInfo_EasyMoveSelectState
+	jr   z, .held
+	ld   [hl], $16 ; Switch to SELECT+B and restart its six-frame hold timer.
 
 	; Explicit SELECT+B/A has priority over the directional shortcuts.
+.startRoute:
 	push hl
 		ld   hl, iPlInfo_JoyKeys
 		add  hl, bc
@@ -16874,27 +16883,15 @@ Play_Pl_ScaleSuperCancelPendingDamage:
 ; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
 ; A and E are preserved for the common current/pending damage setters.
 Play_Pl_ScaleSuperCancelDamageD:
+	ldh  a, [hROMBank]
 	push af
-		ld   hl, iPlInfo_SuperCancelFlags
-		add  hl, bc
-		bit  PSCB_DAMAGE_ACTIVE, [hl]
-		jr   z, .done
-		ld   a, d
-		or   a
-		jr   z, .done
-		ld   d, $00
-.divide:
-		sub  $03
-		jr   c, .minimum
-		inc  d
-		jr   .divide
-.minimum:
-		ld   a, d
-		or   a
-		jr   nz, .done
-		inc  d
-.done:
+	ld   a, BANK(Play_Pl_ScaleSuperCancelDamageD_Banked)
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	call Play_Pl_ScaleSuperCancelDamageD_Banked
 	pop  af
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
 	ret
 
 OptionHack_Bank00_End:
