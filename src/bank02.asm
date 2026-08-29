@@ -201,16 +201,26 @@ MoveC_Base_HopB:
 ; Gravity is always applied every time.
 ;
 ; --------------- frame #0 ---------------
-.initJump:
+	.initJump:
 	; Initialize the jump speed the first time we get here.
 	; From the next, only perform the check to switch to the next frame.
 	mMvC_ValFrameStartFast .waitUp	; If not, jump
 	
-		; 95 checked the jump direction here, going off the the move ID (MOVE_SHARED_HOP_F / MOVE_SHARED_HOP_B).
-		; The forwards hop is gone from this game, so the direction is hardcoded.
-	
-		; Set jump left 3px/frame
-		mMvC_SetSpeedH -$0300				
+		; SYSTEM 95 reuses this slot for both forward and backward hops.
+		; The held relative direction distinguishes F+F from B+B.
+		ld   hl, iPlInfo_BattleSystem
+		add  hl, bc
+		bit  BATTLESYSB_95, [hl]
+		jr   z, .initJumpB
+		call Play_Pl_GetDirKeys_ByXFlipR
+		bit  KEYB_RIGHT, a
+		jr   z, .initJumpB
+	.initJumpF:
+		mMvC_SetSpeedH +$0400
+		jr   .initJumpV
+	.initJumpB:
+		mMvC_SetSpeedH -$0300
+	.initJumpV:
 		; Set jump up 3px/frame 
 		mMvC_SetSpeedV -$0300
 		; Already start applying gravity, which will cause OBJLstS_ReqAnimOnGtYSpeed to immediately
@@ -457,6 +467,12 @@ MoveC_Base_NormH:
 ; =============== MoveC_Base_Roll ===============
 ; Custom code for rolling. (MOVE_SHARED_ROLL_F, MOVE_SHARED_ROLL_B)
 MoveC_Base_Roll:
+	; SYSTEM 95 uses the forward-roll animation slot as a stationary dodge.
+	ld   hl, iPlInfo_BattleSystem
+	add  hl, bc
+	bit  BATTLESYSB_95, [hl]
+	jp   nz, .dodge95
+
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
 	
@@ -467,6 +483,33 @@ MoveC_Base_Roll:
 		mMvC_ChkFrame $04, .obj4	; Recovery/end
 	; Just continue moving in frames #1 & #2
 	jp   .move
+
+.dodge95:
+	call Play_Pl_MoveByColiBoxOverlapX
+	mMvC_ValLoaded .ret
+
+	; A new A/B press during the dodge starts its counterattack. KOF96 has no
+	; dedicated dodge-counter slot, so use the universal ground A+B attack.
+	call Play_Pl_AddToJoyBufKeysLH
+	jr   c, .dodgeCounter
+
+	; Stay stationary while sharing the roll animation's recovery/end frames.
+	mMvC_StartChkFrame
+		mMvC_ChkFrame $03, .obj3
+		mMvC_ChkFrame $04, .obj4
+	jp   .anim
+
+.dodgeCounter:
+	ld   hl, iPlInfo_Flags1
+	add  hl, bc
+	res  PF1B_INVULN, [hl]
+	inc  hl
+	res  PF2B_NOHURTBOX, [hl]
+	res  PF2B_NOCOLIBOX, [hl]
+	ld   a, MOVE_SHARED_ATTACK_G
+	call Pl_SetMove_StopSpeed
+	mMvC_PlaySound SFX_HEAVY
+	jp   .ret
 	
 ; --------------- frame #0 ---------------
 .obj0:
@@ -9851,7 +9894,8 @@ ENDC
 ; Junk area below.
 ; Contains duplicate move code.
 IF !REV_VER_2
-	mIncJunkFrom "L027EBF", $5F
+	; SYSTEM 95 hop/dodge compatibility consumes $58 bytes of this junk tail.
+	mIncJunkFrom "L027EBF", $B7
 ELSE
-	mIncJunk "L027F70"
+	mIncJunkFrom "L027F70", $58
 ENDC

@@ -245,6 +245,12 @@ DEF TASK_EXEC_NEW  EQU $08 ; Never executed before. Likely init code which will 
 
 DEF PLINFO_SIZE EQU $100
 
+; Selectable universal battle systems. Character version and battle system are
+; intentionally independent: either version of a fighter may use either system.
+DEF BATTLESYS_96  EQU $00
+DEF BATTLESYS_95  EQU $01
+DEF BATTLESYSB_95 EQU 0
+
 ; Note that there isn't a single flag marking if we got hit and damaged.
 ; A combination of at least one of these is checked:
 ; PCFB_HIT -> opponent collided with our hitbox (the move can still whiff)

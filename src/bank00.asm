@@ -11975,7 +11975,6 @@ Play_Pl_DoBasicMoveInput:
 		; This is new to 96, originally it went straight to BasicInput_ChkBaseInput.
 		;
 		BasicInput_ChkAirBlock:
-
 			; Check if we're moving backwards.
 			; Moving backwards uses different keys depending on the side we're in.
 
@@ -12280,8 +12279,8 @@ Play_Pl_DoBasicMoveInput:
 		; Checks for moves triggered by pressing forwards.
 		;
 		BasicInput_ChkWalkForward:
-			; F+F -> Run forwards
-			mMvIn_ChkDirStrict MoveInput_FF, BasicInput_StartRun
+			; F+F -> SYSTEM 95 forward hop / SYSTEM 96 forward run
+			mMvIn_ChkDirStrict MoveInput_FF, BasicInput_StartForwardDash
 			; Fall-through
 
 		;
@@ -12488,16 +12487,23 @@ Play_Pl_DoBasicMoveInput:
 		BasicInput_ChkHeavyB:
 			call Play_Pl_AreBothBtnHeld				; Holding A+B?
 			jp   nc, BasicInput_StartHeavyPunch		; If not, skip
+			; Fall-through to shared A+B system action handling.
 
-			; PK -> Heavy Attack
+		BasicInput_ChkEvadeAction:
+			; SYSTEM 95: A+B always starts a stationary dodge. The forward
+			; roll slot is reused, with MoveC_Base_Roll selecting dodge logic.
+			ld   hl, iPlInfo_BattleSystem
+			add  hl, bc
+			bit  BATTLESYSB_95, [hl]
+			jp   nz, BasicInput_StartRollForward
+
+			; SYSTEM 96: neutral A+B is the heavy attack; a held horizontal
+			; direction selects the forward or backward roll.
 			call Play_Pl_GetDirKeys_ByXFlipR		; Holding any d-pad key?
 			jp   nc, BasicInput_StartHeavyAttack	; If not, jump
-			; These are relative to the 1P side, so...
-			; F+PK -> Roll forwards
 			bit  KEYB_RIGHT, a						; Holding forwards?
 			jp   nz, BasicInput_StartRollForward	; If so, jump
-			; B+PK -> Roll backwards
-			jp   BasicInput_StartRollBackward		; Otherwise, assume holding backwards
+			jp   BasicInput_StartRollBackward
 
 		;
 		; Starts a standing heavy punch.
@@ -12546,16 +12552,7 @@ Play_Pl_DoBasicMoveInput:
 		BasicInput_ChkHeavyA:
 			call Play_Pl_AreBothBtnHeld				; Holding A+B?
 			jp   nc, BasicInput_StartHeavyKick		; If not, skip
-
-			; PK -> Heavy Attack
-			call Play_Pl_GetDirKeys_ByXFlipR		; Holding any d-pad key?
-			jp   nc, BasicInput_StartHeavyAttack	; If not, jump
-			; These are relative to the 1P side, so...
-			; F+PK -> Roll forwards
-			bit  KEYB_RIGHT, a						; Holding forwards?
-			jp   nz, BasicInput_StartRollForward	; If so, jump
-			; B+PK -> Roll backwards
-			jp   BasicInput_StartRollBackward		; Otherwise, assume holding backwards
+			jp   BasicInput_ChkEvadeAction
 
 		;
 		; Starts a standing heavy kick.
@@ -12753,6 +12750,13 @@ Play_Pl_DoBasicMoveInput:
 		;
 		; Starts a forwards run (dash forwards).
 		;
+		BasicInput_StartForwardDash:
+			ld   hl, iPlInfo_BattleSystem
+			add  hl, bc
+			bit  BATTLESYSB_95, [hl]
+			jp   nz, BasicInput_StartHopBack
+			; Fall-through
+
 		BasicInput_StartRun:
 			; It's possible to cancel the run into a special move, so...
 
