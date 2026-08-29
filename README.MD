@@ -29,6 +29,11 @@ artifact. It contains the `.gb` file and `SHA256SUMS`.
 
 ## Modified Japanese build
 
+The mixed-roster development branch uses an MBC5 cartridge header and a 1 MiB
+ROM image. Banks `$20-$3F` are reserved for imported character code, animation
+tables, sprite mappings, graphics, portraits, and expanded selection-screen
+assets.
+
 The Japanese configuration builds a gameplay-options edition with all hidden
 fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
 SUP CANCEL, TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original

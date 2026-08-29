@@ -229,8 +229,8 @@ IF REV_LOGO_EN == 0
 	db   $00			; DMG - classic gameboy
 	db   $41,$37		; new license
 	db   $03			; SGB flag: SGB capable
-	db   $01			; cart type: MBC1
-	db   $04			; ROM size: 512KiB
+	db   $19			; cart type: MBC5
+	db   $05			; ROM size: 1MiB
 	db   $00			; RAM size: 0KiB
 	db   $00			; destination code: Japanese
 	db   $33			; old license: SGB capable
@@ -242,8 +242,8 @@ ELSE
 	db   $45			; DMG - classic gameboy
 	db   $33,$38		; new license
 	db   $03			; SGB flag: SGB capable
-	db   $01			; cart type: MBC1
-	db   $04			; ROM size: 512KiB
+	db   $19			; cart type: MBC5
+	db   $05			; ROM size: 1MiB
 	db   $00			; RAM size: 0KiB
 	db   $01			; destination code: non-Japanese
 	db   $33			; old license: SGB capable
