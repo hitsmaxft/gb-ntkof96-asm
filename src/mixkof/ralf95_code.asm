@@ -152,6 +152,45 @@ MoveInputReader_Ralf_NoMove:
 MoveC_Ralf_VulcanPunch:
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
+	; Balance override: once a real (non-blocked) hit is confirmed, stop the
+	; repeated punch loop and play only the final recovery frame. A zero loop
+	; count marks that this transition already happened, preventing this check
+	; from resetting the recovery frame on every subsequent tick.
+	ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
+	add  hl, bc
+	ld   a, [hl]
+	or   a
+	jp   z, .chkFrame
+	; Do not use Play_Pl_IsMoveHit here: a normal launch immediately marks the
+	; victim invulnerable, which makes that helper hide the hit we need to see.
+	ld   hl, iPlInfo_ColiFlags
+	add  hl, bc
+	bit  PCFB_HITOTHER, [hl]
+	jp   z, .chkFrame
+	ld   hl, iPlInfo_Flags1Other
+	add  hl, bc
+	bit  PF1B_HITRECV, [hl]
+	jp   z, .chkFrame
+	bit  PF1B_GUARD, [hl]
+	jp   nz, .chkFrame ; Blocked hits do not end the move
+	; Mark hit recovery and disable both the current and queued hit data so the
+	; move cannot deal another hit while its recovery sprite is displayed.
+	ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
+	add  hl, bc
+	ld   [hl], $00
+	ld   hl, iPlInfo_MoveDamageVal
+	add  hl, bc
+	xor  a
+	ld   [hli], a ; iPlInfo_MoveDamageVal
+	ld   [hli], a ; iPlInfo_MoveDamageHitTypeId
+	ld   [hli], a ; iPlInfo_MoveDamageFlags3
+	ld   [hli], a ; iPlInfo_MoveDamageValNext
+	ld   [hli], a ; iPlInfo_MoveDamageHitTypeIdNext
+	ld   [hl], a  ; iPlInfo_MoveDamageFlags3Next
+	mMvC_SetFrame $03, $0C
+	jp   .ret
+
+.chkFrame:
 	; Depending on the visible frame...
 	mMvC_StartChkFrame
 		mMvC_ChkFrame $00, .init
@@ -163,8 +202,8 @@ MoveC_Ralf_VulcanPunch:
 	; At Max Power, the move lasts twice as long.
 	; Audited against the KOF95 bank19 code and original ROM runtime:
 	; normal=$08 loops (~161 whiff frames), MAX=$10 loops (~305 frames).
-	; Do not shorten the normal move or raise its per-contact damage in the
-	; KOF96 port; the values below are the authoritative KOF95 model.
+	; Those loop counts now apply only while the move whiffs or is blocked;
+	; a confirmed hit takes the recovery path above after its first contact.
 	mMvC_ValFrameEnd .anim
 		mMvC_SetAnimSpeed ANIMSPEED_INSTANT
 		mMvC_ChkMaxPow .initMaxPower
@@ -172,18 +211,20 @@ MoveC_Ralf_VulcanPunch:
 		ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
 		add  hl, bc
 		ld   [hl], $08
-		jp   .setDamage
+		jp   .setInitialDamage
 	.initMaxPower:
 		ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
 		add  hl, bc
 		ld   [hl], $10
-		jp   .setDamage
+		jp   .setInitialDamage
 ; --------------- frames #1-2 ---------------
 .damageLoop:
 	mMvC_ValFrameEnd .chkMove
-		; Deal damage at the end of the frame
+		; The hit data is armed only once during init. Re-arming it on every
+		; animation frame lets the heavy version land a second hit before the
+		; recovery transition can observe the first one.
 		mMvC_PlaySound SCT_GROUNDHIT
-		jp   .setDamage
+		jp   .chkMove
 ; --------------- frame #3 ---------------
 .chkEnd:
 	mMvC_ValFrameEnd .chkMove
@@ -191,26 +232,28 @@ MoveC_Ralf_VulcanPunch:
 		; Otherwise, end the move immediately.
 		ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
 		add  hl, bc
+		ld   a, [hl]
+		or   a
+		jp   z, .end ; Zero is the confirmed-hit recovery marker.
 		dec  [hl]
 		jp   z, .end
-		; When looping, deal damage at the end of the frame
+		; When whiffing or blocked, loop without re-arming another damage event.
 		mMvC_SetFrameOnEnd $01
-		jp   .setDamage
-; --------------- common damage / movement code ---------------
-.setDamage:
+		jp   .chkMove
+; --------------- initial damage / movement code ---------------
+.setInitialDamage:
 	;
-	; Deal damage to the opponent on contact, which causes a dropdown.
-	; The Max Power version is particularly nasty, as it's flagged with PF3_CONTHIT,
-	; alliowing juggles.
+	; Arm exactly one contact for this move. A confirmed hit clears these fields
+	; above and jumps to recovery, so neither normal nor MAX can multi-hit.
 	;
-	mMvC_ChkMaxPow .setDamageMaxPow
-.setDamageNorm:
+	mMvC_ChkMaxPow .setInitialDamageMaxPow
+.setInitialDamageNorm:
 	; KOF95 original: $08, launch-high, heavy+fire (no continuous juggle).
-	mMvC_SetDamageNext $08, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE
+	mMvC_SetDamage $08, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE
 	jp   .chkMove
-.setDamageMaxPow:
+.setInitialDamageMaxPow:
 	; KOF95 original: $02 per contact and CONTHIT only in MAX power.
-	mMvC_SetDamageNext $02, HITTYPE_LAUNCH_HIGH_UB, PF3_FIRE|PF3_CONTHIT
+	mMvC_SetDamage $02, HITTYPE_LAUNCH_HIGH_UB, PF3_FIRE|PF3_CONTHIT
 	jp   .chkMove
 .chkMove:
 	;

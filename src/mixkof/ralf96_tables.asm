@@ -36,8 +36,11 @@ MoveAnimTbl_Ralf96:
 	mMvAnDef OBJLstPtrTable_Ralf_PunchALI, $10, $01, $05, HITTYPE_HIT_MID0, PF3_OVERHEAD
 	mMvAnDef OBJLstPtrTable_Ralf_KickALI, $10, $01, $09, HITTYPE_HIT_MID0, PF3_OVERHEAD
 	mMvAnDef OBJLstPtrTable_Ralf_KickALI, $10, $01, $06, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_OVERHEAD
-	mMvAnDef OBJLstPtrTable_Ralf_VulcanPunchL, $0C, $01, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_FIRE
-	mMvAnDef OBJLstPtrTable_Ralf_VulcanPunchL, $0C, $01, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE|PF3_CONTHIT
+	; Vulcan Punch arms its single hit from MoveC_Ralf_VulcanPunch after the
+	; startup frame. Keep the table damage at zero so a close opponent cannot
+	; take the old initial $0A hit followed by the code's $08 hit.
+	mMvAnDef OBJLstPtrTable_Ralf_VulcanPunchL, $0C, $01, $00, HITTYPE_LAUNCH_HIGH_UB, PF3_FIRE
+	mMvAnDef OBJLstPtrTable_Ralf_VulcanPunchL, $0C, $01, $00, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE
 	mMvAnDef OBJLstPtrTable_Ralf_GatlingAttackL, $14, $02, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Ralf_GatlingAttackL, $14, $04, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Ralf_BackBreaker, $28, $0A, $04, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT

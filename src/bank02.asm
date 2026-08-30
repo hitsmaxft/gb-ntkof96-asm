@@ -2437,76 +2437,29 @@ HitTypeC_Hit_MultiGS:
 ; - DE: Ptr to respective wOBJInfo
 HitTypeS_MovePlToOpFront:
 
-	;##
-	;
-	; [TCRF] Leftover from 95.
-	;
-	; This is supposed to vertically shift the player position on each of Ryo's Zanretsuken hits.
-	; Handled by subtracting a field (set by the move code) to the player's position.
-	;
-	; There's a problem however -- while Ryo is still in the game, that move was altered to not
-	; shift the player's position and was given to Mr. Karate instead.
-	;
-	; This means the move ID value checked here is essentially broken, and happened to map to 
-	; Hien Shippu Kyaku, which doesn't even use this hit type (making .unused_ryo unreachable).
-	;
-
-	; Perform the character check
+	; KOF96's old Ryo branch here was unreachable: its checked moves do not use
+	; this hit type. Reuse that space for KOF95 Heidern's required spacing.
 	ld   hl, iPlInfo_CharIdOther
 	add  hl, bc
 	ld   a, [hl]
-	cp   CHAR_ID_RYO					; Opponent is RYO?
-	jp   z, .chkRyoMove					; If so, jump
-	jp   .norm							; Otherwise, skip
-.chkRyoMove:
-
-	;
-	; RYO
-	;
-	
-	; Perform the move check
+	cp   CHAR_ID_HEIDERN
+	jr   nz, .norm
 	ld   hl, iPlInfo_MoveIdOther
 	add  hl, bc
 	ld   a, [hl]
-	cp   MOVE_RYO_HIEN_SHIPPUU_KYAKU_L	; Got hit by the light version of Hien Shippu Kyaku?
-	jp   z, .unused_ryo					; If so, jump
-	cp   MOVE_RYO_HIEN_SHIPPUU_KYAKU_H	; Got hit by the heavy version of Hien Shippu Kyaku?
-	jp   z, .unused_ryo					; If so, jump
-	jp   .norm							; Otherwise, skip
-.unused_ryo:
-
-	; Y Position -> Snap to the ground, but offset by the opponent's iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	; iOBJInfo_Y = PL_FLOOR_POS - (opponent's)iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	
-	; Determine which player we're playing as, and read to A the opponent's iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	ld   hl, iPlInfo_PlId
-	add  hl, bc
-	bit  0, [hl]		; iPlInfo_PlId != PL1?
-	jp   nz, .ryo_pl2	; If so, jump
-.ryo_pl1:
-	ld   a, [wPlInfo_Pl2+iPlInfo_Ryo_HienShippuKyaku_Unused_83]	; Use 2P's value when we're 1P
-	jp   .ryo_setY
-.ryo_pl2:
-	ld   a, [wPlInfo_Pl1+iPlInfo_Ryo_HienShippuKyaku_Unused_83]	; Use 1P's value when we're 2P
-.ryo_setY:
-	; A = -A for subtraction
-	cpl  				
-	inc  a
-	; Add the base floor position
-	add  PL_FLOOR_POS
-	; Save the result to iOBJInfo_Y
-	ld   hl, iOBJInfo_Y
-	add  hl, de		; Seek to Y position
-	ld   [hl], a	; Save A here
-	
-	; X Position -> $18px in front of the opponent (like in .norm)
-	call HitTypeS_SyncPlXFromOtherX	; Sync to opponent X
-	ld   hl, -$1800 				; Move back $18px
+	cp   MOVE_HEIDERN_NECK_ROLLER_L
+	jr   z, .heidern
+	cp   MOVE_HEIDERN_NECK_ROLLER_H
+	jr   z, .heidern
+	cp   MOVE_HEIDERN_FINAL_BRINGER_S
+	jr   nz, .norm
+.heidern:
+	; Keep Y untouched and place the victim 3px in front, exactly as KOF95.
+	call HitTypeS_SyncPlXFromOtherX
+	ld   hl, -$0300
 	call Play_OBJLstS_MoveH_ByXDirR
-	jp   .ret
+	jr   .ret
 .norm:
-	;##
-
 	;
 	; DEFAULT
 	;

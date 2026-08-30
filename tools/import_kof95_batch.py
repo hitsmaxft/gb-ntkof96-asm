@@ -322,12 +322,15 @@ def render_idle_frame(slug: str, cls: str) -> bytes:
                     source_x = 7 - pixel_x if tile_xflip else pixel_x
                     colour = sprite[source_y][source_x]
                     if colour:
-                        # KOF95 standing frames are OBJ art. The order screen
-                        # displays the derived miniatures with its BG palette,
-                        # whose light and dark entries are the reverse of the
-                        # OBJ palette. Keep transparent pixels at colour 0 and
-                        # exchange only colour indices 1 and 3.
-                        canvas[(x + pixel_x, y + pixel_y)] = 4 - colour
+                        # KOF95's P1 battle OBJ palette is $8C, while KOF96's
+                        # order-select BG palette is $2D. Convert indices by
+                        # matching their displayed DMG shades rather than by
+                        # inverting raw 2bpp values:
+                        #   OBJ $8C: 1=black, 2=white, 3=dark gray
+                        #   BG  $2D: 1=black, 3=white, 2=dark gray
+                        # Index 0 remains transparent while composing layers.
+                        order_colour = (0, 1, 3, 2)[colour]
+                        canvas[(x + pixel_x, y + pixel_y)] = order_colour
 
     if not canvas:
         raise ValueError(f"empty idle frame for {cls}")

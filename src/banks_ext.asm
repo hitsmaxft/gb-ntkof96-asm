@@ -576,6 +576,14 @@ MixKOF_LoadProjectileGFX:
 	ld   a, h
 	or   l
 	jr   z, .restoreBank
+	; KOF95's projectile OBJ mappings start at relative tile $02. Keep the
+	; original two transparent leading tiles so the imported mappings address
+	; the same graphics they did in KOF95.
+	push hl
+		ld   hl, $0000
+		ld   b, $02
+		call FillGFX
+	pop  hl
 	ld   b, [hl]
 	inc  hl
 	call CopyTilesHBlank
