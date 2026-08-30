@@ -5202,7 +5202,7 @@ Play_EasyMove_ForceDirectionalHeavy_Banked:
 	ret
 
 ; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 F, 4 DF, 5 D,
-;          6 DB, 7 B, 8 completed DF+SELECT, 9 completed DB+SELECT.
+;          6 DB, 7 B, 8 completed FF+SELECT, 9 completed BB+SELECT.
 MoveInputS_CheckEasyMoveTapKeys_Banked:
 	ld   a, [wDipSwitch]
 	bit  DIPB_EASY_MOVES, a
@@ -5219,7 +5219,7 @@ MoveInputS_CheckEasyMoveTapKeys_Banked:
 	inc  a
 	jp   z, .none
 	dec  a
-	jr   nz, .held
+	jp   nz, .held
 
 	; Explicit neutral chords are actions, not strength-selecting specials.
 	push hl
@@ -5232,13 +5232,15 @@ MoveInputS_CheckEasyMoveTapKeys_Banked:
 		bit  0, d
 		jr   z, .noRoute
 
-		; A completed simplified motion takes priority over the held direction.
-		ld   hl, MoveInput_DF
-		call MoveInputS_ChkInputDir
-		jr   c, .superDF
-		ld   hl, MoveInput_DB
-		call MoveInputS_ChkInputDir
-		jr   c, .superDB
+		; FF/BB contain explicit neutral entries between taps, so they must use
+		; the strict matcher. The ordinary matcher intentionally skips short
+		; neutral entries and can never recognize these two input tables.
+		ld   hl, MoveInput_FF
+		call MoveInputS_ChkInputDirStrict
+		jr   c, .superFF
+		ld   hl, MoveInput_BB
+		call MoveInputS_ChkInputDirStrict
+		jr   c, .superBB
 
 		call Play_Pl_GetDirKeys_ByXFlipR
 		ld   d, a
@@ -5294,10 +5296,10 @@ MoveInputS_CheckEasyMoveTapKeys_Banked:
 .back:
 	ld   a, $76
 	jr   .storeRoute
-.superDF:
+.superFF:
 	ld   a, $86
 	jr   .storeRoute
-.superDB:
+.superBB:
 	ld   a, $96
 .storeRoute:
 	pop  hl
