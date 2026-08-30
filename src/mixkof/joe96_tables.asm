@@ -79,29 +79,6 @@ MoveAnimTbl_Joe96:
 	mMvAnDef OBJLstPtrTable_Joe_LaunchDBShake, $00, $3C, $00, $00, $00
 
 MoveCodePtrTbl_Joe96:
-	mMvCodeDef MoveC_Base_Idle
-	mMvCodeDef MoveC_Base_WalkH
-	mMvCodeDef MoveC_Base_WalkH
-	mMvCodeDef MoveC_Base_NoAnim
-	mMvCodeDef MoveC_Base_Jump, $02
-	mMvCodeDef MoveC_Base_Jump, $02
-	mMvCodeDef MoveC_Base_Jump, $02
-	mMvCodeDef MoveC_Base_NoAnim
-	mMvCodeDef MoveC_Base_NoAnim
-	mMvCodeDef MoveC_Base_NoAnim
-	mMvCodeDef MoveC_Base_HopB
-	mMvCodeDef MoveC_Base_HopB
-	mMvCodeDef MoveC_Base_ChargeMeter
-	mMvCodeDef MoveC_Base_NormH
-	mMvCodeDef MoveC_Base_Roll
-	mMvCodeDef MoveC_Base_Roll
-	mMvCodeDef MoveC_Base_WakeUp
-	mMvCodeDef MoveC_Base_Dizzy
-	mMvCodeDef MoveC_Base_RoundEnd
-	mMvCodeDef MoveC_Base_RoundEnd
-	mMvCodeDef MoveC_Base_RoundEnd
-	mMvCodeDef MoveC_Base_RoundStart
-	mMvCodeDef MoveC_Base_RoundStart
 	mMvCodeDef MoveC_Base_NormL
 	mMvCodeDef MoveC_Base_NormH
 	mMvCodeDef MoveC_Joe_KickLN
@@ -134,24 +111,3 @@ MoveCodePtrTbl_Joe96:
 	mMvCodeDef MoveC_Base_NormH
 	mMvCodeDef MoveC_Joe_ThrowG
 	mMvCodeDef MoveC_Base_Idle
-	mMvCodeDef MoveC_Hit_PostStunKnockback
-	mMvCodeDef MoveC_Hit_PostStunKnockback
-	mMvCodeDef MoveC_Hit_Launch_Generic
-	mMvCodeDef MoveC_Hit_PostStunKnockback
-	mMvCodeDef MoveC_Hit_PostStunKnockback
-	mMvCodeDef MoveC_Hit_PostStunKnockback
-	mMvCodeDef MoveC_Hit_Launch_Generic
-	mMvCodeDef MoveC_Hit_Launch_Shake
-	mMvCodeDef MoveC_Hit_Launch_Shake
-	mMvCodeDef MoveC_Hit_Launch_SwoopUp
-	mMvCodeDef MoveC_Hit_Sweep
-	mMvCodeDef MoveC_Hit_Launch_RecA
-	mMvCodeDef MoveC_Hit_MultiMidKnockback
-	mMvCodeDef MoveC_Hit_MultiMidKnockback
-	mMvCodeDef MoveC_Hit_Launch_Shake
-	mMvCodeDef MoveC_Hit_Launch_Shake
-	mMvCodeDef MoveC_Hit_Grab_Rot
-	mMvCodeDef MoveC_Hit_Grab_Rot
-	mMvCodeDef MoveC_Hit_Grab_Rot
-	mMvCodeDef MoveC_Hit_Grab_Rot
-	mMvCodeDef MoveC_Hit_Grab_Rot

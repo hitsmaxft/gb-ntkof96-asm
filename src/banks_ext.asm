@@ -8,6 +8,50 @@ MixKOF_CharSelPortraitSinglePage:
 MixKOF_CharSelPortraitVariants:
 	INCBIN "data/gfx/charsel_mix_variants.bin"
 
+; The original order-selection sheet contains only KOF96 fighters. Keep the
+; source art intact and use the first KOF95 standing frame as a 3x6-tile
+; miniature for each imported fighter.
+MixKOF_OrdSelCharIdleGFX:
+	INCBIN "data/gfx/ordsel_char_kof95.bin"
+
+; IN: C = imported CHAR_ID_* value, DE = VRAM destination
+MixKOF_LoadOrdSelCharGFX1P:
+	ld   a, c
+	cp   CHAR_ID_KIM
+	ret  c
+	ld   a, $01
+	jr   MixKOF_LoadOrdSelCharGFX
+MixKOF_LoadOrdSelCharGFX2P:
+	ld   a, c
+	cp   CHAR_ID_KIM
+	ret  c
+	xor  a
+MixKOF_LoadOrdSelCharGFX:
+	push af
+		ld   a, c
+		sub  CHAR_ID_KIM
+		srl  a
+		ld   hl, MixKOF_OrdSelCharIdleGFX
+		ld   bc, $0120
+.seek:
+		or   a
+		jr   z, .sourceReady
+		add  hl, bc
+		dec  a
+		jr   .seek
+.sourceReady:
+	pop  af
+	ld   b, $12
+	or   a
+	jr   z, .copyNormal
+	call CopyTilesHBlankFlipX
+	jr   .done
+.copyNormal:
+	call CopyTiles
+.done:
+	inc  b
+	ret
+
 ; Load 29 derived 16x24 portraits without touching the source artwork. The
 ; split is kept on a portrait boundary: 13 portraits fit below $9800 and the
 ; remaining 16 start at $8800. The original selector's UI tiles at $8EC0 and

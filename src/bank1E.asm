@@ -708,16 +708,14 @@ CharSel_DoMode1P:
 	ld   a, CHARSEL_1P
 	ld   [wCharSelCurPl], a
 	ld   a, [wCharSelP1CursorMode]
-	call CharSel_DoMode
-	ret
+	jp   CharSel_DoMode
 ; =============== CharSel_DoMode2P ===============	
 ; Handles the character select mode for Player 2.
 CharSel_DoMode2P:
 	ld   a, CHARSEL_2P
 	ld   [wCharSelCurPl], a
 	ld   a, [wCharSelP2CursorMode]
-	call CharSel_DoMode
-	ret
+	jp   CharSel_DoMode
 ; =============== CharSel_DoMode ===============
 ; IN
 ; - A: Mode ID
@@ -883,8 +881,7 @@ CharSel_Mode_Select:
 	bit  KEYB_B, a							; Pressed B?
 	jp   nz, CharSel_Select_DoCtrl_B		; If so, jump
 	
-	call CharSel_Select_DoCtrl_NoAction		; Why
-	ret
+	jp   CharSel_Select_DoCtrl_NoAction		; Why
 	
 ; =============== CharSel_Select_DoCtrl_Select ===============
 CharSel_Select_DoCtrl_Select:
@@ -904,8 +901,7 @@ CharSel_Select_DoCtrl_Select:
 CharSel_Select_DoCtrl_Start:
 	bit  KEYB_B, c					; Holding B as well?
 	jp   nz, .chkSetRandom			; If so, try enabling the random picker
-	call CharSel_StartPortraitFlip	; Otherwise, try flipping the tile
-	ret
+	jp   CharSel_StartPortraitFlip	; Otherwise, try flipping the tile
 .chkSetRandom:
 	;
 	; Do not enable the autopicker when playing through serial, otherwise things will desync.
@@ -953,8 +949,7 @@ CharSel_Select_DoCtrl_A:
 	ret
 ; =============== CharSel_Select_DoCtrl_B ===============		
 CharSel_Select_DoCtrl_B:
-	call CharSel_RemoveChar
-	ret
+	jp   CharSel_RemoveChar
 ; =============== CharSel_Select_DoCtrl_Down ===============
 CharSel_Select_DoCtrl_Down:
 	ld   b, BANK(MixKOF_CharSelMoveD)
@@ -987,8 +982,7 @@ CharSel_Select_DoCtrl_Right:
 ; =============== CharSel_PlayCursorMoveSFX ===============
 CharSel_PlayCursorMoveSFX:
 	ld   a, SFX_CURSORMOVE
-	call HomeCall_Sound_ReqPlayExId
-	ret
+	jp   HomeCall_Sound_ReqPlayExId
 	
 ; =============== CharSel_Select_DoCtrl_NoAction ===============
 ; Updates the cursor OBJInfo and redraws the character name every frame without player input.
@@ -1009,8 +1003,7 @@ CharSel_Select_DoCtrl_NoAction:
 	ld   de, wOBJInfo_Pl2+iOBJInfo_Status
 .refresh:
 	ld   a, [hl]
-	call CharSel_RefreshNameAndCursor
-	ret
+	jp   CharSel_RefreshNameAndCursor
 	
 ; =============== CharSel_RandomPick ===============
 ; Handles the automatic cursor picker.
@@ -4553,6 +4546,13 @@ OrdSel_Ctrl_MoveR_P2:
 ; -  C: Character ID * 2
 ; - DE: Destination ptr in VRAM
 OrdSel_LoadCharGFX1P:
+	; Bank $20 handles imported standing-frame miniatures and returns B=$01.
+	; Resident characters fall through to the original shared-sheet loader.
+	ld   b, BANK(MixKOF_LoadOrdSelCharGFX1P)
+	ld   hl, MixKOF_LoadOrdSelCharGFX1P
+	rst  $08
+	dec  b
+	ret  z
 	; Get "tilemap" ptr + length
 	call OrdSel_GetCharBGXPtr
 	
@@ -4573,6 +4573,11 @@ OrdSel_LoadCharGFX1P:
 ; =============== OrdSel_LoadCharGFX2P ===============
 ; Like OrdSel_LoadCharGFX1P, but the graphics aren't horizontally flipped.
 OrdSel_LoadCharGFX2P:
+	ld   b, BANK(MixKOF_LoadOrdSelCharGFX2P)
+	ld   hl, MixKOF_LoadOrdSelCharGFX2P
+	rst  $08
+	dec  b
+	ret  z
 	; Get "tilemap" ptr + length
 	call OrdSel_GetCharBGXPtr
 	
@@ -4754,14 +4759,7 @@ OrdSel_CharBGXPtrTable:
 	dw BGX_OrdSel_Char_OIori ; CHAR_ID_OIORI   
 	dw BGX_OrdSel_Char_OLeona ; CHAR_ID_OLEONA  
 	dw BGX_OrdSel_Char_OKagura ; CHAR_ID_KAGURA  
-	; Safe placeholder until the native KOF95 order-select miniature is converted
-	; to KOF96's shared compressed sheet format.
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_KIM
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_BENIMARU
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_YURI
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_JOE
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_HEIDERN
-	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_RALF
+	; Imported fighters are intercepted by OrdSel_LoadCharGFX*P before lookup.
 
 GFXLZ_OrdSel_BG: INCBIN "data/gfx/ordsel_bg.lzc"
 BGLZ_OrdSel_Main: INCBIN "data/bg/ordsel_main.lzs"

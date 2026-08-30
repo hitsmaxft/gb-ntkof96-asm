@@ -127,6 +127,21 @@ TAIL = [
     "MOVE_SHARED_GRAB_FG_NOSYNC", "MOVE_SHARED_GRAB_UB_SYNC",
 ]
 
+ORDER_SELECT_FIGHTERS = [
+    ("kim", "Kim"),
+    ("benimaru", "Benimaru"),
+    ("yuri", "Yuri"),
+    ("joe", "Joe"),
+    ("heidern", "Heidern"),
+    ("ralf", "Ralf"),
+]
+
+OBJ_FLAG_VALUES = {
+    "OLF_USETILEFLAGS": 0x10,
+    "OLF_XFLIP": 0x20,
+    "OLF_YFLIP": 0x40,
+}
+
 
 def table_rows(text: str, label: str, macro: str) -> dict[str, str]:
     start = text.index(label + ":")
@@ -169,9 +184,172 @@ def emit_table(cls: str, cfg: dict[str, object]) -> str:
     for key in keys:
         out.append("\t" + anim[key].lstrip() if key and key in anim else fallback_anim(cls))
     out += ["", f"MoveCodePtrTbl_{cls}96:"]
-    for key in keys:
+    # KOF96 handles $00-$2E and $70+ through shared resident code. Its
+    # character-specific code table therefore starts at MOVE_SHARED_PUNCH_L
+    # ($30), unlike KOF95's full table. Emitting the animation prefix here made
+    # every normal attack execute the wrong routine (Yuri's punch ran Idle).
+    code_keys = COMMON[23:] + special_slots + super_slots + TAIL[:2]
+    if len(code_keys) != 32:
+        raise AssertionError((cls, len(code_keys)))
+    for key in code_keys:
         out.append("\t" + code[key].lstrip() if key and key in code else fallback_code())
     return "\n".join(out) + "\n"
+
+
+def parse_asm_value(value: str) -> int:
+    """Parse the small constant expressions used by imported OBJ headers."""
+    result = 0
+    for part in value.strip().split("|"):
+        part = part.strip()
+        if part.startswith("$"):
+            result |= int(part[1:], 16)
+        elif part.isdecimal():
+            result |= int(part)
+        elif part in OBJ_FLAG_VALUES:
+            result |= OBJ_FLAG_VALUES[part]
+        else:
+            raise ValueError(f"unsupported OBJ value: {value}")
+    return result
+
+
+def signed_byte(value: int) -> int:
+    return value - 0x100 if value & 0x80 else value
+
+
+def decode_tile(gfx: bytes, tile_id: int) -> list[list[int]]:
+    start = tile_id * 0x10
+    raw = gfx[start : start + 0x10]
+    if len(raw) != 0x10:
+        raise ValueError(f"tile ${tile_id:02X} exceeds {len(gfx)}-byte GFX block")
+    pixels: list[list[int]] = []
+    for row in range(8):
+        lo, hi = raw[row * 2 : row * 2 + 2]
+        pixels.append([
+            ((lo >> (7 - column)) & 1) | (((hi >> (7 - column)) & 1) << 1)
+            for column in range(8)
+        ])
+    return pixels
+
+
+def load_gfx_declarations(slug: str) -> dict[str, bytes]:
+    declarations: dict[str, bytes] = {}
+    for asm_path in sorted((ROOT / "src/mixkof").glob(f"{slug}95_gfx*.asm")):
+        for label, relative_path in re.findall(
+            r'^(GFX_Char_[A-Za-z0-9_]+): INCBIN "([^"]+)"$',
+            asm_path.read_text(),
+            re.MULTILINE,
+        ):
+            declarations[label] = (ROOT / relative_path).read_bytes()
+    return declarations
+
+
+def render_idle_frame(slug: str, cls: str) -> bytes:
+    """Flatten the first standing frame into KOF96's 3x6 order-select shape."""
+    obj_text = (ROOT / f"src/mixkof/{slug}95_objlst.asm").read_text()
+    first_frame = re.search(
+        rf"^OBJLstPtrTable_{cls}_Idle:\s*\n\s*dw ([^\n]+)",
+        obj_text,
+        re.MULTILINE,
+    )
+    if not first_frame:
+        raise ValueError(f"missing first idle frame for {cls}")
+    headers = re.findall(r"OBJLstHdr[AB]_[A-Za-z0-9_]+", first_frame.group(1))
+    gfx_by_label = load_gfx_declarations(slug)
+    canvas: dict[tuple[int, int], int] = {}
+
+    for header in headers:
+        section_match = re.search(
+            rf"^{re.escape(header)}:\n(.*?)(?=^[A-Za-z_][A-Za-z0-9_]*:|\Z)",
+            obj_text,
+            re.MULTILINE | re.DOTALL,
+        )
+        if not section_match:
+            raise ValueError(f"missing OBJ header {header}")
+        section = section_match.group(1)
+        flags_match = re.search(r"db ([^;]+) ; iOBJLstHdrA_Flags", section)
+        gfx_match = re.search(r"dpr (GFX_Char_[A-Za-z0-9_]+)", section)
+        x_match = re.search(r"db ([^;]+) ; iOBJLstHdrA_XOffset", section)
+        y_match = re.search(r"db ([^;]+) ; iOBJLstHdrA_YOffset", section)
+        data_match = re.search(r"^\.bin:\n(.*)", section, re.MULTILINE | re.DOTALL)
+        if not all((flags_match, gfx_match, x_match, y_match, data_match)):
+            raise ValueError(f"incomplete OBJ header {header}")
+
+        flags = parse_asm_value(flags_match.group(1))
+        gfx_label = gfx_match.group(1)
+        gfx = gfx_by_label[gfx_label]
+        x_offset = signed_byte(parse_asm_value(x_match.group(1)))
+        y_offset = signed_byte(parse_asm_value(y_match.group(1)))
+        objects = re.findall(
+            r"^\s*db \$([0-9A-Fa-f]{2}),\$([0-9A-Fa-f]{2}),\$([0-9A-Fa-f]{2})",
+            data_match.group(1),
+            re.MULTILINE,
+        )
+
+        for raw_y, raw_x, raw_tile in objects:
+            y = signed_byte(int(raw_y, 16)) + y_offset
+            x = signed_byte(int(raw_x, 16)) + x_offset
+            tile_and_flags = int(raw_tile, 16)
+            tile_xflip = bool(flags & 0x20)
+            tile_yflip = bool(flags & 0x40)
+            if flags & 0x10:
+                tile_xflip ^= bool(tile_and_flags & 0x40)
+                tile_yflip ^= bool(tile_and_flags & 0x80)
+                tile_and_flags &= 0x3F
+            if flags & 0x20:
+                x = -x - 8
+            if flags & 0x40:
+                y = -y - 16
+
+            sprite = decode_tile(gfx, tile_and_flags) + decode_tile(gfx, tile_and_flags + 1)
+            for pixel_y in range(16):
+                source_y = 15 - pixel_y if tile_yflip else pixel_y
+                for pixel_x in range(8):
+                    source_x = 7 - pixel_x if tile_xflip else pixel_x
+                    colour = sprite[source_y][source_x]
+                    if colour:
+                        canvas[(x + pixel_x, y + pixel_y)] = colour
+
+    if not canvas:
+        raise ValueError(f"empty idle frame for {cls}")
+    min_x = min(x for x, _ in canvas)
+    max_x = max(x for x, _ in canvas)
+    min_y = min(y for _, y in canvas)
+    max_y = max(y for _, y in canvas)
+    width = max_x - min_x + 1
+    height = max_y - min_y + 1
+    x_shift = (24 - width) // 2 - min_x
+    y_shift = 48 - height - min_y
+
+    fitted = [[0] * 24 for _ in range(48)]
+    for (x, y), colour in canvas.items():
+        output_x = x + x_shift
+        output_y = y + y_shift
+        if 0 <= output_x < 24 and 0 <= output_y < 48:
+            fitted[output_y][output_x] = colour
+
+    encoded = bytearray()
+    for tile_y in range(6):
+        for tile_x in range(3):
+            for row in range(8):
+                lo = 0
+                hi = 0
+                for column in range(8):
+                    colour = fitted[tile_y * 8 + row][tile_x * 8 + column]
+                    bit = 7 - column
+                    lo |= (colour & 1) << bit
+                    hi |= ((colour >> 1) & 1) << bit
+                encoded.extend((lo, hi))
+    if len(encoded) != 0x120:
+        raise AssertionError((cls, len(encoded)))
+    return bytes(encoded)
+
+
+def build_order_select_idle_sheet() -> None:
+    sheet = b"".join(render_idle_frame(slug, cls) for slug, cls in ORDER_SELECT_FIGHTERS)
+    if len(sheet) != len(ORDER_SELECT_FIGHTERS) * 0x120:
+        raise AssertionError(len(sheet))
+    (ROOT / "data/gfx/ordsel_char_kof95.bin").write_bytes(sheet)
+    print(f"Built KOF95 order-select idle sheet: {len(sheet)} bytes")
 
 
 def adapt_code(cls: str, cfg: dict[str, object]) -> str:
@@ -326,6 +504,7 @@ def main() -> None:
         print(f"Imported {cls}: {len(files)} frames, gfx banks {chunk_sizes}")
 
     (ROOT / "data/gfx/char_icons_mix.bin").write_bytes(icons)
+    build_order_select_idle_sheet()
 
 
 if __name__ == "__main__":
