@@ -20,7 +20,6 @@ FIGHTERS = {
         "code_bank": "bank02.asm",
         "code_start": "MoveC_Benimaru_ThrowG:",
         "code_end": "; =============== MoveC_Ryo_ThrowG",
-        "projectile_start": "; =============== ProjC_Benimaru_DespawnThunderBall",
         "specials": [
             "MOVE_BENIMARU_RAIJINKEN_L", "MOVE_BENIMARU_RAIJINKEN_H",
             "MOVE_BENIMARU_SHINKUU_KATATE_GOMA_L", "MOVE_BENIMARU_SHINKUU_KATATE_GOMA_H",
@@ -36,7 +35,6 @@ FIGHTERS = {
         "code_bank": "bank02.asm",
         "code_start": "MoveC_Yuri_ThrowG:",
         "code_end": "; =============== MoveC_Kim_ThrowG",
-        "projectile_start": "; =============== ProjInit_Yuri_RaiOhKen",
         "specials": [
             "MOVE_YURI_KO_OU_KEN_L", "MOVE_YURI_KO_OU_KEN_H",
             "MOVE_YURI_SAI_HA_L", "MOVE_YURI_SAI_HA_H",
@@ -54,7 +52,6 @@ FIGHTERS = {
         "code_bank": "bank05.asm",
         "code_start": "MoveC_Joe_ThrowG:",
         "code_end": "; =============== END OF BANK",
-        "projectile_start": "; =============== ProjInit_Joe_HurricaneUpper",
         "specials": [
             "MOVE_JOE_HURRICANE_UPPER_L", "MOVE_JOE_HURRICANE_UPPER_H",
             "MOVE_JOE_SLASH_KICK_L", "MOVE_JOE_SLASH_KICK_H",
@@ -71,7 +68,6 @@ FIGHTERS = {
         "code_bank": "bank18.asm",
         "code_start": "MoveC_Heidern_ThrowG:",
         "code_end": "; =============== START OF MODULE Win/Cutscene",
-        "projectile_start": "; =============== ProjInit_Heidern_CrossCutter",
         "specials": [
             "MOVE_HEIDERN_CROSS_CUTTER_L", "MOVE_HEIDERN_CROSS_CUTTER_H",
             "MOVE_HEIDERN_NECK_ROLLER_L", "MOVE_HEIDERN_NECK_ROLLER_H",
@@ -134,6 +130,24 @@ ORDER_SELECT_FIGHTERS = [
     ("joe", "Joe"),
     ("heidern", "Heidern"),
     ("ralf", "Ralf"),
+]
+
+PROJECTILE_FIGHTERS = {
+    "benimaru": "benimaru.bin",
+    "yuri": "yuri.bin",
+    "joe": "joe.bin",
+    "heidern": "heidern.bin",
+}
+
+PROJECTILE_OBJ_TABLES = [
+    "OBJLstPtrTable_Proj_Benimaru_ThunderBall",
+    "OBJLstPtrTable_Proj_Ryo_KoOuKenG",
+    "OBJLstPtrTable_Proj_Ryo_HaohShoukouKen",
+    "OBJLstPtrTable_Proj_Ryo_KoOuKenA",
+    "OBJLstPtrTable_Proj_Yuri_RaiOhKen",
+    "OBJLstPtrTable_Proj_Joe_HurricaneUpper",
+    "OBJLstPtrTable_Proj_Joe_ScrewUpper",
+    "OBJLstPtrTable_Proj_Heidern_CrossCutter",
 ]
 
 OBJ_FLAG_VALUES = {
@@ -307,7 +321,12 @@ def render_idle_frame(slug: str, cls: str) -> bytes:
                     source_x = 7 - pixel_x if tile_xflip else pixel_x
                     colour = sprite[source_y][source_x]
                     if colour:
-                        canvas[(x + pixel_x, y + pixel_y)] = colour
+                        # KOF95 standing frames are OBJ art. The order screen
+                        # displays the derived miniatures with its BG palette,
+                        # whose light and dark entries are the reverse of the
+                        # OBJ palette. Keep transparent pixels at colour 0 and
+                        # exchange only colour indices 1 and 3.
+                        canvas[(x + pixel_x, y + pixel_y)] = 4 - colour
 
     if not canvas:
         raise ValueError(f"empty idle frame for {cls}")
@@ -352,16 +371,63 @@ def build_order_select_idle_sheet() -> None:
     print(f"Built KOF95 order-select idle sheet: {len(sheet)} bytes")
 
 
+def build_projectile_assets() -> None:
+    """Copy KOF95 projectile tiles and emit the required OBJ mapping closure."""
+    output = ROOT / "data/gfx/proj/kof95"
+    output.mkdir(parents=True, exist_ok=True)
+    for filename in PROJECTILE_FIGHTERS.values():
+        shutil.copyfile(VENDOR / "data/gfx/proj" / filename, output / filename)
+
+    source = (VENDOR / "data/objlst/proj.asm").read_text()
+    matches = list(re.finditer(r"(?m)^([A-Za-z_][A-Za-z0-9_]*):", source))
+    blocks: dict[str, str] = {}
+    order: list[str] = []
+    for index, match in enumerate(matches):
+        label = match.group(1)
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(source)
+        blocks[label] = source[match.start() : end]
+        order.append(label)
+
+    required = set(PROJECTILE_OBJ_TABLES)
+    pending = list(PROJECTILE_OBJ_TABLES)
+    while pending:
+        label = pending.pop()
+        if label not in blocks:
+            raise ValueError(f"missing projectile OBJ block {label}")
+        for dependency in re.findall(r"\bOBJLst(?:PtrTable|Hdr[AB])_[A-Za-z0-9_]+", blocks[label]):
+            if dependency in blocks and dependency not in required:
+                required.add(dependency)
+                pending.append(dependency)
+
+    obj = "\n".join(blocks[label].rstrip() for label in order if label in required) + "\n"
+    obj = re.sub(
+        r"(?m)^(\s*)db (.+?) ; iOBJLstHdrA_YOffset$",
+        r"\1db $00 ; iOBJLstHdrA_XOffset\n\1db \2 ; iOBJLstHdrA_YOffset",
+        obj,
+    )
+    (ROOT / "src/mixkof/kof95_projectiles.asm").write_text(
+        f"; Generated from Kak2X/kof95 commit {EXPECTED_VENDOR_COMMIT}\n" + obj
+    )
+    print(f"Imported KOF95 projectile mappings: {len(required)} blocks")
+
+
 def adapt_code(cls: str, cfg: dict[str, object]) -> str:
     source = (VENDOR / "src" / str(cfg["code_bank"])).read_text()
     start = source.index(str(cfg["code_start"]))
     end = source.index(str(cfg["code_end"]), start)
     code = source[start:end]
-    projectile_start = cfg.get("projectile_start")
-    if projectile_start:
-        projectile = code.find(str(projectile_start))
-        if projectile >= 0:
-            code = code[:projectile]
+    if cls == "Yuri":
+        # Yuri shares Ryo's ground Ko Ou Ken and Haoh Shoukou Ken projectile
+        # initializers in KOF95. They live before Yuri's source block, so bring
+        # those two routines along with her own Rai Oh Ken implementation.
+        shared_source = (VENDOR / "src/bank02.asm").read_text()
+        for extra_start, extra_end in (
+            ("ProjInit_Ryo_KoOuKenG:", "; =============== ProjInit_Ryo_KoOuKenA"),
+            ("ProjInit_Ryo_HaohShoukouKen:", "; =============== ProjC_Ryo_KoOuKenA"),
+        ):
+            block_start = shared_source.index(extra_start)
+            block_end = shared_source.index(extra_end, block_start)
+            code += "\n" + shared_source[block_start:block_end]
     code = re.sub(
         rf"mMvIn_Validate {cls}, [0-9]+",
         f"mMvIn_Validate {cls}\n.chkAir:\n\tjp   MoveInputReader_{cls}_NoMove",
@@ -378,6 +444,9 @@ def adapt_code(cls: str, cfg: dict[str, object]) -> str:
     code = code.replace("MoveInput_FBFDB", "MoveInput_FDBFDB")
     code = code.replace("PCF_PUSHED|PCF_PUSHEDOTHER", "(1<<PCFB_PUSHED)|(1<<PCFB_PUSHEDOTHER)")
     code = code.replace("MOVE_SHARED_DODGE", "MOVE_SHARED_ROLL_F")
+    code = code.replace("iOBJInfo_Proj_ThunderBall_Despawn", "iOBJInfo_Custom+$08")
+    code = code.replace("PROJ_TB_VISIBLE", "$00")
+    code = code.replace("PROJ_TB_DESPAWN", "$FF")
     code = re.sub(
         r"(?m)^\s*mMvIn_ValSkipWithChar CHAR_ID_RUGAL, \.rugalEnd\s*$",
         "\t\t; Joe-only import: the shared Rugal throw exit is unreachable.",
@@ -394,14 +463,36 @@ def adapt_code(cls: str, cfg: dict[str, object]) -> str:
         code,
     )
     code = re.sub(r"mMvC_ValHit (\.[A-Za-z0-9_]+)(\s*;[^\n]*)?$", r"mMvC_ValHit \1, \1\2", code, flags=re.MULTILINE)
-    code = re.sub(
-        rf"(?m)^\s*call (?:(?:ProjInit|ProjC)_{cls}|ProjInit_Ryo)_[A-Za-z0-9_]+\s*$",
-        "\t; KOF95 projectile visual omitted during the first compatibility pass.",
-        code,
-    )
+    # KOF96 reserves $8A60 (tile $A6) for player 2 projectiles; KOF95 used
+    # $8A40 (tile $A4). Keep every imported initializer consistent with the
+    # KOF96 round loader and OBJInfo defaults.
+    code = code.replace("$A4\t; Graphics from $8A40", "$A6\t; Graphics from $8A60")
+    code = code.replace("$A4\t\t; Graphics from $8A40", "$A6\t\t; Graphics from $8A60")
     compat_inputs = ""
     if cls == "Heidern":
         code = code.replace("MoveInput_BDU_Charge", "MoveInput_Heidern_BDU_Charge95")
+        # In KOF95 Heidern and HitTypeS_SyncPlPosFromOtherPos both live in
+        # bank $02. The imported move code lives in its own expansion bank, so
+        # retaining the near call jumps to the same address in the wrong bank
+        # as soon as Neck Roller connects. Inline the small helper while BC
+        # still points at the active player's wPlInfo.
+        code = code.replace(
+            "\t\tcall HitTypeS_SyncPlPosFromOtherPos",
+            """\t\tpush bc
+\t\t\tld   hl, iPlInfo_OBJInfoXOther
+\t\t\tadd  hl, bc
+\t\t\tpush hl
+\t\t\tpop  bc
+\t\t\tld   hl, iOBJInfo_X
+\t\t\tadd  hl, de
+\t\t\tld   a, [bc]
+\t\t\tinc  bc
+\t\t\tldi  [hl], a
+\t\t\tinc  hl
+\t\t\tld   a, [bc]
+\t\t\tld   [hl], a
+\t\tpop  bc""",
+        )
         compat_inputs = """MoveInput_Heidern_BDU_Charge95:
 \tdb $03
 \tdb KEY_UP, KEY_UP, $01, $14
@@ -434,6 +525,7 @@ def main() -> None:
 
     generated = ROOT / "src/mixkof"
     generated.mkdir(parents=True, exist_ok=True)
+    build_projectile_assets()
     icons = bytearray((ROOT / "data/gfx/char_icons_mix.bin").read_bytes()[: 21 * 0x40])
     icons95 = (VENDOR / "data/gfx/char_icons.bin").read_bytes()
 

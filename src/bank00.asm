@@ -7100,6 +7100,12 @@ Play_LoadProjectileOBJInfo:
 ; -  A: Character ID
 ; - DE: Ptr to GFX destination in VRAM
 Play_LoadProjectileGFXFromDef:
+	ld   b, BANK(MixKOF_LoadProjectileGFX)
+	ld   hl, MixKOF_LoadProjectileGFX
+	jp   $0000
+.residentFromMix:
+	ld   a, c
+.resident:
 
 	;
 	; Determine which tiles to copy from the buffer through the "ProjGFXDef" structure
@@ -16889,15 +16895,11 @@ Play_Pl_ScaleSuperCancelPendingDamage:
 ; A and E are preserved for the common current/pending damage setters.
 Play_Pl_ScaleSuperCancelDamageD:
 	push af
-	ldh  a, [hROMBank]
-	push af
-	ld   a, BANK(Play_Pl_ScaleSuperCancelDamageD_Banked)
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
-	call Play_Pl_ScaleSuperCancelDamageD_Banked
-	pop  af
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
+	push bc
+	ld   b, BANK(Play_Pl_ScaleSuperCancelDamageD_Banked)
+	ld   hl, Play_Pl_ScaleSuperCancelDamageD_Banked
+	rst  $08
+	pop  bc
 	pop  af
 	ret
 

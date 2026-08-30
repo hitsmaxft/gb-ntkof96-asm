@@ -259,7 +259,7 @@ MoveC_Heidern_CrossCutter:
 ; Spawn the projectile at the start
 .obj2:
 	mMvC_ValFrameStartFast .obj2_cont
-	; KOF95 projectile visual omitted during the first compatibility pass.
+		call ProjInit_Heidern_CrossCutter
 .obj2_cont:
 	jp   .anim
 ; --------------- frame #3 ---------------
@@ -373,7 +373,20 @@ ENDR
 		mMvC_SetFrame $04, $01
 		mMvC_SetSpeedH +$0000
 		; Force player over opponent
-		call HitTypeS_SyncPlPosFromOtherPos
+		push bc
+			ld   hl, iPlInfo_OBJInfoXOther
+			add  hl, bc
+			push hl
+			pop  bc
+			ld   hl, iOBJInfo_X
+			add  hl, de
+			ld   a, [bc]
+			inc  bc
+			ldi  [hl], a
+			inc  hl
+			ld   a, [bc]
+			ld   [hl], a
+		pop  bc
 		jp   .ret
 .obj3_chkGuard_doGravity:
 	jp   .doGravity
@@ -654,3 +667,210 @@ MoveC_Heidern_MoonSlasher:
 .ret:
 	ret
 	
+; =============== ProjInit_Heidern_CrossCutter ===============
+; Initializes the projectile for Heidern's Cross Cutter (MOVE_HEIDERN_CROSS_CUTTER_L, MOVE_HEIDERN_CROSS_CUTTER_H)
+ProjInit_Heidern_CrossCutter:
+	mMvC_PlaySound SCT_PROJ_LG_B
+
+	push bc
+		push de
+
+			; --------------- common projectile init code ---------------
+
+			;
+			; C flag = If set, we're at max power
+			;
+			ld   hl, iPlInfo_Pow
+			add  hl, bc
+			ld   a, [hl]		; A = Pow meter
+			cp   PLAY_POW_MAX	; Are we at max power?
+			jp   z, .initMaxPow	; If so, jump
+			xor  a				; C flag clear
+			jp   .getFlags2
+		.initMaxPow:
+			scf					; C flag set
+		.getFlags2:
+		
+			;
+			; A = Move ID
+			;
+			ld   hl, iPlInfo_MoveId
+			push af				; Preserve C flag for this
+				add  hl, bc		; Seek to iPlInfo_MoveId
+			pop  af
+			ld   a, [hl]		; Read out to A
+			push af ; Save A & C flag
+			
+				; =============== ProjInitS_InitAndGetOBJInfo ===============
+				; Gets the projectile's wOBJInfo for the current player and initializes its common properties.
+				;
+				; Extracted to ProjInitS_InitAndGetOBJInfo in 96.
+				;
+				; IN
+				; - BC: Ptr to wPlInfo
+				; - DE: Ptr to respective wOBJInfo
+				; OUT
+				; - DE: Ptr to projectile wOBJInfo (wOBJInfo_Pl*Projectile)
+				; WIPES
+				; - BC
+				
+				;
+				; A = Player marker (for the tile ID check)
+				;
+				ld   hl, iPlInfo_PlId
+				add  hl, bc
+				ld   a, [hl]
+
+				;
+				; Seek to the wOBJInfo for the current player's projectile.
+				; This will either be a Ptr to wOBJInfo_Pl1Projectile or a Ptr to wOBJInfo_Pl2Projectile.
+				; Save its ptr to DE and HL.
+				;
+				push af ; Pointless push/pop
+					push de			; BC = Ptr to player wOBJInfo
+					pop  bc
+					ld   hl, (OBJINFO_SIZE*2)+iOBJInfo_Status
+					add  hl, bc		; Seek to 2 slots after
+					push hl
+					pop  de			; Copy it to DE
+
+					;
+					; Show the projectile
+					;
+					ld   [hl], OST_VISIBLE
+				pop  af
+				
+				;
+				; Set the tile ID base for the projectile depending on the player we're playing as.
+				; The values must be consistent with that's written in Play_LoadProjectileOBJInfo
+				;
+				or   a				; iPlInfo_PlId != PL1?
+				jp   nz, .tileId2P	; If so, jump
+			.tileId1P:
+				ld   hl, iOBJInfo_TileIDBase
+				add  hl, de		; Seek to iOBJInfo_TileIDBase
+				ld   [hl], $80	; Graphics from $8800
+				jp   .tileIdRet
+			.tileId2P:
+				ld   hl, iOBJInfo_TileIDBase
+				add  hl, de		; Seek to iOBJInfo_TileIDBase
+				ld   [hl], $A6	; Graphics from $8A60
+			.tileIdRet:
+				; ==============================
+			
+
+				; --------------- main ---------------
+
+				; Set code pointer
+				ld   hl, iOBJInfo_Play_CodeBank
+				add  hl, de
+				ld   [hl], BANK(ProjC_Horz)	; BANK $03 ; iOBJInfo_Play_CodeBank
+				inc  hl
+				ld   [hl], LOW(ProjC_Horz)	; iOBJInfo_Play_CodePtr_Low
+				inc  hl
+				ld   [hl], HIGH(ProjC_Horz)	; iOBJInfo_Play_CodePtr_High
+
+				; Write sprite mapping ptr for this projectile.
+				ld   hl, iOBJInfo_BankNum
+				add  hl, de
+				ld   [hl], BANK(OBJLstPtrTable_Proj_Heidern_CrossCutter)	; BANK $01 ; iOBJInfo_BankNum
+				inc  hl
+				ld   [hl], LOW(OBJLstPtrTable_Proj_Heidern_CrossCutter)	; iOBJInfo_OBJLstPtrTbl_Low
+				inc  hl
+				ld   [hl], HIGH(OBJLstPtrTable_Proj_Heidern_CrossCutter)	; iOBJInfo_OBJLstPtrTbl_High
+				inc  hl
+				ld   [hl], $00	; iOBJInfo_OBJLstPtrTblOffset
+
+
+				; Set animation speed.
+				ld   hl, iOBJInfo_FrameLeft
+				add  hl, de
+				ld   [hl], $00	; iOBJInfo_FrameLeft
+				inc  hl
+				ld   [hl], ANIMSPEED_INSTANT	; iOBJInfo_FrameTotal
+
+				; Set priority value
+				ld   hl, iOBJInfo_Play_Priority
+				add  hl, de
+				ld   [hl], $00
+
+				; Set initial position relative to the player's origin
+		
+				; =============== OBJLstS_Overlap ===============
+				; Moves an wBJInfo to exactly overlap another one.
+				; This copies the coordinates and OBJLstFlags from the source (BC) to destination (DE).
+				;
+				; Extracted to OBJLstS_Overlap in 96.
+				;
+				; IN
+				; - DE: Ptr to the wOBJInfo structure to be moved
+				; - BC: Ptr to target wOBJInfo structure (the "other" one)
+				push bc
+					;
+					; Set up source and destination pointers
+					;
+
+					; BC = Ptr to source iOBJInfo_X
+					ld   hl, iOBJInfo_X
+					add  hl, bc			; HL = BC + iOBJInfo_X
+					push hl
+					pop  bc				; Move back to BC
+
+					; DE = Ptr to destination iOBJInfo_X
+					ld   hl, iOBJInfo_X
+					add  hl, de			; HL = DE + iOBJInfo_X
+
+					;
+					; Copy the next 4 bytes over (iOBJInfo_X-iOBJInfo_YSub)
+					;
+			REPT 4
+					ld   a, [bc]	; A = Source byte
+					inc  bc			; SrcPtr++
+					ldi  [hl], a	; Write to dest; DestPtr++
+			ENDR
+				pop  bc
+
+				;
+				; Copy over the byte with sprite mapping flags
+				;
+
+				; A = Source iOBJInfo_OBJLstFlags
+				ld   hl, iOBJInfo_OBJLstFlags
+				add  hl, bc
+				ld   a, [hl]
+				; HL = Ptr to dest iOBJInfo_OBJLstFlags
+				ld   hl, iOBJInfo_OBJLstFlags
+				add  hl, de
+				; Write it over
+				ld   [hl], a
+				; ==============================
+				mMvC_SetMoveH +$1000
+				mMvC_SetMoveV -$0800
+			pop  af	; Restore A & C flag
+
+			;
+			; Determine projectile horizontal speed.
+			;
+
+			jp   nc, .fldMaxPow					; Are we at max power? If not, jump
+			cp   MOVE_HEIDERN_CROSS_CUTTER_H	; Was this an heavy attack?
+			jp   z, .fldHeavy					; If so, jump
+			jp   .fldLight
+		.fldMaxPow:
+			cp   MOVE_HEIDERN_CROSS_CUTTER_H	; Was this an heavy attack?
+			jp   z, .fldHeavyMaxPow				; If so, jump
+		.fldLight:
+			mMvC_SetSpeedH +$0100
+			jp   .end
+		.fldHeavyMaxPow:
+			mMvC_SetSpeedH +$0200
+			jp   .end
+		.fldHeavy:
+			mMvC_SetSpeedH +$0400
+		.end:
+
+		pop  de
+	pop  bc
+	ret
+	
+; 

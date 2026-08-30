@@ -542,7 +542,70 @@ SECTION "bank3A", ROMX, BANK[$3A]
 SECTION "bank3B", ROMX, BANK[$3B]
 	INCLUDE "src/mixkof/ralf95_code.asm"
 SECTION "bank3C", ROMX, BANK[$3C]
-	ds $4000, $FF
+
+; Load the self-contained KOF95 projectile sheet directly into KOF96's
+; per-player projectile VRAM region. Play_LoadProjectileGFXFromDef enters this
+; routine with a tail far-jump, so restore bank $01 before returning to its
+; original caller.
+; IN: DE = VRAM destination ($8800 for P1 or $8A60 for P2)
+MixKOF_LoadProjectileGFX:
+	ld   a, d
+	cp   $8A
+	ld   a, [wPlInfo_Pl1+iPlInfo_CharId]
+	jr   nz, .gotChar
+	ld   a, [wPlInfo_Pl2+iPlInfo_CharId]
+.gotChar:
+	cp   CHAR_ID_KIM
+	jr   nc, .imported
+	ld   c, a
+	ld   b, BANK(OBJInfoInit_Projectile)
+	ld   hl, Play_LoadProjectileGFXFromDef.residentFromMix
+	jp   $0000
+.imported:
+	sub  CHAR_ID_KIM
+	srl  a
+	add  a, a
+	ld   l, a
+	ld   h, $00
+	ld   bc, MixKOF_ProjectileGFXPtrTbl
+	add  hl, bc
+	ld   a, [hl]
+	inc  hl
+	ld   h, [hl]
+	ld   l, a
+	ld   a, h
+	or   l
+	jr   z, .restoreBank
+	ld   b, [hl]
+	inc  hl
+	call CopyTilesHBlank
+.restoreBank:
+	ld   b, BANK(OBJInfoInit_Projectile)
+	ld   hl, Play_LoadProjectileGFXFromDef.ret
+	jp   $0000
+
+MixKOF_ProjectileGFXPtrTbl:
+	dw $0000
+	dw MixKOF_ProjectileGFX_Benimaru
+	dw MixKOF_ProjectileGFX_Yuri
+	dw MixKOF_ProjectileGFX_Joe
+	dw MixKOF_ProjectileGFX_Heidern
+	dw $0000
+
+MixKOF_ProjectileGFX_Benimaru:
+	db $14
+	INCBIN "data/gfx/proj/kof95/benimaru.bin"
+MixKOF_ProjectileGFX_Yuri:
+	db $1C
+	INCBIN "data/gfx/proj/kof95/yuri.bin"
+MixKOF_ProjectileGFX_Joe:
+	db $0E
+	INCBIN "data/gfx/proj/kof95/joe.bin"
+MixKOF_ProjectileGFX_Heidern:
+	db $12
+	INCBIN "data/gfx/proj/kof95/heidern.bin"
+
+	INCLUDE "src/mixkof/kof95_projectiles.asm"
 SECTION "bank3D", ROMX, BANK[$3D]
 	ds $4000, $FF
 SECTION "bank3E", ROMX, BANK[$3E]
