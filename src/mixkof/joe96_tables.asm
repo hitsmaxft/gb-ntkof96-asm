@@ -26,8 +26,8 @@ MoveAnimTbl_Joe96:
 	mMvAnDef OBJLstPtrTable_Joe_Taunt, $14, $04, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_PunchLN, $08, $00, $04, HITTYPE_HIT_MID0, $00
 	mMvAnDef OBJLstPtrTable_Joe_PunchHN, $08, $01, $04, HITTYPE_HIT_MID1, PF3_HEAVYHIT
-	mMvAnDef OBJLstPtrTable_Joe_KickLN, $08, $01, $08, HITTYPE_HIT_MID1, $00
-	mMvAnDef OBJLstPtrTable_Joe_KickHN, $08, $02, $08, HITTYPE_HIT_MID1, PF3_HEAVYHIT
+	mMvAnDef OBJLstPtrTable_Joe_KickLM, $08, $01, $08, HITTYPE_HIT_MID0, $00
+	mMvAnDef OBJLstPtrTable_Joe_KickHM, $0C, $03, $08, HITTYPE_HIT_MID1, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_PunchCL, $08, $00, $03, HITTYPE_HIT_MID1, $00
 	mMvAnDef OBJLstPtrTable_Joe_PunchCH, $08, $01, $03, HITTYPE_HIT_MID1, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_KickCL, $08, $00, $06, HITTYPE_HIT_MID1, PF3_HITLOW
@@ -81,7 +81,7 @@ MoveAnimTbl_Joe96:
 MoveCodePtrTbl_Joe96:
 	mMvCodeDef MoveC_Base_NormL
 	mMvCodeDef MoveC_Base_NormH
-	mMvCodeDef MoveC_Joe_KickLN
+	mMvCodeDef MoveC_Base_NormL
 	mMvCodeDef MoveC_Base_NormH
 	mMvCodeDef MoveC_Base_NormL
 	mMvCodeDef MoveC_Base_NormH

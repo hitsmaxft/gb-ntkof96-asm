@@ -62,6 +62,15 @@ FIGHTERS = {
         ],
         "super": "MOVE_JOE_SCREW_UPPER_S",
         "easy": "mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
+        # KOF96 has only one standing light/heavy kick slot. Do not flatten
+        # Joe's KOF95 near variants into those slots: his near light kick uses
+        # custom code that adds a second 6-damage HEAVYHIT phase, while the
+        # short near heavy animation looks lighter. The far variants
+        # preserve the intended light/heavy visual and damage distinction.
+        "slot_aliases": {
+            "MOVE_SHARED_KICK_LN": "MOVE_SHARED_KICK_LM",
+            "MOVE_SHARED_KICK_HN": "MOVE_SHARED_KICK_HM",
+        },
     },
     "heidern": {
         "class": "Heidern",
@@ -185,6 +194,7 @@ def emit_table(cls: str, cfg: dict[str, object]) -> str:
     anim = table_rows(anim_text, f"MoveAnimTbl_{cls}", "mMvAnDef")
     code = table_rows(code_text, f"MoveCodePtrTbl_{cls}", "mMvCodeDef")
     specials = list(cfg["specials"])
+    slot_aliases = dict(cfg.get("slot_aliases", {}))
     special_slots = specials + [None] * (14 - len(specials))
     super_slots: list[str | None] = [str(cfg["super"]), str(cfg["super"]), None, None]
     keys: list[str | None] = COMMON + special_slots + super_slots + TAIL
@@ -209,7 +219,12 @@ def emit_table(cls: str, cfg: dict[str, object]) -> str:
                 "$00, $00, $00, $00, $00"
             )
         else:
-            out.append("\t" + anim[key].lstrip() if key and key in anim else fallback_anim(cls))
+            source_key = slot_aliases.get(key, key)
+            out.append(
+                "\t" + anim[source_key].lstrip()
+                if source_key and source_key in anim
+                else fallback_anim(cls)
+            )
     out += ["", f"MoveCodePtrTbl_{cls}96:"]
     # KOF96 handles $00-$2E and $70+ through shared resident code. Its
     # character-specific code table therefore starts at MOVE_SHARED_PUNCH_L
@@ -219,7 +234,12 @@ def emit_table(cls: str, cfg: dict[str, object]) -> str:
     if len(code_keys) != 32:
         raise AssertionError((cls, len(code_keys)))
     for key in code_keys:
-        out.append("\t" + code[key].lstrip() if key and key in code else fallback_code())
+        source_key = slot_aliases.get(key, key)
+        out.append(
+            "\t" + code[source_key].lstrip()
+            if source_key and source_key in code
+            else fallback_code()
+        )
     return "\n".join(out) + "\n"
 
 
