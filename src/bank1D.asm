@@ -43,6 +43,9 @@ BGXDef_Play_HUD_CharName_Ralf:
 ; Recompose KENSOU from resident glyphs (KRAUSER/GEESE/ANDY/ROBERT).
 BGXDef_Play_HUD_CharName_Kensou:
 	db $06, $33, $2B, $0D, $2F, $15, $37
+; The resident HUD sheet has no J glyph; the selector still prints EIJI.
+BGXDef_Play_HUD_CharName_Eiji:
+	db $04, $17, $25, $25, $25 ; "EIII"
 
 ; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"

@@ -2545,7 +2545,7 @@ Play_CPU_OnPlNear:
 	cp   $64
 	ret  c
 	
-	jp   .doAction
+	jr   .doAction
 .norm:
 	; Check hardcoded stage difficulties
 	ld   a, [wCharSeqId]
@@ -2565,7 +2565,7 @@ Play_CPU_OnPlNear:
 	cp   $14
 	ret  c
 	
-	jp   .doAction
+	jr   .doAction
 .hard:
 	; Check hardcoded stage difficulties.
 	; .hardest is like .hard, except it:
@@ -3540,6 +3540,7 @@ CPU_MoveListPtrTable:
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_HEIDERN
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_RALF
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_KENSOU
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_EIJI
 
 ; =============== CPU_MoveInputList_* ===============
 ; List of character-specific move inputs.

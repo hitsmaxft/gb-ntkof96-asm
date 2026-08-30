@@ -67,6 +67,10 @@ OBJLstPtrTable_Proj_Kensou_ChouKyuuDan95:
 	dw OBJLstHdrA_Proj_Kensou_ChouKyuuDan2, OBJLSTPTR_NONE
 	dw OBJLstHdrA_Proj_Ryo_KoOuKenG1, OBJLSTPTR_NONE
 	dw OBJLSTPTR_NONE
+OBJLstPtrTable_Proj_Eiji_Zantetsuha:
+	dw OBJLstHdrA_Proj_Eiji_Zantetsuha0, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Ryo_HaohShoukouKen1, OBJLSTPTR_NONE
+	dw OBJLSTPTR_NONE
 OBJLstHdrA_Proj_Benimaru_ThunderBall8:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
@@ -212,6 +216,25 @@ OBJLstHdrA_Proj_Kensou_ChouKyuuDan2:
 	db $02 ; OBJ Count
 	db $28,$F8,$04
 	db $28,$00,$04|OLR_XFLIP
+OBJLstHdrA_Proj_Eiji_Zantetsuha0:
+	; KOF95 always parsed the high tile bits as per-OBJ flip flags. KOF96
+	; requires OLF_USETILEFLAGS or the lower half becomes wrong tile numbers.
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0B ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $07 ; OBJ Count
+	db $20,$F8,$02
+	db $18,$00,$04
+	db $18,$08,$06
+	db $28,$00,$08
+	db $30,$F8,$02|OLR_YFLIP
+	db $38,$00,$04|OLR_YFLIP
+	db $38,$08,$06|OLR_YFLIP
 OBJLstHdrA_Proj_Ryo_KoOuKenG2:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId

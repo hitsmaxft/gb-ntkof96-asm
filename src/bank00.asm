@@ -5621,6 +5621,7 @@ Play_CharStageMapTbl:
 	db STAGE_ID_YAGAMI ; CHAR_ID_HEIDERN
 	db STAGE_ID_HERO ; CHAR_ID_RALF
 	db STAGE_ID_HERO ; CHAR_ID_KENSOU
+	db STAGE_ID_YAGAMI ; CHAR_ID_EIJI
 
 ; =============== Serial_DoHandshake ===============
 ; Performs an handshake between master and slave GBs.
@@ -8412,6 +8413,7 @@ Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_Heidern ; CHAR_ID_HEIDERN
 	dw BGXDef_Play_HUD_CharName_Ralf ; CHAR_ID_RALF
 	dw BGXDef_Play_HUD_CharName_Kensou ; CHAR_ID_KENSOU
+	dw BGXDef_Play_HUD_CharName_Eiji ; CHAR_ID_EIJI
 
 ; =============== Play_DrawHUDEmptyBars ===============
 ; Draws the tilemaps for all empty bars in the HUD.
@@ -15906,18 +15908,18 @@ Play_Pl_ChkGuardCancelRoll:
 	; Not holding any key on the d-pad instead defaults it to a forward roll.
 	;
 	call Play_Pl_GetDirKeys_ByXFlipR	; Check d-pad keys
-	jp   nc, .setRollFront		; Were any keys held? If not, default to front
+	jr   nc, .setRollFront		; Were any keys held? If not, default to front
 
 	; [POI/BUG?] Holding *DOWN* activates the back roll
 	bit  KEYB_DOWN, a			; Holding down?
-	jp   nz, .setRollBack		; If so, back roll
-	jp   .setRollFront			; Otherwise, front roll
+	jr   nz, .setRollBack		; If so, back roll
+	jr   .setRollFront			; Otherwise, front roll
 .setRollBack:
 	ld   a, MOVE_SHARED_ROLL_B
-	jp   .retSet
+	jr   .retSet
 .setRollFront:
 	ld   a, MOVE_SHARED_ROLL_F
-	jp   .retSet
+	jr   .retSet
 .retSet:
 	; Switch to the new move
 	call Pl_SetMove_StopSpeed

@@ -95,6 +95,7 @@ DEF CHAR_ID_JOE      EQU $2E
 DEF CHAR_ID_HEIDERN  EQU $30
 DEF CHAR_ID_RALF     EQU $32
 DEF CHAR_ID_KENSOU   EQU $34
+DEF CHAR_ID_EIJI     EQU $36
 DEF CHAR_ID_NONE     EQU $FF
 
 DEF STAGE_ID_HERO             EQU $00
@@ -904,6 +905,22 @@ DEF MOVE_KENSOU_RYUU_REN_GA_H                  EQU $52
 DEF MOVE_KENSOU_RYUU_SOU_GEKI_L                EQU $54
 DEF MOVE_KENSOU_RYUU_SOU_GEKI_H                EQU $56
 DEF MOVE_KENSOU_SHINRYUU_TENBU_KYAKU_S         EQU $64
+
+DEF MOVE_EIJI_KIKOUHOU_L                        EQU $48
+DEF MOVE_EIJI_KIKOUHOU_H                        EQU $4A
+DEF MOVE_EIJI_KOTSU_HAZAKI_KIRI_L               EQU $4C
+DEF MOVE_EIJI_KOTSU_HAZAKI_KIRI_H               EQU $4E
+DEF MOVE_EIJI_RYUU_EIJIN_L                       EQU $50
+DEF MOVE_EIJI_RYUU_EIJIN_H                       EQU $52
+DEF MOVE_EIJI_KASUMI_GERI_L                      EQU $54
+DEF MOVE_EIJI_KASUMI_GERI_H                      EQU $56
+DEF MOVE_EIJI_ZANTETSUHA_L                       EQU $58
+DEF MOVE_EIJI_ZANTETSUHA_H                       EQU $5A
+DEF MOVE_EIJI_KAGE_UTSUSHI_L                     EQU $5C
+DEF MOVE_EIJI_KAGE_UTSUSHI_H                     EQU $5E
+DEF MOVE_EIJI_TENBAKYAKU_L                       EQU $60
+DEF MOVE_EIJI_TENBAKYAKU_H                       EQU $62
+DEF MOVE_EIJI_ZANTETSU_TOUROUKEN_S               EQU $64
 
 ; Character-specific
 DEF MOVE_KYO_ARA_KAMI_L                    EQU $48
