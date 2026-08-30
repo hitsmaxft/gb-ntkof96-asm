@@ -236,9 +236,9 @@ MixKOF_LoadCharSelPortrait:
 	dw $8AA0, $8B00, $8B60, $8BC0, $8C20, $8C80, $8CE0
 	dw $8D40, $8DA0
 
-; Draw the name associated with a portrait whose battle character is not yet
-; installed. A valid character ID continues to use CharSel_PrintCharName so
-; START variants retain their distinct names.
+; Draw the name associated with an expanded single-page portrait. Original
+; portrait slots continue to use CharSel_PrintCharName so START variants retain
+; their distinct names; imported and reserved slots are keyed by portrait ID.
 ; IN: C = portrait ID, DE = player cursor OBJInfo
 ; FarCall overwrites A before entering this bank.
 MixKOF_PrintCharSelPortraitName:

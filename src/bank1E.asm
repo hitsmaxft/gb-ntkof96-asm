@@ -2534,6 +2534,12 @@ CharSel_RefreshNameAndCursor:
 	; Display the character name
 	push af
 		ld   c, a
+		; The expanded single-page roster starts at portrait $11. Keep the
+		; original slots on the native character-ID table so START variants
+		; (O.Iori/O.Leona/Kagura) retain their distinct names, while every
+		; imported or reserved slot uses the expansion-bank portrait table.
+		cp   $11
+		jr   nc, .portraitName
 		call CharSel_GetCharIdByPortraitId
 		cp   CHAR_ID_NONE
 		jr   z, .portraitName
@@ -2704,13 +2710,6 @@ CharSel_CharNameBGPtrTbl:
 	dw $9A2E ; CHAR_ID_OIORI
 	dw $9A2D ; CHAR_ID_OLEONA
 	dw $9A2D ; CHAR_ID_KAGURA
-	dw $9A30 ; CHAR_ID_KIM
-	dw $9A2B ; CHAR_ID_BENIMARU
-	dw $9A2F ; CHAR_ID_YURI
-	dw $9A30 ; CHAR_ID_JOE
-	dw $9A2D ; CHAR_ID_HEIDERN
-	dw $9A2F ; CHAR_ID_RALF
-	dw $9A2D ; CHAR_ID_KENSOU
 ; =============== CharSel_CharNamePtrTable ===============
 ; Ptr table to the character names, indexed by character ID.
 CharSel_CharNamePtrTable:
@@ -2734,13 +2733,6 @@ CharSel_CharNamePtrTable:
 	dw TextC_Char_OIori
 	dw TextC_Char_OLeona
 	dw TextC_Char_Kagura
-	dw TextC_Char_Kim
-	dw TextC_Char_Benimaru
-	dw TextC_Char_Yuri
-	dw TextC_Char_Joe
-	dw TextC_Char_Heidern
-	dw TextC_Char_Ralf
-	dw TextC_Char_Kensou
 
 ; =============== TextC_Char_* ===============
 ; These lack the tilemap offset, as they are passed to TextPrinter_Instant_CustomPos.
@@ -2768,13 +2760,6 @@ TextC_Char_MrKarate: mTxtDef "M<r.>KARATE"
 TextC_Char_OIori:    mTxtDef "IORI`"
 TextC_Char_OLeona:   mTxtDef "LEONA`"
 TextC_Char_Kagura:   mTxtDef "KAGURA"
-TextC_Char_Kim:      mTxtDef "KIM"
-TextC_Char_Benimaru: mTxtDef "BENIMARU"
-TextC_Char_Yuri:     mTxtDef "YURI"
-TextC_Char_Joe:      mTxtDef "JOE"
-TextC_Char_Heidern:  mTxtDef "HEIDERN"
-TextC_Char_Ralf:     mTxtDef "RALF"
-TextC_Char_Kensou:   mTxtDef "KENSOU"
 
 ; =============== CharSel_AnimCursorPalFast ===============
 ; Cycles the cursor palette fast, used when still selecting something.
