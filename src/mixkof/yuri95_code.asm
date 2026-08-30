@@ -1,4 +1,17 @@
 ; Generated from Kak2X/kof95 commit d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08
+;
+; Yuri's Hien Hou'ou Kyaku uses FBFDB in KOF95. KOF96 does not provide that
+; exact input table, and the old batch importer silently substituted FDBFDB
+; (a different six-step motion). Keep the original five-step data local to
+; Yuri's code bank instead.
+MoveInput_Yuri_FBFDB_95:
+	db $05
+	db KEY_RIGHT, KEY_RIGHT, $01, $14
+	db KEY_DOWN,  KEY_DOWN,  $01, $0A
+	db KEY_LEFT,  KEY_LEFT,  $01, $0A
+	db KEY_RIGHT, KEY_RIGHT, $01, $0A
+	db KEY_LEFT,  KEY_LEFT,  $01, $FF
+
 MoveC_Yuri_ThrowG:
 	mMvC_ValLoaded .ret
 	; Depending on the visible frame...
@@ -184,8 +197,13 @@ MoveInputReader_Yuri:
 	jp   MoveInputReader_Yuri_NoMove ; No Air Moves, dumb check
 	
 .chkGround:
-	;             SELECT + B                    SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Yuri_KoOuKen, MoveInit_Yuri_KuuGa, MoveInit_Yuri_RaiOhKen, MoveInit_Yuri_SaiHa, MoveInit_Yuri_HyakuRetsuBinta, MoveInit_Yuri_HienHouOuKyaku, MoveInit_Yuri_HienHouOuKyaku
+	; KOF95's neutral shortcuts were SELECT+B -> Hien Hou'ou Kyaku and
+	; SELECT+A -> Kuu Ga. The expanded KOF96 layout follows the original
+	; command endings: DF -> forward, FDF -> down-forward, FDB -> down-back,
+	; and DB -> back. Both original super motions remain independently
+	; reachable instead of routing both shortcuts to Hien Hou'ou Kyaku.
+	;             F                      DF                    D                         DB                              B                     super DF                         super DB
+	mMvIn_ChkEasyDir MoveInit_Yuri_KoOuKen, MoveInit_Yuri_KuuGa, MoveInit_Yuri_RaiOhKen, MoveInit_Yuri_HyakuRetsuBinta, MoveInit_Yuri_SaiHa, MoveInit_Yuri_HaohShoukouKen, MoveInit_Yuri_HienHouOuKyaku
 	mMvIn_ChkGA Yuri, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -204,7 +222,7 @@ MoveInputReader_Yuri:
 .chkKick:
 	mMvIn_ValSuper .chkKickNoSuper
 	; FBFDB+K -> Hien Hou'ou Kyaku
-	mMvIn_ChkDir MoveInput_FDBFDB, MoveInit_Yuri_HienHouOuKyaku
+	mMvIn_ChkDir MoveInput_Yuri_FBFDB_95, MoveInit_Yuri_HienHouOuKyaku
 .chkKickNoSuper:
 	; DF+K -> Rai'oh Ken
 	mMvIn_ChkDir MoveInput_DF, MoveInit_Yuri_RaiOhKen

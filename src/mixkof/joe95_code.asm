@@ -148,8 +148,13 @@ MoveInputReader_Joe:
 	jp   MoveInputReader_Joe_NoMove
 
 .chkGround:
-	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
+	; KOF95's neutral shortcuts were SELECT+B -> Screw Upper and
+	; SELECT+A -> Tiger Kick. Preserve those meanings on the completed DF and
+	; forward routes. The normal shortcuts follow the original command model:
+	; DF -> forward, DB -> back, PPP -> down, while the two remaining forward-
+	; ending motions (BF/BDF) occupy the two diagonal routes.
+	;             F                       DF                        D                           DB                      B                            super DF                 super DB
+	mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
 	mMvIn_ChkGA Joe, .chkPunch, .chkKick
 	
 .chkPunch:

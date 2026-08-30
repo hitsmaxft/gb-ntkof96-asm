@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import re
 import shutil
 import subprocess
@@ -517,6 +518,22 @@ def adapt_code(cls: str, cfg: dict[str, object]) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Legacy one-shot KOF95 bootstrap importer (not a maintenance tool)."
+    )
+    parser.add_argument(
+        "--force-legacy-bootstrap",
+        action="store_true",
+        help="overwrite all imported fighter sources from KOF95 (destructive)",
+    )
+    args = parser.parse_args()
+    if not args.force_legacy_bootstrap:
+        raise SystemExit(
+            "batch import is disabled: imported fighters are maintained by "
+            "per-character source review; pass --force-legacy-bootstrap only "
+            "when intentionally recreating the initial bootstrap"
+        )
+
     commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=VENDOR, text=True
     ).strip()

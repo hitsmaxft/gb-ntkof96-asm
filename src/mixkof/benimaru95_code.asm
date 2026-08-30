@@ -112,8 +112,14 @@ MoveInputReader_Benimaru:
 	jp   MoveInputReader_Benimaru_NoMove ; NO AIR SPECIALS
 	
 .chkGround:
-	;             SELECT + B                   SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Benimaru_Raijinken, MoveInit_Benimaru_SuperInazumaKick, MoveInit_Benimaru_IaiGeri, MoveInit_Benimaru_ShinkuuKatateGoma, MoveInit_Benimaru_Raijinken, MoveInit_Benimaru_Raikouken, MoveInputReader_Benimaru_NoMove
+	; KOF95's two neutral shortcuts were SELECT+B -> Raikouken and
+	; SELECT+A -> Super Inazuma Kick. KOF96 reserves neutral SELECT, so keep
+	; those semantics in the expanded directional layout: the old super stays
+	; on the completed DF shortcut, while DU goes on down. The other routes
+	; follow their original motion shapes (DF, FDF and FDB). Benimaru has no
+	; plain DB special, so back deliberately shares Shinkuu Katate Goma.
+	;                 F                         DF                         D                                  DB                                  B                                  super DF                    super DB
+	mMvIn_ChkEasyDir MoveInit_Benimaru_IaiGeri, MoveInit_Benimaru_Raijinken, MoveInit_Benimaru_SuperInazumaKick, MoveInit_Benimaru_ShinkuuKatateGoma, MoveInit_Benimaru_ShinkuuKatateGoma, MoveInit_Benimaru_Raikouken, MoveInputReader_Benimaru_NoMove
 	mMvIn_ChkGA Benimaru, .chkPunch, .chkKick
 	
 .chkPunch:

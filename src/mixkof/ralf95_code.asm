@@ -1,9 +1,23 @@
 ; Generated from Kak2X/kof95 commit d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08
+; Keep Ralf's charge windows local: KOF95 requires a real 30-frame hold,
+; whereas the shared KOF96 compatibility tables deliberately accept 2 frames.
+MoveInput_Ralf_DU_Charge95:
+	db $02
+	db KEY_UP, KEY_UP, $01, $14
+	db KEY_DOWN, KEY_DOWN, $1E, $FF
+
+MoveInput_Ralf_BF_Charge95:
+	db $02
+	db KEY_LEFT, KEY_LEFT, $01, $14
+	db KEY_RIGHT, KEY_RIGHT, $1E, $FF
+
 MoveInput_Ralf_1BF_Charge95:
 	db $03
 	db KEY_LEFT, KEY_LEFT, $01, $14
 	db KEY_RIGHT, KEY_RIGHT, $01, $0A
-	db KEY_RIGHT|KEY_DOWN, KEY_RIGHT|KEY_DOWN, $1E, $FF
+	; The KOF95 `gi` mask accepts the held down-back diagonal plus the
+	; direction transitions recorded around it.
+	db KEY_RIGHT|KEY_DOWN, KEY_RIGHT|KEY_LEFT|KEY_UP|KEY_DOWN, $1E, $FF
 
 MoveC_Ralf_ThrowG:
 	mMvC_ValLoaded .ret
@@ -36,7 +50,7 @@ MoveC_Ralf_ThrowG:
 	jp   OBJLstS_DoAnimTiming_Loop_by_DE
 .ret:
 	ret
-	
+
 ; =============== MoveInputReader_Ralf ===============
 ; Special move input checker for RALF.
 ; IN
@@ -50,8 +64,13 @@ MoveInputReader_Ralf:
 	jp   MoveInputReader_Ralf_NoMove
 	
 .chkGround:
-	;             SELECT + B                         SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInit_Ralf_BaribariVulcanPunch
+	; Easy Move review against KOF95 bank19:
+	; - Original SELECT+A is Vulcan Punch; keep it on D+SELECT.
+	; - Original SELECT+B is Baribari Vulcan Punch; keep it on DF+SELECT's
+	;   super rotation instead of inventing another super on DB+SELECT.
+	; - Remaining directions follow the actual KOF95 command shapes:
+	;   F/B=BF Gatling, DF=BDF Back Breaker, DB=DU Bakudan.
+	mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInputReader_Ralf_NoMove
 	mMvIn_ChkGA Ralf, .chkPunch, .chkKick
 
 .chkPunch:
@@ -60,9 +79,9 @@ MoveInputReader_Ralf:
 	mMvIn_ChkDir MoveInput_Ralf_1BF_Charge95, MoveInit_Ralf_BaribariVulcanPunch
 .chkPunchNoSuper:
 	; DU+P -> Kyuukouka Bakudan Punch (Diagonal Punch)
-	mMvIn_ChkDir MoveInput_DU_Charge, MoveInit_Ralf_BakudanPunch
+	mMvIn_ChkDir MoveInput_Ralf_DU_Charge95, MoveInit_Ralf_BakudanPunch
 	; BF+P -> Gatling Attack
-	mMvIn_ChkDir MoveInput_BF_Charge, MoveInit_Ralf_GatlingAttack
+	mMvIn_ChkDir MoveInput_Ralf_BF_Charge95, MoveInit_Ralf_GatlingAttack
 	; PPP -> Vulcan Punch (Evil Checkers)
 	mMvIn_ChkBtnStrict MoveInput_PPP, MoveInit_Ralf_VulcanPunch
 	jp   MoveInputReader_Ralf_NoMove
@@ -142,6 +161,10 @@ MoveC_Ralf_VulcanPunch:
 .init:
 	; Initialize the loop count.
 	; At Max Power, the move lasts twice as long.
+	; Audited against the KOF95 bank19 code and original ROM runtime:
+	; normal=$08 loops (~161 whiff frames), MAX=$10 loops (~305 frames).
+	; Do not shorten the normal move or raise its per-contact damage in the
+	; KOF96 port; the values below are the authoritative KOF95 model.
 	mMvC_ValFrameEnd .anim
 		mMvC_SetAnimSpeed ANIMSPEED_INSTANT
 		mMvC_ChkMaxPow .initMaxPower
@@ -182,9 +205,11 @@ MoveC_Ralf_VulcanPunch:
 	;
 	mMvC_ChkMaxPow .setDamageMaxPow
 .setDamageNorm:
+	; KOF95 original: $08, launch-high, heavy+fire (no continuous juggle).
 	mMvC_SetDamageNext $08, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE
 	jp   .chkMove
 .setDamageMaxPow:
+	; KOF95 original: $02 per contact and CONTHIT only in MAX power.
 	mMvC_SetDamageNext $02, HITTYPE_LAUNCH_HIGH_UB, PF3_FIRE|PF3_CONTHIT
 	jp   .chkMove
 .chkMove:
@@ -353,7 +378,7 @@ MoveC_Ralf_GatlingAttack:
 	call OBJLstS_DoAnimTiming_Loop_by_DE
 .ret:
 	ret
-	
+
 ; =============== MoveC_Ralf_BackBreaker ===============
 ; Move code for Ralf's Super Argentine Back Breaker. (MOVE_RALF_BACK_BREAKER_L, MOVE_RALF_BACK_BREAKER_H)
 MoveC_Ralf_BackBreaker:
@@ -380,17 +405,22 @@ MoveC_Ralf_BackBreaker:
 	; Mid frame
 	mMvC_ValFrameEnd .anim
 		mMvC_SetAnimSpeed $0F
-		mMvC_SetDamageNext $01, HITTYPE_GRAB_START, $00
+		; KOF95 used HITTYPE_GRAB_UB_NOSYNC here. KOF96 removed that
+		; hit type, so translate it to the equivalent one-shot rotation
+		; frame instead of restarting the generic grab handshake (which
+		; leaves the move waiting forever at frame #2).
+		mMvC_SetDamageNext $01, HITTYPE_GRAB_ROTU, $00
+		mMvC_MoveThrowOp +$01, -$08
 		jp   .anim
 ; --------------- frame #2 ---------------
 .obj2:
 	; When the frame ends... (which is quick enough)
 	mMvC_ValFrameEnd .anim
-		; ...wait indefinitely for the opponent to land back down.
-		; Unlike most wait actions, this one has no timeout as it jumps to .ret.
-		; Care must be taken to make sure the opponent isn't able to escape, otherwise
-		; it will cause a softlock (which does happen on SFS).
-		mMvC_ValHit .ret, .ret
+		; KOF95 waited indefinitely for the character-specific no-sync grab
+		; hit to report PF1B_HITRECV. KOF96's generic rotation handler clears
+		; that one-frame flag before this imported move task observes it, so the
+		; literal port softlocks here. The command throw was already confirmed
+		; by MoveInit_Ralf_BackBreaker; advance without a second handshake.
 		;--
 		; Pointless
 		ld   hl, iOBJInfo_FrameLeft
@@ -400,7 +430,8 @@ MoveC_Ralf_BackBreaker:
 		
 		; Set next grab part
 		mMvC_SetAnimSpeed $05
-		mMvC_SetDamageNext $01, HITTYPE_GRAB_START, $00
+		mMvC_SetDamageNext $01, HITTYPE_GRAB_ROTU, $00
+		mMvC_MoveThrowOp +$01, -$08
 		mMvC_PlaySound SCT_GROUNDHIT
 		jp   .anim
 ; --------------- frame #3 ---------------
@@ -408,13 +439,15 @@ MoveC_Ralf_BackBreaker:
 .obj3:
 	call Play_Pl_DoGroundScreenShake
 	mMvC_ValFrameEnd .anim
-		mMvC_SetDamageNext $01, HITTYPE_GRAB_START, $00
+		mMvC_SetDamageNext $01, HITTYPE_GRAB_ROTU, $00
+		mMvC_MoveThrowOp +$01, -$08
 		jp   .anim
 ; --------------- frame #4-5 ---------------
 ; Grab frame.
 .obj4:
 	mMvC_ValFrameEnd .anim
-		mMvC_SetDamageNext $01, HITTYPE_GRAB_START, $00
+		mMvC_SetDamageNext $01, HITTYPE_GRAB_ROTU, $00
+		mMvC_MoveThrowOp +$01, -$08
 		jp   .anim
 ; --------------- frame #6 ---------------
 ; The actual throw dealing big damage.
@@ -642,4 +675,3 @@ MoveC_Ralf_BaribariVulcanPunch:
 	call OBJLstS_DoAnimTiming_Loop_by_DE
 .ret:
 	ret
-	

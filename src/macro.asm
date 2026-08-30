@@ -440,18 +440,20 @@ MACRO mMvIn_GetLH
 .setMove:
 ENDM
 
-; KOF95 compatibility helpers. KOF96 normally records the selected attack type
-; in PF2B_HEAVY, but imported 95 readers still ask for punch/kick LH bits.
+; KOF95 compatibility helpers. The KOF95 readers split punch and kick before
+; reaching these macros, while KOF96 records the chosen strength in
+; PF2B_HEAVY. Use that canonical flag so both physical A/B inputs and the
+; timed SELECT shortcuts select the same light/heavy move ID.
 MACRO mMvIn_ChkLHP
-	ld   hl, iPlInfo_JoyKeysLH
+	ld   hl, iPlInfo_Flags2
 	add  hl, bc
-	bit  KEPB_B_HEAVY, [hl]
+	bit  PF2B_HEAVY, [hl]
 	jr   nz, \1
 ENDM
 MACRO mMvIn_ChkLHK
-	ld   hl, iPlInfo_JoyKeysLH
+	ld   hl, iPlInfo_Flags2
 	add  hl, bc
-	bit  KEPB_A_HEAVY, [hl]
+	bit  PF2B_HEAVY, [hl]
 	jr   nz, \1
 ENDM
 MACRO mMvIn_GetLHP

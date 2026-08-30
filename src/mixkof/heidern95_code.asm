@@ -1,4 +1,16 @@
 ; Generated from Kak2X/kof95 commit d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08
+; KOF96's shared DU/BF charge tables require only two held frames. Heidern's
+; KOF95 data requires 30, so keep all three original charge motions local.
+MoveInput_Heidern_DU_Charge95:
+	db $02
+	db KEY_UP,   KEY_UP,   $01, $14
+	db KEY_DOWN, KEY_DOWN, $1E, $FF
+
+MoveInput_Heidern_BF_Charge95:
+	db $02
+	db KEY_LEFT,  KEY_LEFT,  $01, $14
+	db KEY_RIGHT, KEY_RIGHT, $1E, $FF
+
 MoveInput_Heidern_BDU_Charge95:
 	db $03
 	db KEY_UP, KEY_UP, $01, $14
@@ -147,15 +159,22 @@ MoveInputReader_Heidern:
 	jp   MoveInputReader_Heidern_NoMove
 
 .chkGround:
-	;             SELECT + B                     SELECT + A
-	mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_StormBringer, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_CrossCutter, MoveInit_Heidern_FinalBringer, MoveInit_Heidern_FinalBringer
+	; KOF95's neutral shortcuts were SELECT+B -> Final Bringer and
+	; SELECT+A -> Neck Roller. Keep Neck Roller on the diagonal shortcut and
+	; Final Bringer on completed DB. The normal routes follow the source
+	; motions: BF -> forward, DU punch/kick -> down/diagonal, and FDB ->
+	; down-back. Storm Bringer cannot also occupy back: holding SELECT for the
+	; heavy route walks Heidern out of command-throw range before dispatch.
+	; Back therefore deliberately shares the safe Cross Cutter route.
+	;             F                         DF                       D                         DB                         B                         super DF                         super DB
+	mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_StormBringer, MoveInit_Heidern_CrossCutter, MoveInputReader_Heidern_NoMove, MoveInit_Heidern_FinalBringer
 	mMvIn_ChkGA Heidern, .chkPunch, .chkKick
 
 .chkPunch:
 	; DU+P -> Moon Slasher
-	mMvIn_ChkDir MoveInput_DU_Charge, MoveInit_Heidern_MoonSlasher
+	mMvIn_ChkDir MoveInput_Heidern_DU_Charge95, MoveInit_Heidern_MoonSlasher
 	; BF+P -> Cross Cutter
-	mMvIn_ChkDir MoveInput_BF_Charge, MoveInit_Heidern_CrossCutter
+	mMvIn_ChkDir MoveInput_Heidern_BF_Charge95, MoveInit_Heidern_CrossCutter
 	; FDB+P -> Storm Bringer
 	mMvIn_ChkDir MoveInput_FDB, MoveInit_Heidern_StormBringer
 	; End
@@ -166,7 +185,7 @@ MoveInputReader_Heidern:
 	mMvIn_ChkDir MoveInput_Heidern_BDU_Charge95, MoveInit_Heidern_FinalBringer
 .chkKickNoSuper:
 	; DU+K -> Neck Roller
-	mMvIn_ChkDir MoveInput_DU_Charge, MoveInit_Heidern_NeckRoller
+	mMvIn_ChkDir MoveInput_Heidern_DU_Charge95, MoveInit_Heidern_NeckRoller
 	; End
 	jp   MoveInputReader_Heidern_NoMove
 	
