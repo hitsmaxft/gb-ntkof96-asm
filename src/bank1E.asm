@@ -46,11 +46,11 @@ Module_CharSel:
 	; This set of graphics is uncompressed, and is written over the 
 	; Japanese font characters, leaving us with the ASCII ones.
 	; Also note the numbers are overwritten with the small 16x16 icons on the fly.
-	ld   hl, GFX_CharSel_BG0	; Player portraits
+	ld   hl, GFX_CharSel_BG0	; First nine KOF96 portraits
 	ld   de, $92F0
 	ld   b, $51
 	call CopyTiles
-	
+
 	ld   hl, GFXLZ_CharSel_BG1	; Player tiles, icon placeholders
 	ld   de, wLZSS_Buffer
 	call DecompressLZSS
@@ -58,7 +58,14 @@ Module_CharSel:
 	ld   de, $8800
 	ld   b, $78
 	call CopyTiles
-	
+
+	; Replace only the portrait area with the derived 29-character single-page
+	; sheet. The original portrait resources above remain untouched and still
+	; provide the selected-icon and placeholder tiles.
+	ld   b, BANK(MixKOF_LoadCharSelSinglePageGFX)
+	ld   hl, MixKOF_LoadCharSelSinglePageGFX
+	rst  $08
+
 	ld   hl, GFXLZ_CharSel_OBJ	; All OBJ (cursors, tile flip anim)
 	ld   de, wLZSS_Buffer
 	call DecompressLZSS
@@ -250,9 +257,6 @@ Module_CharSel:
 	jp   c, .drawBG_Team	; If so, jump
 ;--
 .drawBG_Single:
-
-	ld   hl, TextDef_CharSel_SingleTitle
-	call TextPrinter_Instant
 	
 	;
 	; Draw the placeholders for the icons of selected characters at the bottom of the screen.
@@ -299,9 +303,6 @@ Module_CharSel:
 	jp   .initOBJ
 ;--
 .drawBG_Team:
-	ld   hl, TextDef_CharSel_TeamTitle
-	call TextPrinter_Instant
-	
 	;
 	; Draw the placeholders for the icons of selected characters at the bottom of the screen.
 	; In team mode, draw either one or three icon slots for each player.
@@ -591,7 +592,7 @@ Module_CharSel:
 	ld   hl, wOBJInfo2+iOBJInfo_X			; Set X position -- over Iori's portrait
 	ld   [hl], $78							
 	ld   hl, wOBJInfo2+iOBJInfo_Y			; Set Y position -- over Iori's portrait
-	ld   [hl], $00							
+	ld   [hl], $E8
 	ld   hl, wOBJInfo2+iOBJInfo_TileIDBase	; Add $0E to every tile ID
 	ld   [hl], $0E
 	ld   hl, wOBJInfo2+iOBJInfo_OBJLstPtrTbl_Low	; Use tile flip sprite mapping
@@ -606,9 +607,9 @@ Module_CharSel:
 	ld   hl, wOBJInfo3+iOBJInfo_Status
 	ld   [hl], $00
 	ld   hl, wOBJInfo3+iOBJInfo_X
-	ld   [hl], $78
+	ld   [hl], $60
 	ld   hl, wOBJInfo3+iOBJInfo_Y
-	ld   [hl], $30
+	ld   [hl], $18
 	ld   hl, wOBJInfo3+iOBJInfo_TileIDBase
 	ld   [hl], $2A
 	ld   hl, wOBJInfo3+iOBJInfo_OBJLstPtrTbl_Low
@@ -625,7 +626,7 @@ Module_CharSel:
 	ld   hl, wOBJInfo4+iOBJInfo_X
 	ld   [hl], $18
 	ld   hl, wOBJInfo4+iOBJInfo_Y
-	ld   [hl], $30
+	ld   [hl], $18
 	ld   hl, wOBJInfo4+iOBJInfo_TileIDBase
 	ld   [hl], $46
 	ld   hl, wOBJInfo4+iOBJInfo_OBJLstPtrTbl_Low
@@ -956,19 +957,32 @@ CharSel_Select_DoCtrl_B:
 	ret
 ; =============== CharSel_Select_DoCtrl_Down ===============
 CharSel_Select_DoCtrl_Down:
-	call CharSel_MoveCursorD
-	jp   CharSel_PlayCursorMoveSFX
+	ld   b, BANK(MixKOF_CharSelMoveD)
+	ld   hl, MixKOF_CharSelMoveD
+	rst  $08
+	; The banked mover updates only the logical portrait ID.
+	call CharSel_Select_DoCtrl_NoAction
+	jr   CharSel_PlayCursorMoveSFX
 ; =============== CharSel_Select_DoCtrl_Up ===============
 CharSel_Select_DoCtrl_Up:
-	call CharSel_MoveCursorU
-	jp   CharSel_PlayCursorMoveSFX
+	ld   b, BANK(MixKOF_CharSelMoveU)
+	ld   hl, MixKOF_CharSelMoveU
+	rst  $08
+	call CharSel_Select_DoCtrl_NoAction
+	jr   CharSel_PlayCursorMoveSFX
 ; =============== CharSel_Select_DoCtrl_Left ===============
 CharSel_Select_DoCtrl_Left:
-	call CharSel_MoveCursorL
-	jp   CharSel_PlayCursorMoveSFX
+	ld   b, BANK(MixKOF_CharSelMoveL)
+	ld   hl, MixKOF_CharSelMoveL
+	rst  $08
+	call CharSel_Select_DoCtrl_NoAction
+	jr   CharSel_PlayCursorMoveSFX
 ; =============== CharSel_Select_DoCtrl_Right ===============
 CharSel_Select_DoCtrl_Right:
-	call CharSel_MoveCursorR
+	ld   b, BANK(MixKOF_CharSelMoveR)
+	ld   hl, MixKOF_CharSelMoveR
+	rst  $08
+	call CharSel_Select_DoCtrl_NoAction
 	; Fall-through
 ; =============== CharSel_PlayCursorMoveSFX ===============
 CharSel_PlayCursorMoveSFX:
@@ -1384,7 +1398,13 @@ CharSel_StartPortraitFlip_CheckChar:
 	ldi  a, [hl]
 	ld   [wCharSelVariantPortraitId], a
 	ld   a, [hl]
-	ld   [wCharSelVariantTileId], a
+	ld   [wCharSelVariantTileId], a ; Derived portrait asset index
+	ld   a, [wCharSelVariantPortraitId]
+	ld   c, a
+	ld   a, [wCharSelVariantTileId]
+	ld   b, BANK(MixKOF_LoadCharSelPortrait)
+	ld   hl, MixKOF_LoadCharSelPortrait
+	rst  $08
 
 	; Start the correct flip animation and save the redraw arguments.
 	ld   a, [wCharSelVariantFlipOffset]
@@ -1404,8 +1424,7 @@ CharSel_StartPortraitFlip_CheckChar:
 	add  hl, de
 	ld   a, [wCharSelVariantPortraitId]
 	ldi  [hl], a
-	ld   a, [wCharSelVariantTileId]
-	ld   [hl], a
+	ld   [hl], $00                  ; CharSel_DrawPortrait derives its tile base.
 .retOk:
 	; Tile flip was started (C flag clear)
 	xor  a
@@ -1416,17 +1435,17 @@ CharSel_StartPortraitFlip_CheckChar:
 
 ; Portrait variant descriptor format:
 ; cursor ID, flip OBJInfo offset, requirement flags, variant count,
-; then [character ID, portrait ID, base BG tile] for every version.
+; then [character ID, portrait ID, derived asset index] for every version.
 .variantTbl:
 	db CHARSEL_ID_IORI, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
-	db CHAR_ID_IORI/2,  CHARSEL_ID_IORI,       $2D
-	db CHAR_ID_OIORI/2, CHARSEL_ID_SPEC_OIORI, $A2
+	db CHAR_ID_IORI/2,  CHARSEL_ID_IORI, CHARSEL_ID_IORI
+	db CHAR_ID_OIORI/2, CHARSEL_ID_IORI, 29+6
 	db CHARSEL_ID_LEONA, LOW(wOBJInfo_LeonaFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
-	db CHAR_ID_LEONA/2,  CHARSEL_ID_LEONA,       $99
-	db CHAR_ID_OLEONA/2, CHARSEL_ID_SPEC_OLEONA, $AB
+	db CHAR_ID_LEONA/2,  CHARSEL_ID_LEONA, CHARSEL_ID_LEONA
+	db CHAR_ID_OLEONA/2, CHARSEL_ID_LEONA, 29+7
 	db CHARSEL_ID_CHIZURU, LOW(wOBJInfo_ChizuruFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
-	db CHAR_ID_CHIZURU/2, CHARSEL_ID_CHIZURU,     $75
-	db CHAR_ID_KAGURA/2,  CHARSEL_ID_SPEC_KAGURA, $B4
+	db CHAR_ID_CHIZURU/2, CHARSEL_ID_CHIZURU, CHARSEL_ID_CHIZURU
+	db CHAR_ID_KAGURA/2,  CHARSEL_ID_CHIZURU, 29+8
 	db $FF
 	
 ; =============== .initAndGetArgs ===============
@@ -1790,27 +1809,23 @@ CharSel_MoveCursorL:
 CharSel_MoveCursorPosL:
 	ld   a, [hl]			; A = CursorPos
 .moveL:
-	; Handle row wrapping
-	cp   CHARSEL_GRID_W*0	; First row
-	jp   z, .wrapH
-	cp   CHARSEL_GRID_W*1	; Second row
-	jp   z, .wrapH
-	cp   CHARSEL_GRID_W*2	; Third row
-	jp   z, .wrapH
-	
-	; Handle wide portrait special case.
-	; If we're on the right side of Mr. Karate's portrait, skip the left side when moving left.
-	cp   CHARSEL_ID_MRKARATE1
-	jp   z, .mrKarate
-	
+	; Wrap within the 6x5 grid.
+	cp   CHARSEL_GRID_W*0
+	jr   z, .wrapH
+	cp   CHARSEL_GRID_W*1
+	jr   z, .wrapH
+	cp   CHARSEL_GRID_W*2
+	jr   z, .wrapH
+	cp   CHARSEL_GRID_W*3
+	jr   z, .wrapH
+	cp   CHARSEL_GRID_W*4
+	jr   z, .wrapH
 .moveNorm:
 	dec  a					; Otherwise, move left once
 	jp   .chkLock
 .wrapH:
 	add  a, CHARSEL_GRID_W-1	; Move to rightmost portrait in row
 	jp   .chkLock
-.mrKarate:
-	sub  a, $02				; Skip left side of portrait
 .chkLock:
 	; Skip locked characters
 	push af
@@ -1849,27 +1864,23 @@ CharSel_MoveCursorR:
 CharSel_MoveCursorPosR:
 	ld   a, [hl]		; A = CursorPos
 .moveR:
-	; Handle row wrapping
-	cp   (CHARSEL_GRID_W*1)-1	; First row
-	jp   z, .wrapH
-	cp   (CHARSEL_GRID_W*2)-1	; Second row
-	jp   z, .wrapH
-	cp   (CHARSEL_GRID_W*3)-1	; Third row
-	jp   z, .wrapH
-	
-	; Handle wide portrait special case.
-	; If we're on the left side of Mr. Karate's portrait, skip the right side when moving right.
-	cp   CHARSEL_ID_MRKARATE0
-	jp   z, .mrKarate
-	
+	; Wrap within the 6x5 grid.
+	cp   (CHARSEL_GRID_W*1)-1
+	jr   z, .wrapH
+	cp   (CHARSEL_GRID_W*2)-1
+	jr   z, .wrapH
+	cp   (CHARSEL_GRID_W*3)-1
+	jr   z, .wrapH
+	cp   (CHARSEL_GRID_W*4)-1
+	jr   z, .wrapH
+	cp   (CHARSEL_GRID_W*5)-1
+	jr   z, .wrapH
 .moveNorm:
 	inc  a					; Otherwise, move right once
 	jp   .chkLock
 .wrapH:
 	sub  a, CHARSEL_GRID_W-1	; Move to leftmost portrait in row
 	jp   .chkLock
-.mrKarate:
-	add  a, $02			; Skip right side of portrait
 .chkLock:
 	; Skip locked characters
 	push af
@@ -2184,6 +2195,8 @@ CharSel_AddCharToFirstFreeSlot:
 	ld   a, c
 	call CharSel_GetCharIdByPortraitId
 	ld   c, a				; Save CharID
+	cp   CHAR_ID_NONE
+	jp   z, .noAdd
 	
 	;
 	; In team mode, prevent selecting duplicate characters,
@@ -2397,8 +2410,10 @@ CharSel_GetCharIdByPortraitId:
 	ld   e, a
 	add  hl, de					; Index the thing
 	ld   a, [hl]				; A = Character ID + flags
+	cp   CHAR_ID_NONE			; Preserve the locked/empty marker.
+	jr   z, .done
 	and  a, $3F					; Filter away flags (why not filter by $1F)? 
-	
+.done:
 	pop  de
 	pop  hl
 	ret
@@ -2510,24 +2525,11 @@ CharSel_DrawCrossOnDefeatedChars:
 ; [TCRF] These also contain unique pointers for Mr. Karate and Goenitz, which aren't possible
 ;        to see normally.
 CharSel_IdTilesMapTbl:
-	dw $92F0 ; CHARSEL_ID_KYO      
-	dw $9380 ; CHARSEL_ID_ANDY     
-	dw $9410 ; CHARSEL_ID_TERRY    
-	dw $94A0 ; CHARSEL_ID_RYO      
-	dw $9530 ; CHARSEL_ID_ROBERT   
-	dw $95C0 ; CHARSEL_ID_IORI     
-	dw $9650 ; CHARSEL_ID_DAIMON   
-	dw $96E0 ; CHARSEL_ID_MAI      
-	dw $9770 ; CHARSEL_ID_GEESE    
-	dw $8800 ; CHARSEL_ID_MRBIG    
-	dw $8890 ; CHARSEL_ID_KRAUSER  
-	dw $8920 ; CHARSEL_ID_MATURE   
-	dw $89B0 ; CHARSEL_ID_ATHENA   
-	dw $8A40 ; CHARSEL_ID_CHIZURU  
-	dw $8AD0 ; CHARSEL_ID_MRKARATE0 (impossible to see)
-	dw $8B60 ; CHARSEL_ID_MRKARATE1 (impossible to see)
-	dw $8BF0 ; CHARSEL_ID_GOENITZ   (impossible to see)
-	dw $8C80 ; CHARSEL_ID_LEONA    
+	dw $92F0, $9350, $93B0, $9410, $9470, $94D0, $9530
+	dw $9590, $95F0, $9650, $96B0, $9710, $9770
+	dw $8800, $8860, $88C0, $8920, $8980, $89E0, $8A40
+	dw $8AA0, $8B00, $8B60, $8BC0, $8C20, $8C80, $8CE0
+	dw $8D40, $8DA0
 	
 ; =============== CharSel_RefreshNameAndCursor ===============
 ; Updates the character name and cursor sprite for the specified portrait.
@@ -2538,8 +2540,22 @@ CharSel_IdTilesMapTbl:
 CharSel_RefreshNameAndCursor:
 	; Display the character name
 	push af
+		ld   c, a
 		call CharSel_GetCharIdByPortraitId
+		cp   CHAR_ID_NONE
+		jr   z, .portraitName
 		call CharSel_PrintCharName
+		jr   .nameDone
+	.portraitName:
+		ld   a, c
+		; The far-bank name printer uses DE for its tilemap destination. Preserve
+		; the cursor OBJInfo pointer needed by the fall-through refresh below.
+		push de
+			ld   b, BANK(MixKOF_PrintCharSelPortraitName)
+			ld   hl, MixKOF_PrintCharSelPortraitName
+			rst  $08
+		pop  de
+	.nameDone:
 	pop  af
 	; Fall-through
 	
@@ -2549,34 +2565,12 @@ CharSel_RefreshNameAndCursor:
 ; - A: Portrait ID
 ; - DE: Ptr to wOBJInfo
 CharSel_RefreshCursor:
-
-	;
-	; Determine the size of the cursor to display.
-	; In practice, Mr. Karate is the only character to have a wide portrait,
-	; who as a result has two portrait "slots".
-	;
-	
-	cp   CHARSEL_ID_MRKARATE0	; Cursor over Mr. Karate?
-	jp   z, .wide				; If so, jump
-	cp   CHARSEL_ID_MRKARATE1	; ""
-	jp   z, .wide				; ""
-.normal:
-	; Otherwise, we're on a normal sized tile.
-	; A = iOBJInfo_CharSel_CursorOBJId
+	; Every single-page portrait, including Mr. Karate, uses one normal cell.
 	push af
 		ld   hl, iOBJInfo_CharSel_CursorOBJId
 		add  hl, de				
 		ld   a, [hl]			
-		jp   .setInfo
-.wide:
-	; A = iOBJInfo_CharSel_CursorWideOBJId
-	push af
-		ld   hl, iOBJInfo_CharSel_CursorWideOBJId
-		add  hl, de
-		ld   a, [hl]	
-		
-	.setInfo:
-		; Copy A to the sprite mapping ID field
+.setInfo:
 		ld   hl, iOBJInfo_OBJLstPtrTblOffset
 		add  hl, de
 		ld   [hl], a
@@ -2613,32 +2607,11 @@ CharSel_RefreshCursor:
 ; =============== CharSel_CursorPosTable ===============
 ; Maps portrait IDs to cursor sprite positions.
 CharSel_CursorPosTable:
-	db $00,$00 ; CHARSEL_ID_KYO      
-	db $18,$00 ; CHARSEL_ID_ANDY     
-	db $30,$00 ; CHARSEL_ID_TERRY    
-	db $48,$00 ; CHARSEL_ID_RYO      
-	db $60,$00 ; CHARSEL_ID_ROBERT   
-	db $78,$00 ; CHARSEL_ID_IORI     
-	db $00,$18 ; CHARSEL_ID_DAIMON   
-	db $18,$18 ; CHARSEL_ID_MAI      
-	db $30,$18 ; CHARSEL_ID_GEESE    
-	db $48,$18 ; CHARSEL_ID_MRBIG    
-	db $60,$18 ; CHARSEL_ID_KRAUSER  
-	db $78,$18 ; CHARSEL_ID_MATURE   
-	db $00,$30 ; CHARSEL_ID_ATHENA   
-	db $18,$30 ; CHARSEL_ID_CHIZURU
-	; Mr. Karate has a trick -- the same position is used for both slots.
-	; Even if they look identical, having two different slots prevents the cursor from jumping
-	; to another column when scrolling up.
-	db $30,$30 ; CHARSEL_ID_MRKARATE0
-	db $30,$30 ; CHARSEL_ID_MRKARATE1
-	db $60,$30 ; CHARSEL_ID_GOENITZ  
-	db $78,$30 ; CHARSEL_ID_LEONA  
-	; [TCRF] The secret characters accessible by flipping the portraits
-	;        reuse the previous portrait IDs, leaving these unreachable.
-	db $78,$00 ; CHARSEL_ID_SPEC_OIORI 
-	db $78,$30 ; CHARSEL_ID_SPEC_OLEONA
-	db $18,$30 ; CHARSEL_ID_SPEC_KAGURA
+	db $00,$E8, $18,$E8, $30,$E8, $48,$E8, $60,$E8, $78,$E8
+	db $00,$00, $18,$00, $30,$00, $48,$00, $60,$00, $78,$00
+	db $00,$18, $18,$18, $30,$18, $48,$18, $60,$18, $78,$18
+	db $00,$30, $18,$30, $30,$30, $48,$30, $60,$30, $78,$30
+	db $00,$48, $18,$48, $30,$48, $48,$48, $60,$48, $78,$48
 ; =============== CharSel_PrintCharName ===============
 ; Writes the name for the specified character to the tilemap.
 ; IN
@@ -2716,28 +2689,34 @@ CharSel_PrintCharName:
 	ret
 ; =============== CharSel_CharNameBGPtrTbl ===============
 ; Ptr table to the starting tilemap positions on 2P side, indexed by character ID.
-; The pointer for each character should always be equal to $99B3-(name length).
+; The pointer for each character should always be equal to $9A33-(name length).
 CharSel_CharNameBGPtrTbl:
-	dw $99B0 ; CHAR_ID_KYO     
-	dw $99AD ; CHAR_ID_DAIMON  
-	dw $99AE ; CHAR_ID_TERRY   
-	dw $99AF ; CHAR_ID_ANDY    
-	dw $99B0 ; CHAR_ID_RYO     
-	dw $99AD ; CHAR_ID_ROBERT  
-	dw $99AD ; CHAR_ID_ATHENA  
-	dw $99B0 ; CHAR_ID_MAI     
-	dw $99AE ; CHAR_ID_LEONA   
-	dw $99AE ; CHAR_ID_GEESE   
-	dw $99AC ; CHAR_ID_KRAUSER 
-	dw $99AE ; CHAR_ID_MRBIG   
-	dw $99AF ; CHAR_ID_IORI    
-	dw $99AD ; CHAR_ID_MATURE  
-	dw $99AC ; CHAR_ID_CHIZURU 
-	dw $99AC ; CHAR_ID_GOENITZ 
-	dw $99AB ; CHAR_ID_MRKARATE
-	dw $99AE ; CHAR_ID_OIORI   
-	dw $99AD ; CHAR_ID_OLEONA  
-	dw $99AD ; CHAR_ID_KAGURA  
+	dw $9A30 ; CHAR_ID_KYO
+	dw $9A2D ; CHAR_ID_DAIMON
+	dw $9A2E ; CHAR_ID_TERRY
+	dw $9A2F ; CHAR_ID_ANDY
+	dw $9A30 ; CHAR_ID_RYO
+	dw $9A2D ; CHAR_ID_ROBERT
+	dw $9A2D ; CHAR_ID_ATHENA
+	dw $9A30 ; CHAR_ID_MAI
+	dw $9A2E ; CHAR_ID_LEONA
+	dw $9A2E ; CHAR_ID_GEESE
+	dw $9A2C ; CHAR_ID_KRAUSER
+	dw $9A2E ; CHAR_ID_MRBIG
+	dw $9A2F ; CHAR_ID_IORI
+	dw $9A2D ; CHAR_ID_MATURE
+	dw $9A2C ; CHAR_ID_CHIZURU
+	dw $9A2C ; CHAR_ID_GOENITZ
+	dw $9A2B ; CHAR_ID_MRKARATE
+	dw $9A2E ; CHAR_ID_OIORI
+	dw $9A2D ; CHAR_ID_OLEONA
+	dw $9A2D ; CHAR_ID_KAGURA
+	dw $9A30 ; CHAR_ID_KIM
+	dw $9A2B ; CHAR_ID_BENIMARU
+	dw $9A2F ; CHAR_ID_YURI
+	dw $9A30 ; CHAR_ID_JOE
+	dw $9A2D ; CHAR_ID_HEIDERN
+	dw $9A2F ; CHAR_ID_RALF
 ; =============== CharSel_CharNamePtrTable ===============
 ; Ptr table to the character names, indexed by character ID.
 CharSel_CharNamePtrTable:
@@ -2761,6 +2740,12 @@ CharSel_CharNamePtrTable:
 	dw TextC_Char_OIori
 	dw TextC_Char_OLeona
 	dw TextC_Char_Kagura
+	dw TextC_Char_Kim
+	dw TextC_Char_Benimaru
+	dw TextC_Char_Yuri
+	dw TextC_Char_Joe
+	dw TextC_Char_Heidern
+	dw TextC_Char_Ralf
 
 ; =============== TextC_Char_* ===============
 ; These lack the tilemap offset, as they are passed to TextPrinter_Instant_CustomPos.
@@ -2788,6 +2773,12 @@ TextC_Char_MrKarate: mTxtDef "M<r.>KARATE"
 TextC_Char_OIori:    mTxtDef "IORI`"
 TextC_Char_OLeona:   mTxtDef "LEONA`"
 TextC_Char_Kagura:   mTxtDef "KAGURA"
+TextC_Char_Kim:      mTxtDef "KIM"
+TextC_Char_Benimaru: mTxtDef "BENIMARU"
+TextC_Char_Yuri:     mTxtDef "YURI"
+TextC_Char_Joe:      mTxtDef "JOE"
+TextC_Char_Heidern:  mTxtDef "HEIDERN"
+TextC_Char_Ralf:     mTxtDef "RALF"
 
 ; =============== CharSel_AnimCursorPalFast ===============
 ; Cycles the cursor palette fast, used when still selecting something.
@@ -2979,7 +2970,7 @@ CharSel_SetPlInfo:
 	inc  hl				; Next team member
 	inc  de				; ""
 	dec  b				; Copied all other members?
-	jp   nz, .loop		; If not, loop
+	jr   nz, .loop		; If not, loop
 	ret
 	
 ; =============== CharSel_DrawUnlockedChars ===============
@@ -2989,7 +2980,6 @@ CharSel_SetPlInfo:
 CharSel_DrawUnlockedChars:
 	; Go in the CHARSEL_ID_* order, since it's the order of the characters
 	ld   b, $00		; B = Starting character id
-	ld   c, $00		; C = Starting tile id base
 .loop:
 
 	;
@@ -3003,9 +2993,7 @@ CharSel_DrawUnlockedChars:
 
 	; Mr. Karate is only drawn when the "All Characters" dip switch is set
 	ld   a, b
-	cp   CHARSEL_ID_MRKARATE0	; Trying to draw the first part of Mr. Karate's portrait?
-	jp   z, .chkUnlockMrKarate	; If so, jump
-	cp   CHARSEL_ID_MRKARATE1	; Trying to draw the second part of Mr. Karate's portrait?
+	cp   CHARSEL_ID_MRKARATE	; Trying to draw Mr. Karate's normal-sized right half?
 	jp   z, .chkUnlockMrKarate	; If so, jump
 	jp   .chkBoss				; Skip ahead
 .chkUnlockMrKarate:
@@ -3014,8 +3002,7 @@ CharSel_DrawUnlockedChars:
 	jp   nz, .charOk			; If so, jump
 	; Otherwise, disable his slots and skip him
 	ld   a, CHAR_ID_NONE
-	ld   [wCharSelIdMapTbl+CHARSEL_ID_MRKARATE0], a
-	ld   [wCharSelIdMapTbl+CHARSEL_ID_MRKARATE1], a
+	ld   [wCharSelIdMapTbl+CHARSEL_ID_MRKARATE], a
 	jp   .nextChar
 .chkBoss:
 	ld   a, b
@@ -3035,16 +3022,10 @@ CharSel_DrawUnlockedChars:
 	call CharSel_DrawPortrait
 	pop  bc
 .nextChar:
-	; Set the info for the next portrait.
-	; Each portrait uses 9 continuous tiles, and they are also ordered by CHARSEL_ID_* in the GFX.
-	; Therefore, increasing the TileId offset by 9 is all that's needed to seek to the next. 
-	ld   a, $09				; TileId += 9
-	add  c					
-	ld   c, a
 	inc  b					; Next portrait id
 	ld   a, b
-	cp   CHARSEL_ID_LEONA+1	; Went past the last valid portrait?
-	jp   nz, .loop			; If so, jump
+	cp   CHARSEL_ID_RESERVED0	; The final grid cell is intentionally blank.
+	jr   nz, .loop			; If so, jump
 	ret
 	
 ; =============== CharSel_DrawPortrait ===============
@@ -3062,7 +3043,7 @@ CharSel_DrawPortrait:
 	ld   a, b					; A = L + (CharselId * 2)			
 	sla  a
 	add  a, l
-	jp   nc, .noInc				; Did we overflow? If not, skip
+	jr   nc, .noInc				; Did we overflow? If not, skip
 	inc  h						; If so, H++ (never happens)
 .noInc:
 	ld   l, a					; HL = CharSel_IdBGMapTbl entry
@@ -3074,13 +3055,17 @@ CharSel_DrawPortrait:
 	pop  hl						; HL = Tilemap ptr
 	
 	;
-	; Draw the portrait.
-	; The tilemap for the portrait is always the same as it uses 9 consecutive tiles.
-	; What makes the difference is the base tile ID CopyBGToRectWithBase.
+	; Draw the derived 2x3 portrait inside its 3x3 selection cell.
 	;
+	push hl
+		ld   hl, CharSel_PortraitBaseTileTbl
+		ld   d, $00
+		ld   e, b
+		add  hl, de
+		ld   a, [hl]
+	pop  hl
 	ld   de, BG_CharSel_Portrait; DE = Relative tile IDs
-	ld   a, c					; A = Tile ID base
-	ld   b, $03					; B = Portrait width
+	ld   b, $02					; B = Portrait width
 	ld   c, $03					; C = Portrait height
 	call CopyBGToRectWithBase
 	ret
@@ -3102,7 +3087,7 @@ CharSel_ClearPortrait:
 	ld   a, b					; A = L + (CharselId * 2)			
 	sla  a
 	add  a, l
-	jp   nc, .noInc				; Did we overflow? If not, skip
+	jr   nc, .noInc				; Did we overflow? If not, skip
 	inc  h						; If so, H++ (never happens)
 .noInc:
 	ld   l, a					; HL = CharSel_IdBGMapTbl entry
@@ -3113,10 +3098,10 @@ CharSel_ClearPortrait:
 	push de						; And move it to HL
 	pop  hl						; HL = Tilemap ptr
 	
-	; Replace the 3x3 portrait area with black tiles
+	; Replace the 2x3 derived portrait area with black tiles
 	ld   de, BG_CharSel_EmptyPortrait
 	ld   a, c
-	ld   b, $03
+	ld   b, $02
 	ld   c, $03
 	call CopyBGToRectWithBase
 	ret
@@ -3124,32 +3109,21 @@ CharSel_ClearPortrait:
 ; =============== CharSel_IdBGMapTbl ===============
 ; This table maps portrait IDs to their origin in the tilemap.
 ;
-; Portraits are 3 tiles wide and 3 tiles high, and their origin is the top-left tile.
+; Cells retain a 3-tile horizontal pitch, but derived portraits occupy the
+; left two tile columns. Five 24-pixel rows fill tilemap rows 0-14.
 ;
 CharSel_IdBGMapTbl:
-	dw $9861 ; CHARSEL_ID_KYO      
-	dw $9864 ; CHARSEL_ID_ANDY     
-	dw $9867 ; CHARSEL_ID_TERRY    
-	dw $986A ; CHARSEL_ID_RYO      
-	dw $986D ; CHARSEL_ID_ROBERT   
-	dw $9870 ; CHARSEL_ID_IORI     
-	dw $98C1 ; CHARSEL_ID_DAIMON   
-	dw $98C4 ; CHARSEL_ID_MAI      
-	dw $98C7 ; CHARSEL_ID_GEESE    
-	dw $98CA ; CHARSEL_ID_MRBIG    
-	dw $98CD ; CHARSEL_ID_KRAUSER  
-	dw $98D0 ; CHARSEL_ID_MATURE   
-	dw $9921 ; CHARSEL_ID_ATHENA   
-	dw $9924 ; CHARSEL_ID_CHIZURU  
-	dw $9927 ; CHARSEL_ID_MRKARATE0
-	dw $992A ; CHARSEL_ID_MRKARATE1
-	dw $992D ; CHARSEL_ID_GOENITZ  
-	dw $9930 ; CHARSEL_ID_LEONA
-	; These still happen to get used, unlike what's in CharSel_CursorPosTable.
-	; Unsurprisingly, they have the same tilemap pointers as their normal versions.
-	dw $9870 ; CHARSEL_ID_SPEC_OIORI 
-	dw $9930 ; CHARSEL_ID_SPEC_OLEONA
-	dw $9924 ; CHARSEL_ID_SPEC_KAGURA
+	dw $9801, $9804, $9807, $980A, $980D, $9810
+	dw $9861, $9864, $9867, $986A, $986D, $9870
+	dw $98C1, $98C4, $98C7, $98CA, $98CD, $98D0
+	dw $9921, $9924, $9927, $992A, $992D, $9930
+	dw $9981, $9984, $9987, $998A, $998D, $9990
+
+; CopyBGToRectWithBase adds these values to $2F-$34. The three-tile gap at
+; the $9800 VRAM boundary keeps every six-tile portrait contiguous.
+CharSel_PortraitBaseTileTbl:
+	db $00,$06,$0C,$12,$18,$1E,$24,$2A,$30,$36,$3C,$42,$48
+	db $51,$57,$5D,$63,$69,$6F,$75,$7B,$81,$87,$8D,$93,$99,$9F,$A5,$AB
 
 ; =============== CharSel_IsEndlessCpuVsCpu ===============
 ; Checks if both players are set as CPU during VS mode.
@@ -3274,17 +3248,19 @@ CharSelect_IsLastWinner:
 CharSel_IdMapTbl:
 	db CHAR_ID_KYO/2,    CHAR_ID_ANDY/2,    CHAR_ID_TERRY/2,    CHAR_ID_RYO/2,      CHAR_ID_ROBERT/2,  CHAR_ID_IORI/2
 	db CHAR_ID_DAIMON/2, CHAR_ID_MAI/2,     CHAR_ID_GEESE/2,    CHAR_ID_MRBIG/2,    CHAR_ID_KRAUSER/2, CHAR_ID_MATURE/2
-	db CHAR_ID_ATHENA/2, CHAR_ID_CHIZURU/2, CHAR_ID_MRKARATE/2, CHAR_ID_MRKARATE/2, CHAR_ID_GOENITZ/2, CHAR_ID_LEONA/2
-	; [TCRF] Unused entries in the list. Not used by tile flipping since it switches between hardcoded char IDs.
-	;        These may have been used before the tile flipping was implemented, and still work properly.
-	;        They all work as intended as they also have (unused) CharSel_CursorPosTable entries.
-	db CHAR_ID_OIORI/2
-	db CHAR_ID_OLEONA/2
-	db CHAR_ID_KAGURA/2
+	db CHAR_ID_ATHENA/2, CHAR_ID_CHIZURU/2, CHAR_ID_MRKARATE/2, CHAR_ID_GOENITZ/2,  CHAR_ID_LEONA/2
+	; Imported KOF95 fighters with gameplay registration.
+	db CHAR_ID_BENIMARU/2, CHAR_ID_YURI/2
+	db CHAR_ID_JOE/2, CHAR_ID_HEIDERN/2, CHAR_ID_RALF/2
+	ds 1, CHAR_ID_NONE
+	db CHAR_ID_KIM/2
+	ds 5, CHAR_ID_NONE
+	; One reserved cell completes the single 6x5 navigation grid.
+	db CHAR_ID_NONE
 .end:
 ; Relative tile IDs for portraits
-BG_CharSel_Portrait: INCBIN "data/bg/charsel_portrait.bin"
-BG_CharSel_EmptyPortrait: INCBIN "data/bg/charsel_emptyportrait.bin"
+BG_CharSel_Portrait: db $2F,$30,$31,$32,$33,$34
+BG_CharSel_EmptyPortrait: ds $06
 TextDef_CharSel_SingleTitle:
 	dw $9823
 	mTxtDef "PLAYER  SELECT"
@@ -3294,8 +3270,8 @@ TextDef_CharSel_TeamTitle:
 GFX_CharSel_BG0: INCBIN "data/gfx/charsel_bg0.bin"
 GFXLZ_CharSel_BG1: INCBIN "data/gfx/charsel_bg1.lzc"
 GFXLZ_CharSel_OBJ: INCBIN "data/gfx/charsel_obj.lzc"
-GFXDef_CharSel_Cross: mGfxDef "data/gfx/charsel_cross.bin"
-GFX_CharSel_Cross_Mask: INCBIN "data/gfx/charsel_cross_mask.bin"
+GFXDef_CharSel_Cross: mGfxDef "data/gfx/charsel_mix_cross.bin"
+GFX_CharSel_Cross_Mask: INCBIN "data/gfx/charsel_mix_cross_mask.bin"
 
 OBJInfoInit_CharSel_Cursor:
 	db OST_VISIBLE ; iOBJInfo_Status
@@ -3692,7 +3668,7 @@ Module_OrdSel:
 	; Hide the cursor when all characters are selected
 	ld   a, [wOrdSelP1CharsSelected]
 	cp   ORDSEL_SELDONE					; CursorMode == ORDSEL_SELDONE?
-	jp   nz, .doPl2							; If not, skip
+	jr   nz, .doPl2							; If not, skip
 	ld   hl, wOBJInfo_Pl1+iOBJInfo_Status	; Otherwise, hide the 1P cursor sprite
 	res  OSTB_VISIBLE, [hl]
 .doPl2:
@@ -3706,7 +3682,7 @@ Module_OrdSel:
 	; Hide the cursor when all characters are selected
 	ld   a, [wOrdSelP2CharsSelected]
 	cp    ORDSEL_SELDONE					; CursorMode == ORDSEL_SELDONE?
-	jp   nz, .chkEnd						; If not, skip
+	jr   nz, .chkEnd						; If not, skip
 	ld   hl, wOBJInfo_Pl2+iOBJInfo_Status	; Otherwise, hide the 2P cursor sprite
 	res  OSTB_VISIBLE, [hl]
 	
@@ -3717,12 +3693,12 @@ Module_OrdSel:
 	ld   a, [wOrdSelP1CharsSelected]	; A = P1Cursor
 	ld   hl, wOrdSelP2CharsSelected	; HL = P2Cursor Ptr
 	cp   a, [hl]					; Are both cursors in the same mode?
-	jp   nz, .noEnd					; If not, jump
+	jr   nz, .noEnd					; If not, jump
 	cp   ORDSEL_SELDONE			; Has 1P finished selecting characters?
-	jp   nz, .noEnd					; If not, jump
+	jr   nz, .noEnd					; If not, jump
 	; Otherwise, it means ORDSEL_SELDONE is set to both players.
 	; We're done.
-	jp   .end
+	jr   .end
 .noEnd:
 	; Wait for the end of the frame and continue
 	call Task_PassControl_NoDelay
@@ -4591,7 +4567,7 @@ OrdSel_LoadCharGFX1P:
 		inc  hl		; TileIdPtr++
 	pop  bc
 	dec  b			; Copied all tiles?
-	jp   nz, .loop	; If not, jump
+	jr   nz, .loop	; If not, jump
 	ret
 	
 ; =============== OrdSel_LoadCharGFX2P ===============
@@ -4611,7 +4587,7 @@ OrdSel_LoadCharGFX2P:
 		inc  hl		; TileIdPtr++
 	pop  bc
 	dec  b			; Copied all tiles?
-	jp   nz, .loop	; If not, jump
+	jr   nz, .loop	; If not, jump
 	ret
 	
 ; =============== OrdSel_GetCharBGXPtr ===============
@@ -4778,6 +4754,14 @@ OrdSel_CharBGXPtrTable:
 	dw BGX_OrdSel_Char_OIori ; CHAR_ID_OIORI   
 	dw BGX_OrdSel_Char_OLeona ; CHAR_ID_OLEONA  
 	dw BGX_OrdSel_Char_OKagura ; CHAR_ID_KAGURA  
+	; Safe placeholder until the native KOF95 order-select miniature is converted
+	; to KOF96's shared compressed sheet format.
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_KIM
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_BENIMARU
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_YURI
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_JOE
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_HEIDERN
+	dw BGX_OrdSel_Char_Kyo ; CHAR_ID_RALF
 
 GFXLZ_OrdSel_BG: INCBIN "data/gfx/ordsel_bg.lzc"
 BGLZ_OrdSel_Main: INCBIN "data/bg/ordsel_main.lzs"
@@ -4938,6 +4922,12 @@ ENDC
 	add  hl, bc							; Seek to iPlInfo_CharId
 	ld   d, $00							; DE = iPlInfo_CharId
 	ld   e, [hl]
+	; Imported KOF95 fighters do not have native KOF96 win quotes yet.
+	; Keep their fallback out of this full bank instead of extending the table.
+	ld   a, e
+	cp   CHAR_ID_KIM
+	ld   hl, TextC_Win_Kyo
+	jr   nc, .textReady
 	; Index the table
 	ld   hl, WinScr_CharTextPtrTbl		; HL = Ptr to table base
 	add  hl, de	
@@ -4947,6 +4937,7 @@ ENDC
 	ld   d, [hl]
 	push de								; HL = Ptr to the character-specific TextC_* structure.
 	pop  hl
+.textReady:
 	ld   de, WINDOWMap_Begin			; Start at the top of the WINDOW layer
 	ld   b, BANK(TextC_Win_Marker)		; The TextC ptr points to BANK $1C
 	ld   c, $04							; 4 frames between between letter printing
@@ -5026,6 +5017,16 @@ WinScr_InitChars:
 		add  hl, bc		; Seek to iPlInfo_CharId
 		ld   d, $00		; DE = iPlInfo_CharId
 		ld   e, [hl]
+		ld   a, e
+		cp   CHAR_ID_KIM
+		jr   c, .residentAnim
+		ld   c, e
+		ld   b, BANK(MixKOF_CopyWinAnimEntry)
+		ld   hl, MixKOF_CopyWinAnimEntry
+		rst  $08
+		ld   bc, wLZSS_Buffer
+		jr   .animInfoReady
+.residentAnim:
 		sla  e			; DE << 1
 		rl   d
 		; Index the table
@@ -5034,6 +5035,7 @@ WinScr_InitChars:
 		; Move the ptr to BC
 		push hl
 		pop  bc
+.animInfoReady:
 		
 		;
 		; Update the sprite mapping.
@@ -5176,10 +5178,10 @@ WinScr_IdleWait:
 	; If any player presses START, the wait ends early
 	ldh  a, [hJoyNewKeys]
 	bit  KEYB_START, a
-	jp   nz, .abort
+	jr   nz, .abort
 	ldh  a, [hJoyNewKeys2]
 	bit  KEYB_START, a
-	jp   nz, .abort
+	jr   nz, .abort
 	
 	; Continue animating the player sprite
 	ld   hl, wOBJInfo_Winner
@@ -5189,7 +5191,7 @@ WinScr_IdleWait:
 	call Task_PassControl_NoDelay
 	
 	dec  b			; Are we finished?
-	jp   nz, .loop	; If not, loop
+	jr   nz, .loop	; If not, loop
 	
 	xor  a	; C flag clear
 	ret
@@ -5338,77 +5340,6 @@ WinScr_CharTextPtrTbl:
 	dw TextC_Win_OIori ; CHAR_ID_OIORI
 	dw TextC_Win_OLeona ; CHAR_ID_OLEONA
 	dw TextC_Win_Kagura ; CHAR_ID_KAGURA
-
-; =============== Title_DrawTrainingText ===============
-Title_DrawTrainingText:
-	ld   hl, TextDef_Menu_Training
-	jp   TextPrinter_Instant
-
-TextDef_Menu_Training:
-	dw $9A24
-	db .end-.start
-.start:
-	db "TRAN MODE"
-.end:
-
-; =============== ModeSelect_CheckCPUvsCPU ===============
-; [POI] Handles the secret where holding B when selecting a mode activates a CPU vs CPU battle.
-ModeSelect_CheckCPUvsCPU:
-	; Training always has exactly one human and one passive CPU.
-	ld   a, [wTrainingMode]
-	or   a
-	ret  nz
-
-	; CPU opponents disallowed in VS modes if done through serial.
-	; It's perfectly fine if done through the SGB though.
-	ld   a, [wMisc_C025]
-	bit  MISCB_SERIAL_MODE, a
-	ret  nz
-
-	ldh  a, [hJoyKeys]
-	bit  KEYB_B, a
-	jp   z, .chkPl2
-	ld   hl, wPlInfo_Pl1+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]
-.chkPl2:
-	ldh  a, [hJoyKeys2]
-	bit  KEYB_B, a
-	jp   z, .ret
-	ld   hl, wPlInfo_Pl2+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]
-.ret:
-	ret
-
-OptionHack_Bank1E_Start:
-; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
-; A and E are preserved for the common current/pending damage setters.
-Play_Pl_ScaleSuperCancelDamageD_Banked:
-	push af
-		ld   hl, iPlInfo_SuperCancelFlags
-		add  hl, bc
-		bit  PSCB_DAMAGE_ACTIVE, [hl]
-		jr   z, .done
-		ld   a, d
-		or   a
-		jr   z, .done
-		ld   d, $00
-.divide:
-		sub  $03
-		jr   c, .minimum
-		inc  d
-		jr   .divide
-.minimum:
-		ld   a, d
-		or   a
-		jr   nz, .done
-		inc  d
-.done:
-	pop  af
-	ret
-OptionHack_Bank1E_End:
-	
 ; =============== END OF BANK ===============
 ; Junk area below.
-	; The table-driven portrait variant dispatcher consumes another $3A bytes
-	; from this original junk tail.
-	mIncJunkFrom "L1E7F62", $70+(OptionHack_Bank1E_End-OptionHack_Bank1E_Start)
+	mIncJunkFrom "L1E7F62", $9E

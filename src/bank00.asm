@@ -210,7 +210,33 @@ Play_HUDTileIdTbl:
 BG_Play_HUDHit:
 	db $D4
 	db $D5
-	mIncJunk "L0000DD"
+
+SECTION "MixKOF ROM0 Helpers", ROM0[$00DD]
+MixKOF_GetMoveTblBank:
+	push bc
+	push de
+	ld   d, b
+	ld   e, c
+	ld   b, BANK(MixKOF_GetMoveTblBank_Banked)
+	ld   hl, MixKOF_GetMoveTblBank_Banked
+	rst  $08
+	pop  de
+	pop  bc
+	ldh  a, [hMoveTblBank]
+	ret
+MixKOF_SaveMoveTblBank:
+	push af
+		call MixKOF_GetMoveTblBank
+		ldh  [hMoveTblBank], a
+	pop  af
+	ret
+MixKOF_SwitchMoveTblBank:
+	push af
+		call MixKOF_GetMoveTblBank
+		ld   [MBC1RomBank], a
+		ldh  [hROMBank], a
+	pop  af
+	ret
 
 SECTION "EntryPoint", ROM0[$0100]
 ; =============== HW ENTRY POINT ===============
@@ -5588,6 +5614,12 @@ Play_CharStageMapTbl:
 	db STAGE_ID_STADIUM_EXTRA ; CHAR_ID_OIORI
 	db STAGE_ID_STADIUM_EXTRA ; CHAR_ID_OLEONA
 	db STAGE_ID_STADIUM_KAGURA ; CHAR_ID_KAGURA
+	db STAGE_ID_HERO ; CHAR_ID_KIM
+	db STAGE_ID_HERO ; CHAR_ID_BENIMARU
+	db STAGE_ID_FATALFURY ; CHAR_ID_YURI
+	db STAGE_ID_FATALFURY ; CHAR_ID_JOE
+	db STAGE_ID_YAGAMI ; CHAR_ID_HEIDERN
+	db STAGE_ID_HERO ; CHAR_ID_RALF
 
 ; =============== Serial_DoHandshake ===============
 ; Performs an handshake between master and slave GBs.
@@ -6682,6 +6714,18 @@ Play_LoadChar:
 	ld   [hl], a
 
 .loadCharInfo:
+	ld   hl, iPlInfo_CharId
+	add  hl, bc
+	ld   a, [hl]
+	cp   CHAR_ID_KIM
+	jr   c, .loadBaseCharInfo
+	ld   d, b
+	ld   e, c
+	ld   b, BANK(MixKOF_Play_LoadImportedChar)
+	ld   hl, MixKOF_Play_LoadImportedChar
+	rst  $08
+	ret
+.loadBaseCharInfo:
 
 	;
 	; Load the character-specific settings into the player struct.
@@ -7182,6 +7226,12 @@ Play_ProjGFXDefPtrTbl:
 	dw ProjGFXDef_OIori 		; CHAR_ID_OIORI
 	dw ProjGFXDef_OLeona 		; CHAR_ID_OLEONA
 	dw ProjGFXDef_ChizuruKagura ; CHAR_ID_KAGURA
+	dw $0000                    ; CHAR_ID_KIM
+	dw $0000                    ; CHAR_ID_BENIMARU
+	dw $0000                    ; CHAR_ID_YURI
+	dw $0000                    ; CHAR_ID_JOE
+	dw $0000                    ; CHAR_ID_HEIDERN
+	dw $0000                    ; CHAR_ID_RALF
 
 ; =============== Play_DrawHUDBaseAndInitTimer ===============
 ; Draws the base tilemap (without health bars) for the HUD in the upper section.
@@ -7326,7 +7376,7 @@ Play_DrawHUDBaseAndInitTimer:
 	ld   hl, GFX_Play_HUD_2PHuman
 	ld   de, $8FE0
 	call CopyTilesAutoNum
-	jp   .ret
+	jr   .ret
 .p2CPU:
 	; Copy 1P CPU marker GFX
 	ld   hl, GFX_Play_HUD_2PCPU
@@ -8348,6 +8398,12 @@ Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_OIori ; CHAR_ID_OIORI
 	dw BGXDef_Play_HUD_CharName_OLeona ; CHAR_ID_OLEONA
 	dw BGXDef_Play_HUD_CharName_Kagura ; CHAR_ID_KAGURA
+	dw BGXDef_Play_HUD_CharName_Kim ; CHAR_ID_KIM
+	dw BGXDef_Play_HUD_CharName_Benimaru ; CHAR_ID_BENIMARU
+	dw BGXDef_Play_HUD_CharName_Yuri ; CHAR_ID_YURI
+	dw BGXDef_Play_HUD_CharName_Joe ; CHAR_ID_JOE
+	dw BGXDef_Play_HUD_CharName_Heidern ; CHAR_ID_HEIDERN
+	dw BGXDef_Play_HUD_CharName_Ralf ; CHAR_ID_RALF
 
 ; =============== Play_DrawHUDEmptyBars ===============
 ; Draws the tilemaps for all empty bars in the HUD.
@@ -8915,6 +8971,7 @@ Play_DoPl:
 			sub  a, $70
 			jp   .getMovePtr
 		.grp01:
+			call MixKOF_SwitchMoveTblBank
 			; Subtract the base index for this group
 			sub  a, $30
 			jp   .getMovePtr
@@ -9736,6 +9793,7 @@ Pl_CopyXFlipToOther:
 ; - BC: Ptr to wPlInfo
 ; - DE: Ptr to respective wOBJInfo
 Pl_SetNewMove:
+	call MixKOF_SaveMoveTblBank
 	push bc
 		push de
 			; Set that we started a new move
@@ -9790,7 +9848,7 @@ Pl_SetNewMove:
 				; [POI] Unsafe ROM bank switch, will break if VBLANK triggers here.
 				;
 				push af
-					ld   a, BANK(MoveAnimTbl_Marker) ; BANK $03
+					ldh  a, [hMoveTblBank]
 					ld   [MBC1RomBank], a
 				pop  af
 
@@ -10400,7 +10458,7 @@ MoveC_Base_Jump:
 			; [POI] Unsafe ROM bank switch, will break if VBLANK triggers here.
 			;
 			push af
-				ld   a, BANK(MoveAnimTbl_Marker) ; BANK $03
+				call MixKOF_GetMoveTblBank
 				ld   [MBC1RomBank], a
 			pop  af
 
@@ -15487,7 +15545,7 @@ Play_Pl_ShakeFor:
 		; This didn't exist in 95, it always acted like .shakeR.
 		;
 		bit  SPRB_XFLIP, c	; Is the player visually facing right (1P side)?
-		jp   z, .shakeR		; If not, jump
+		jr   z, .shakeR		; If not, jump
 	.shakeL:
 		;
 		; If the player is facing left (2P side, no SPRB_XFLIP),
@@ -15498,8 +15556,8 @@ Play_Pl_ShakeFor:
 		inc  [hl]					; Move right 1px
 		call Task_PassControlFar	; Wait next frame
 		dec  b						; Are we done?
-		jp   nz, .shakeL			; If not, loop
-		jp   .end					; Otherwise, we're done
+		jr   nz, .shakeL			; If not, loop
+		jr   .end					; Otherwise, we're done
 	.shakeR:
 		;
 		; If the player is facing right (1P side, with SPRB_XFLIP),
@@ -15510,7 +15568,7 @@ Play_Pl_ShakeFor:
 		dec  [hl]					; Move left 1px
 		call Task_PassControlFar	; Wait next frame
 		dec  b						; Are we done?
-		jp   nz, .shakeR			; If not, loop
+		jr   nz, .shakeR			; If not, loop
 									; Otherwise, we're done
 	.end:
 	pop  bc
@@ -15532,10 +15590,10 @@ Play_Pl_GetShakeCount:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
 	bit  PF0B_PROJHIT, [hl]	; Did we get hit by a projectile?
-	jp   nz, .base08		; If so, jump
+	jr   nz, .base08		; If so, jump
 .base0A:
 	ld   a, $08+$02			; ShakeCnt = $0A
-	jp   .chkDamageFlags
+	jr   .chkDamageFlags
 .base08:
 	ld   a, $08				; ShakeCnt = $08
 
@@ -15550,14 +15608,14 @@ Play_Pl_GetShakeCount:
 
 	; Light attacks shake the player once
 	bit  PF3B_LIGHTHIT, [hl]	; Is this a light hit?
-	jp   nz, .shakeOnce			; If so, jump
+	jr   nz, .shakeOnce			; If so, jump
 
 	; Heavy ones *don't* halve the amount of shakes
 	bit  PF3B_HEAVYHIT, [hl]	; Is this an heavy hit?
-	jp   nz, .chkHealth			; If so, jump
+	jr   nz, .chkHealth			; If so, jump
 .shakeHalf:
 	srl  a						; ShakeCnt = ShakeCnt / 2
-	jp   .chkHealth
+	jr   .chkHealth
 .shakeOnce:
 	ld   a, $01					; ShakeCnt = 1
 
@@ -15577,16 +15635,16 @@ Play_Pl_GetShakeCount:
 	push af
 		ld   a, [hl]
 		or   a				; Health == 0?
-		jp   nz, .noChange	; If so, return
+		jr   nz, .noChange	; If so, return
 	pop  af
 
 	; Multiply shake count by 2, capping it at $0B
 	sla  a					; A *= 2
 	cp   $0B				; A < $0B?
-	jp   c, .ret			; If so, jump
+	jr   c, .ret			; If so, jump
 	ld   a, $0B				; Otherwise, cap at $0B
 	; We're done
-	jp   .ret
+	jr   .ret
 .noChange:
 	pop  af
 .ret:
@@ -15666,7 +15724,7 @@ Play_Pl_DoBlockstun:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
 	bit  PF0B_PROJHIT, [hl]				; Did we get hit by a projectile?
-	jp   nz, .setFlags1					; If so, skip
+	jr   nz, .setFlags1					; If so, skip
 	; Enable (opponent) hitstop next frame
 	ld   a, $01
 	ld   [wPlayHitstopSet], a
@@ -15730,7 +15788,7 @@ Play_Pl_DoBlockstun:
 			pop  hl
 		pop  af
 		dec  a			; Done this all times?
-		jp   nz, .loop	; If not, loop
+		jr   nz, .loop	; If not, loop
 .endNorm:
 	; Restore flags
 	pop  af
@@ -15777,7 +15835,7 @@ Play_Pl_ChkGuardCancelRoll:
 	add  hl, de
 	ldi  a, [hl]		; A = iOBJInfo_Y, Seek to iOBJInfo_YSub
 	cp   PL_FLOOR_POS	; iOBJInfo_Y != $88?
-	jp   nz, .retClear	; If so, jump
+	jr   nz, .retClear	; If so, jump
 
 	; Must be exactly aligned to the ground, even at subpixel level
 	ld   a, [hl]
@@ -16078,7 +16136,7 @@ MoveInputS_CheckGAType:
 
 .lk:
 	res  PF2B_HEAVY, [hl]	; Not an heavy
-	jp   .k
+	jr   .k
 .hk:
 	set  PF2B_HEAVY, [hl]	; Is heavy
 .k:
@@ -16089,7 +16147,7 @@ MoveInputS_CheckGAType:
 
 .lp:
 	res  PF2B_HEAVY, [hl]	; Not an heavy
-	jp   .p
+	jr   .p
 .hp:
 	set  PF2B_HEAVY, [hl]	; Is heavy
 .p:
@@ -16163,7 +16221,7 @@ MoveInputS_CheckEasyMoveKeys:
 	; Only if the cheat is enabled
 	ld   a, [wDipSwitch]
 	bit  DIPB_EASY_MOVES, a
-	jp   z, .none
+	jr   z, .none
 
 	; Determine which key combination are holding
 	ld   hl, iPlInfo_JoyKeys
@@ -16173,13 +16231,13 @@ MoveInputS_CheckEasyMoveKeys:
 	ld   a, [hl]				; A = Held player keys
 	and  a, KEY_SELECT|KEY_B	; Filter the required keys
 	cp   KEY_SELECT|KEY_B		; Are we holding exactly SELECT+B (and nothing else)?
-	jp   z, .selectB			; If so, jump
+	jr   z, .selectB			; If so, jump
 
 	; SELECT + A
 	ld   a, [hl]				; A = Held player keys
 	and  a, KEY_SELECT|KEY_A	; Filter the required keys
 	cp   KEY_SELECT|KEY_A		; Are we holding exactly SELECT+A (and nothing else)?
-	jp   z, .selectA			; If so, jump
+	jr   z, .selectA			; If so, jump
 .none:							; Otherwise, there's nothing here
 	xor  a	; C flag clear, Z flag clear
 	inc  a
@@ -16209,10 +16267,10 @@ Play_Pl_TempPauseOtherAnim:
 	add  hl, bc
 	ld   a, [hl]
 	or   a			; iPlInfo_PlId == PL1
-	jp   nz, .pl2	; If not, jump
+	jr   nz, .pl2	; If not, jump
 .pl1:
 	ld   hl, wOBJInfo_Pl2+iOBJInfo_FrameLeft
-	jp   .clear
+	jr   .clear
 .pl2:
 	ld   hl, wOBJInfo_Pl1+iOBJInfo_FrameLeft
 .clear:
@@ -16846,15 +16904,9 @@ Play_Pl_ScaleSuperCancelDamageD:
 ; Clears stale per-player input before the pre-round tasks begin executing.
 IF !REV_VER_2
 Play_Pl_ClearRoundInput:
-	ldh  a, [hROMBank]
-	push af
-	ld   a, BANK(Play_Pl_ClearRoundInput_Banked)
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
-	call Play_Pl_ClearRoundInput_Banked
-	pop  af
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
+	ld   b, BANK(Play_Pl_ClearRoundInput_Banked)
+	ld   hl, Play_Pl_ClearRoundInput_Banked
+	rst  $08
 	ret
 ENDC
 
@@ -16862,15 +16914,9 @@ ENDC
 ; immediately emits the corresponding heavy input.
 IF !REV_VER_2
 Play_EasyMove_ForceDirectionalHeavy:
-	ldh  a, [hROMBank]
-	push af
-	ld   a, BANK(Play_EasyMove_ForceDirectionalHeavy_Banked)
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
-	call Play_EasyMove_ForceDirectionalHeavy_Banked
-	pop  af
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
+	ld   b, BANK(Play_EasyMove_ForceDirectionalHeavy_Banked)
+	ld   hl, Play_EasyMove_ForceDirectionalHeavy_Banked
+	rst  $08
 	ret
 
 ; The BasicInput action labels expect Play_Pl_DoBasicMoveInput's saved BC/DE

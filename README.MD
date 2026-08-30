@@ -42,6 +42,22 @@ next to this one, regenerate the compact 16x24 mixed-roster portraits with:
 python3 tools/build_mixkof_portraits.py
 ```
 
+The first KOF95 gameplay import (Kim) is regenerated from the pinned sibling
+checkout without editing its source assets:
+
+```sh
+python3 tools/import_kof95_kim.py
+```
+
+Benimaru, Yuri, Joe, Heidern, and Ralf are imported as playable fighters by
+the batch converter, which also converts their 95 icon tile order and emits
+96-compatible move tables while leaving the vendor artwork untouched. Ralf's
+larger graphics set is split across two dedicated graphics banks:
+
+```sh
+python3 tools/import_kof95_batch.py
+```
+
 The Japanese configuration builds a gameplay-options edition with all hidden
 fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
 SUP CANCEL, TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original

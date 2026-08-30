@@ -2945,10 +2945,10 @@ Play_CPU_StartRoll_D14:
 	; Hold A+B+(50% chance between L and R)
 	ld   a, [wTimer]
 	bit  0, a			; wTimer % 2 != 0?
-	jp   nz, .setL		; If so, jump
+	jr   nz, .setL		; If so, jump
 .setR:
 	ld   a, KEY_A|KEY_B|KEY_RIGHT ; $31
-	jp   .go
+	jr   .go
 .setL:
 	ld   a, KEY_A|KEY_B|KEY_LEFT ; $32
 .go:
@@ -2967,7 +2967,7 @@ Play_CPU_SetJoyKeysJumpUF:
 	;
 	ld   a, [wTimer]
 	bit  4, a					; (wTimer & $10) == 0?
-	jp   z, .setJumpDir			; If so, skip
+	jr   z, .setJumpDir			; If so, skip
 	ld   hl, MoveInput_DU
 	call Play_CPU_ApplyMoveInputDir
 	
@@ -2982,7 +2982,7 @@ Play_CPU_SetJoyKeysJumpUF:
 	ld   hl, iOBJInfo_OBJLstFlags
 	add  hl, de
 	bit  SPRB_XFLIP, [hl]		; Are we facing right?
-	jp   nz, .setJumpR			; If so, jump
+	jr   nz, .setJumpR			; If so, jump
 .setJumpL:	
 	ld   a, KEY_LEFT|KEY_UP		; UL is forward when facing left (2P side)
 	ld   d, $00
@@ -3013,7 +3013,7 @@ Play_CPU_SetJoyKeysB_HP_C50:
 	ld   hl, iOBJInfo_OBJLstFlags
 	add  hl, de
 	bit  SPRB_XFLIP, [hl]	; Are we visually facing right? (1P side)
-	jp   nz, .moveL			; If so, jump
+	jr   nz, .moveL			; If so, jump
 	ld   a, KEY_RIGHT		; On the 2P side, right is backwards
 	ld   d, KEP_B_HEAVY
 	jp   Play_CPU_SetJoyKeys
@@ -3034,7 +3034,7 @@ Play_CPU_SetJoyKeysB_HP_C50:
 Play_CPU_SetJoyKeysLP_C25:
 	ld   a, [wDifficulty]
 	cp   DIFFICULTY_HARD	; On HARD difficulty?
-	jp   z, .setKeys		; If so, skip
+	jr   z, .setKeys		; If so, skip
 	call Rand				; A = Rand
 	bit  0, a				; bit0 set? (50%)
 	ret  z					; If so, return
@@ -3276,7 +3276,7 @@ Play_CPU_ApplyCharInput:
 		ld   hl, CPU_MoveListPtrTable
 		; Index the table (HL += A)
 		add  a, l			; Index it
-		jp   nc, .noovf		; Did we overflow? (never happens)
+		jr   nc, .noovf		; Did we overflow? (never happens)
 		inc  h 				
 	.noovf:
 		ld   l, a			; Save it back
@@ -3300,7 +3300,7 @@ Play_CPU_ApplyCharInput:
 		sla  a
 		; Offset the move list table (HL += A)
 		add  a, l			; Index HL by that
-		jp   nc, .noovf2
+		jr   nc, .noovf2
 		inc  h
 	.noovf2:
 		ld   l, a
@@ -3336,7 +3336,7 @@ Play_CPU_ApplyCharInput:
 			pop  hl
 	
 			bit  CMLB_BTN, a	; Is the flag set?
-			jp   nz, .inptBtn	; If so, jump		
+			jr   nz, .inptBtn	; If so, jump
 		.inptDir:
 			
 			;
@@ -3353,7 +3353,7 @@ Play_CPU_ApplyCharInput:
 			; to make it point to input #1.
 		pop  hl				; HL = Ptr to iCPUMoveListItem_LastLHKeyA (#0)
 	pop  af					; C flag = If set, use input #1
-	jp   nc, .inptDir_setLH	; Is it set? If not, skip (use #0)
+	jr   nc, .inptDir_setLH	; Is it set? If not, skip (use #0)
 	inc  hl					; Otherwise, seek to #1 (iCPUMoveListItem_LastLHKeyB)
 .inptDir_setLH:
 	ld   a, [hl]			; Read LH input value
@@ -3367,7 +3367,7 @@ Play_CPU_ApplyCharInput:
 			; Rest is identical to above
 		pop  hl
 	pop  af
-	jp   nc, .inptBtn_setLH
+	jr   nc, .inptBtn_setLH
 	inc  hl
 .inptBtn_setLH:
 	ld   a, [hl]
@@ -3531,6 +3531,14 @@ CPU_MoveListPtrTable:
 	dw CPU_MoveInputList_OIori ; CHAR_ID_OIORI
 	dw CPU_MoveInputList_OLeona ; CHAR_ID_OLEONA
 	dw CPU_MoveInputList_Chizuru ; CHAR_ID_KAGURA
+	; Compatibility fallback until Kim receives a tuned CPU command list. Ryo's
+	; list is structurally valid and prevents a Kim CPU slot indexing junk data.
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_KIM
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_BENIMARU
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_YURI
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_JOE
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_HEIDERN
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_RALF
 
 ; =============== CPU_MoveInputList_* ===============
 ; List of character-specific move inputs.

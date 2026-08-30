@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Build the compact mixed-roster character-select portrait assets.
+"""Build derived mixed-roster character-select portrait assets.
 
 The original games store every portrait as nine consecutive Game Boy 2bpp
-tiles (24x24 pixels). The mixed 8x4 grid keeps the full 24-pixel height and
+tiles (24x24 pixels). The mixed 6x5 grid keeps the full 24-pixel height and
 crops four pixels from each horizontal edge, producing six tiles (16x24).
+The source graphics are read-only inputs; every generated layout is written to
+a separate ``charsel_mix_*.bin`` file.
 """
 
 from __future__ import annotations
@@ -24,6 +26,11 @@ KOF95_UNIQUE_INDICES = (1, 3, 5, 6, 7, 9, 10, 13, 14, 15, 16, 17)
 # Kyo, Ryo, Terry, Athena, Mai and Iori. These are loaded dynamically into
 # their KOF96 portrait slots when START changes the character version.
 KOF95_SHARED_INDICES = (0, 2, 4, 8, 11, 12)
+
+# Mr. Karate occupies two adjacent 24x24 source blocks in KOF96. The new
+# single-page selector uses only the right block (index 15), so he behaves like
+# every other one-cell portrait without modifying the original 48x24 artwork.
+KOF96_SINGLEPAGE_INDICES = (*range(14), 15, 16, 17)
 
 
 def decompress_lzss(source: bytes, output_size: int) -> bytes:
@@ -153,15 +160,37 @@ def main() -> None:
     for index in range(3):
         variants.extend(compact_portrait(special_portraits, index))
 
+    singlepage = bytearray()
+    for index in KOF96_SINGLEPAGE_INDICES:
+        singlepage.extend(compact_portrait(kof96_portraits, index))
+    for index in KOF95_UNIQUE_INDICES:
+        singlepage.extend(compact_portrait(kof95_portraits, index))
+    assert len(singlepage) == 29 * PORTRAIT_16X24_TILES * TILE_BYTES
+
+    compact_cross = compact_portrait(
+        (project / "data/gfx/charsel_cross.bin").read_bytes(), 0
+    )
+    compact_cross_mask = compact_portrait(
+        (project / "data/gfx/charsel_cross_mask.bin").read_bytes(), 0
+    )
+
     output_dir = project / "data/gfx"
     base_path = output_dir / "charsel_mix_base.bin"
     variants_path = output_dir / "charsel_mix_variants.bin"
+    singlepage_path = output_dir / "charsel_mix_singlepage.bin"
+    cross_path = output_dir / "charsel_mix_cross.bin"
+    cross_mask_path = output_dir / "charsel_mix_cross_mask.bin"
     base_path.write_bytes(base)
     variants_path.write_bytes(variants)
-
+    singlepage_path.write_bytes(singlepage)
+    cross_path.write_bytes(compact_cross)
+    cross_mask_path.write_bytes(compact_cross_mask)
     print(f"vendor={revision}")
     print(f"{base_path.relative_to(project)}: {len(base)} bytes, 30 portraits")
     print(f"{variants_path.relative_to(project)}: {len(variants)} bytes, 9 portraits")
+    print(f"{singlepage_path.relative_to(project)}: {len(singlepage)} bytes, 29 portraits")
+    print(f"{cross_path.relative_to(project)}: {len(compact_cross)} bytes, 16x24 cross")
+    print(f"{cross_mask_path.relative_to(project)}: {len(compact_cross_mask)} bytes, 16x24 mask")
 
 
 if __name__ == "__main__":

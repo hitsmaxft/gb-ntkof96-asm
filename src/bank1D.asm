@@ -24,8 +24,24 @@ BGXDef_Play_HUD_CharName_MrKarate: mBinDef "data/bg/play_hud_charname_mrkarate.b
 BGXDef_Play_HUD_CharName_OIori: mBinDef "data/bg/play_hud_charname_oiori.bin"
 BGXDef_Play_HUD_CharName_OLeona: mBinDef "data/bg/play_hud_charname_oleona.bin"
 BGXDef_Play_HUD_CharName_Kagura: mBinDef "data/bg/play_hud_charname_kagura.bin"
+; Reuse resident glyphs: K from KRAUSER, I from IORI, M from MAI.
+BGXDef_Play_HUD_CharName_Kim:
+	db $03, $33, $25, $23
+; Recompose resident HUD glyphs. The HUD has room for six tiles, so BENIMARU is
+; shown as BENIMA there; the selector keeps the full name.
+BGXDef_Play_HUD_CharName_Benimaru:
+	db $06, $16, $17, $0D, $27, $23, $24
+BGXDef_Play_HUD_CharName_Yuri:
+	db $04, $02, $37, $13, $27
+; The shared HUD sheet has no J/F glyph; selector names remain exact.
+BGXDef_Play_HUD_CharName_Joe:
+	db $03, $25, $15, $17 ; "IOE"
+BGXDef_Play_HUD_CharName_Heidern:
+	db $06, $20, $21, $06, $03, $21, $13 ; "HEIDER"
+BGXDef_Play_HUD_CharName_Ralf:
+	db $03, $13, $24, $1A ; "RAL"
 
-GFX_Char_Icons: INCBIN "data/gfx/char_icons.bin"
+; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"
 BG_Play_HUD_Time: INCBIN "data/bg/play_hud_time.bin"
 BG_Play_HUD_HealthBarL: INCBIN "data/bg/play_hud_healthbarl.bin"

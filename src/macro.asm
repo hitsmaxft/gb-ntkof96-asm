@@ -395,6 +395,13 @@ MACRO mMvIn_ChkBtnStrict
 	jp   c, \2							; If so, jump
 ENDM
 
+; KOF95 compatibility form used by Joe's repeating Bakuretsuken.
+MACRO mMvIn_ChkBtnStrictNot
+	ld   hl, \1
+	call MoveInputS_ChkInputBtnStrict
+	jp   nc, \2
+ENDM
+
 ; =============== mMvIn_ChkL ===============
 ; Checks if the attack is a light.
 ; IN
@@ -428,6 +435,37 @@ MACRO mMvIn_GetLH
 .light:
 	ld   a, \1
 	jp   .setMove
+.heavy:
+	ld   a, \2
+.setMove:
+ENDM
+
+; KOF95 compatibility helpers. KOF96 normally records the selected attack type
+; in PF2B_HEAVY, but imported 95 readers still ask for punch/kick LH bits.
+MACRO mMvIn_ChkLHP
+	ld   hl, iPlInfo_JoyKeysLH
+	add  hl, bc
+	bit  KEPB_B_HEAVY, [hl]
+	jr   nz, \1
+ENDM
+MACRO mMvIn_ChkLHK
+	ld   hl, iPlInfo_JoyKeysLH
+	add  hl, bc
+	bit  KEPB_A_HEAVY, [hl]
+	jr   nz, \1
+ENDM
+MACRO mMvIn_GetLHP
+	mMvIn_ChkLHP .heavy
+	ld   a, \1
+	jr   .setMove
+.heavy:
+	ld   a, \2
+.setMove:
+ENDM
+MACRO mMvIn_GetLHK
+	mMvIn_ChkLHK .heavy
+	ld   a, \1
+	jr   .setMove
 .heavy:
 	ld   a, \2
 .setMove:
@@ -552,6 +590,11 @@ ENDM
 ; Moves the player horizontally, relative to the 1P side (negative values move backwards).
 ; IN
 ; - 1: Horizontal movement (pixels + subpixels)
+MACRO mMvC_SetMoveHAbs
+	ld   hl, \1
+	call Play_OBJLstS_MoveH
+ENDM
+
 MACRO mMvC_SetMoveH
 	ld   hl, \1
 	call Play_OBJLstS_MoveH_ByXFlipR

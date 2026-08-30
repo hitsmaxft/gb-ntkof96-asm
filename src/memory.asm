@@ -174,8 +174,7 @@ wPauseFlags                 :db ; EQU $C17D ; Contains flags for the pause state
 wUnused_ContinueUsed        :db ; EQU $C17E ; If set, a continue was used. Not read by anything.
 wCharSeqId                  :db ; EQU $C17F ; "Stage sequence number". Index to the char sequence table, essentially the number of beat opponents after clearing a stage
 wCharSeqTbl                 :ds $14 ; EQU $C180 ; "Stage sequence". Sequence of CPU opponents in order, containing initially CHARSEL_ID_* for normal rounds and CHAR_ID_* for bosses
-wCharSelIdMapTbl            :ds $15 ; EQU $C194 ; Maps cursor locations in the char select screen (CHARSEL_ID_*) to actual character IDs (CHAR_ID_*)
-                                      ; $15 bytes ($C194-$C1A8), this is updated when flipping a tile. Also used to disable locked characters.
+wCharSelIdMapTblLegacy      :ds $15 ; EQU $C194 ; Original 21-byte table, retained to preserve the fixed WRAM layout.
 
 
 
@@ -268,7 +267,7 @@ wCharSelVariantOBJFlags     :db
 wCharSelVariantWork         :db ; Variant count while searching, then flip direction
 wCharSelVariantCursorPos    :db
 wCharSelVariantPortraitId   :db
-wCharSelVariantTileId       :db
+wCharSelVariantTileId       :db ; Derived portrait asset index during START switching.
 
 NEXTU
 ;
@@ -434,6 +433,11 @@ wGFXBufInfo_Pl2             :ds $20 ; EQU $D8E0
 wPlInfo_Pl1                 :ds $100 ; EQU $D900
 wPlInfo_Pl2                 :ds $100 ; EQU $DA00
 
+; The 6x5 mixed-roster selector needs 30 entries. During character selection
+; the gameplay player structures are inactive, so use their custom scratch
+; area instead of growing the tightly packed C1xx mode block.
+DEF wCharSelIdMapTbl EQU wPlInfo_Pl1+$8C
+
 SECTION "OAM Mirror", WRAM0[$DF00]
 wWorkOAM                    :ds OBJ_SIZE*OBJCOUNT_MAX ; EQU $DF00
 DEF wWorkOAM_End            EQU wWorkOAM+OBJ_SIZE*OBJCOUNT_MAX ; $DFA0
@@ -463,7 +467,7 @@ hTaskTbl                    :ds $03*TASK_SIZE ; EQU $FFC8 ; Task struct list
 hROMBank                    :db     ; EQU $FFE0 ; Currently loaded ROM bank
 
 
-ds 1
+hMoveTblBank                :db     ; EQU $FFE1 ; Temporary character move-table bank
 hScrollY                    :db ; EQU $FFE2 ; Y screen position
 hScrollYSub                 :db ; EQU $FFE3 ; Y screen subpixel position
 hScrollX                    :db ; EQU $FFE4 ; X screen position
@@ -799,6 +803,11 @@ DEF iPlInfo_Goenitz_Shinyaotome_LoopTimer       EQU $83 ; Attack loop for all su
 DEF iPlInfo_Goenitz_Jissoukoku_InvulnTimer      EQU $83 ; When this elapses, the player isn't invulnerable anymore
 DEF iPlInfo_MrKarate_ShouranKyaku_LoopCount     EQU $83
 DEF iPlInfo_MrKarate_Zenretsuken_LoopCount      EQU $83
+DEF iPlInfo_Benimaru_ShinkuuKatateGoma_LoopCount EQU $83
+DEF iPlInfo_Joe_Bakuretsuken_LoopFlag          EQU $83
+DEF iPlInfo_Heidern_NeckRoller_LoopCount       EQU $83
+DEF iPlInfo_Heidern_StormBringer_FromSuper     EQU $83
+DEF iPlInfo_Ralf_VulcanPunch_LoopCount         EQU $83
 DEF iPlInfo_MrKarate_RyukoRanbuD                EQU $84 ; If set, the move counts as the desperation version. The move itself doesn't use this, but the value gets passed over to Zenretsuken.
 DEF iPlInfo_Terry_PowerGeyserE_LastXPos         EQU $83 ; Last random X position generated for a projectile
 DEF iPlInfo_Athena_PsychoTeleport_InvulnTimer   EQU $83 ; When this elapses, the player isn't invulnerable anymore

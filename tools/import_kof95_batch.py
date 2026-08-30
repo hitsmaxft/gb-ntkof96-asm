@@ -1,0 +1,332 @@
+#!/usr/bin/env python3
+"""Import additional KOF95 fighters into KOF96-compatible expansion banks."""
+
+from __future__ import annotations
+
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VENDOR = ROOT.parent / "kof95"
+EXPECTED_VENDOR_COMMIT = "d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08"
+
+FIGHTERS = {
+    "benimaru": {
+        "class": "Benimaru",
+        "icon": 1,
+        "code_bank": "bank02.asm",
+        "code_start": "MoveC_Benimaru_ThrowG:",
+        "code_end": "; =============== MoveC_Ryo_ThrowG",
+        "projectile_start": "; =============== ProjC_Benimaru_DespawnThunderBall",
+        "specials": [
+            "MOVE_BENIMARU_RAIJINKEN_L", "MOVE_BENIMARU_RAIJINKEN_H",
+            "MOVE_BENIMARU_SHINKUU_KATATE_GOMA_L", "MOVE_BENIMARU_SHINKUU_KATATE_GOMA_H",
+            "MOVE_BENIMARU_IAI_GERI_L", "MOVE_BENIMARU_IAI_GERI_H",
+            "MOVE_BENIMARU_SUPER_INAZUMA_KICK_L", "MOVE_BENIMARU_SUPER_INAZUMA_KICK_H",
+        ],
+        "super": "MOVE_BENIMARU_RAIKOUKEN_S",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Benimaru_Raijinken, MoveInit_Benimaru_SuperInazumaKick, MoveInit_Benimaru_IaiGeri, MoveInit_Benimaru_ShinkuuKatateGoma, MoveInit_Benimaru_Raijinken, MoveInit_Benimaru_Raikouken, MoveInputReader_Benimaru_NoMove",
+    },
+    "yuri": {
+        "class": "Yuri",
+        "icon": 3,
+        "code_bank": "bank02.asm",
+        "code_start": "MoveC_Yuri_ThrowG:",
+        "code_end": "; =============== MoveC_Kim_ThrowG",
+        "projectile_start": "; =============== ProjInit_Yuri_RaiOhKen",
+        "specials": [
+            "MOVE_YURI_KO_OU_KEN_L", "MOVE_YURI_KO_OU_KEN_H",
+            "MOVE_YURI_SAI_HA_L", "MOVE_YURI_SAI_HA_H",
+            "MOVE_YURI_HYAKU_RETSU_BINTA_L", "MOVE_YURI_HYAKU_RETSU_BINTA_H",
+            "MOVE_YURI_KUU_GA_L", "MOVE_YURI_KUU_GA_H",
+            "MOVE_YURI_RAI_OH_KEN_L", "MOVE_YURI_RAI_OH_KEN_H",
+            "MOVE_YURI_HAOH_SHOUKOU_KEN_L", "MOVE_YURI_HAOH_SHOUKOU_KEN_H",
+        ],
+        "super": "MOVE_YURI_HIEN_HOU_OU_KYA_KU_S",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Yuri_KoOuKen, MoveInit_Yuri_KuuGa, MoveInit_Yuri_RaiOhKen, MoveInit_Yuri_SaiHa, MoveInit_Yuri_HyakuRetsuBinta, MoveInit_Yuri_HienHouOuKyaku, MoveInit_Yuri_HienHouOuKyaku",
+    },
+    "joe": {
+        "class": "Joe",
+        "icon": 5,
+        "code_bank": "bank05.asm",
+        "code_start": "MoveC_Joe_ThrowG:",
+        "code_end": "; =============== END OF BANK",
+        "projectile_start": "; =============== ProjInit_Joe_HurricaneUpper",
+        "specials": [
+            "MOVE_JOE_HURRICANE_UPPER_L", "MOVE_JOE_HURRICANE_UPPER_H",
+            "MOVE_JOE_SLASH_KICK_L", "MOVE_JOE_SLASH_KICK_H",
+            "MOVE_JOE_BAKURETSUKEN_L", "MOVE_JOE_BAKURETSUKEN_H",
+            "MOVE_JOE_TIGER_KICK_L", "MOVE_JOE_TIGER_KICK_H",
+            "MOVE_JOE_OUGON_NO_KAKATO_L", "MOVE_JOE_OUGON_NO_KAKATO_H",
+        ],
+        "super": "MOVE_JOE_SCREW_UPPER_S",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
+    },
+    "heidern": {
+        "class": "Heidern",
+        "icon": 6,
+        "code_bank": "bank18.asm",
+        "code_start": "MoveC_Heidern_ThrowG:",
+        "code_end": "; =============== START OF MODULE Win/Cutscene",
+        "projectile_start": "; =============== ProjInit_Heidern_CrossCutter",
+        "specials": [
+            "MOVE_HEIDERN_CROSS_CUTTER_L", "MOVE_HEIDERN_CROSS_CUTTER_H",
+            "MOVE_HEIDERN_NECK_ROLLER_L", "MOVE_HEIDERN_NECK_ROLLER_H",
+            "MOVE_HEIDERN_STORM_BRINGER_L", "MOVE_HEIDERN_STORM_BRINGER_H",
+            "MOVE_HEIDERN_MOON_SLASHER_L", "MOVE_HEIDERN_MOON_SLASHER_H",
+        ],
+        "super": "MOVE_HEIDERN_FINAL_BRINGER_S",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_StormBringer, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_CrossCutter, MoveInit_Heidern_FinalBringer, MoveInit_Heidern_FinalBringer",
+    },
+    "ralf": {
+        "class": "Ralf",
+        "icon": 7,
+        "code_bank": "bank19.asm",
+        "code_start": "MoveC_Ralf_ThrowG:",
+        "code_end": "\nIF VER_EN\n",
+        "gfx_banks": 2,
+        "specials": [
+            "MOVE_RALF_VULCAN_PUNCH_L", "MOVE_RALF_VULCAN_PUNCH_H",
+            "MOVE_RALF_GATLING_ATTACK_L", "MOVE_RALF_GATLING_ATTACK_H",
+            "MOVE_RALF_BACK_BREAKER_L", "MOVE_RALF_BACK_BREAKER_H",
+            "MOVE_RALF_BAKUDAN_PUNCH_L", "MOVE_RALF_BAKUDAN_PUNCH_H",
+        ],
+        "super": "MOVE_RALF_BARIBARI_VULCAN_PUNCH_S",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInit_Ralf_BaribariVulcanPunch",
+    },
+}
+
+COMMON = [
+    "MOVE_SHARED_IDLE", "MOVE_SHARED_WALK_F", "MOVE_SHARED_WALK_B",
+    "MOVE_SHARED_CROUCH", "MOVE_SHARED_JUMP_N", "MOVE_SHARED_JUMP_F",
+    "MOVE_SHARED_JUMP_B", "MOVE_SHARED_BLOCK_G", "MOVE_SHARED_BLOCK_C",
+    "MOVE_SHARED_BLOCK_G", "MOVE_SHARED_HOP_F", "MOVE_SHARED_HOP_B",
+    "MOVE_SHARED_CHARGEMETER", "MOVE_SHARED_TAUNT", "MOVE_SHARED_DODGE",
+    "MOVE_SHARED_DODGE", "MOVE_SHARED_WAKEUP", "MOVE_SHARED_DIZZY",
+    "MOVE_SHARED_WIN", "MOVE_SHARED_WIN", "MOVE_SHARED_LOST_TIMEOVER",
+    "MOVE_SHARED_INTRO", "MOVE_SHARED_INTRO", "MOVE_SHARED_PUNCH_LN",
+    "MOVE_SHARED_PUNCH_HN", "MOVE_SHARED_KICK_LN", "MOVE_SHARED_KICK_HN",
+    "MOVE_SHARED_PUNCH_CL", "MOVE_SHARED_PUNCH_CH", "MOVE_SHARED_KICK_CL",
+    "MOVE_SHARED_KICK_CH", "MOVE_SHARED_STRIKE", "MOVE_SHARED_PUNCH_ALI",
+    "MOVE_SHARED_KICK_ALI", "MOVE_SHARED_ATTACK_A",
+]
+
+TAIL = [
+    "MOVE_SHARED_THROW_G", "MOVE_SHARED_THROW_A", "MOVE_SHARED_POST_BLOCKSTUN",
+    "MOVE_SHARED_POST_BLOCKSTUN", "MOVE_SHARED_LAUNCH_UB", "MOVE_SHARED_HIT0MID",
+    "MOVE_SHARED_HIT1MID", "MOVE_SHARED_HITLOW", "MOVE_SHARED_LAUNCH_UB",
+    "MOVE_SHARED_LAUNCH_DB_SHAKE", "MOVE_SHARED_LAUNCH_DB_SHAKE",
+    "MOVE_SHARED_LAUNCH_SWOOPUP", "MOVE_SHARED_HIT_SWEEP",
+    "MOVE_SHARED_LAUNCH_UB_REC", "MOVE_SHARED_HIT_MULTIMID0",
+    "MOVE_SHARED_HIT_MULTIMID1", "MOVE_SHARED_LAUNCH_DB_SHAKE",
+    "MOVE_SHARED_LAUNCH_UB_SHAKE", "MOVE_SHARED_GRAB_UB_NOSYNC",
+    "MOVE_SHARED_GRAB_FG_NOSYNC", "MOVE_SHARED_GRAB_UB_SYNC",
+    "MOVE_SHARED_GRAB_FG_NOSYNC", "MOVE_SHARED_GRAB_UB_SYNC",
+]
+
+
+def table_rows(text: str, label: str, macro: str) -> dict[str, str]:
+    start = text.index(label + ":")
+    end = text.find("\nMove", start + len(label) + 1)
+    rows: dict[str, str] = {}
+    for line in text[start:end].splitlines():
+        if macro not in line:
+            continue
+        match = re.search(r"; (MOVE_[A-Z0-9_]+)$", line.strip())
+        if match:
+            rows[match.group(1)] = line.split(";", 1)[0].rstrip()
+    return rows
+
+
+def fallback_anim(cls: str) -> str:
+    return f"\tmMvAnDef OBJLstPtrTable_{cls}_Idle, $00,$01,$00,$00,$00"
+
+
+def fallback_code() -> str:
+    return "\tmMvCodeDef MoveC_Base_NormH"
+
+
+def emit_table(cls: str, cfg: dict[str, object]) -> str:
+    anim_text = (VENDOR / "src/bank05.asm").read_text()
+    code_text = (VENDOR / "src/bank06.asm").read_text()
+    anim = table_rows(anim_text, f"MoveAnimTbl_{cls}", "mMvAnDef")
+    code = table_rows(code_text, f"MoveCodePtrTbl_{cls}", "mMvCodeDef")
+    specials = list(cfg["specials"])
+    special_slots = specials + [None] * (14 - len(specials))
+    super_slots: list[str | None] = [str(cfg["super"]), str(cfg["super"]), None, None]
+    keys: list[str | None] = COMMON + special_slots + super_slots + TAIL
+    if len(keys) != 76:
+        raise AssertionError((cls, len(keys)))
+
+    out = [
+        f"; Generated from Kak2X/kof95 commit {EXPECTED_VENDOR_COMMIT}",
+        f"MoveAnimTbl_{cls}96:",
+        "\tdb $4C,$00,$00,$00,$00,$00,$00,$00",
+    ]
+    for key in keys:
+        out.append("\t" + anim[key].lstrip() if key and key in anim else fallback_anim(cls))
+    out += ["", f"MoveCodePtrTbl_{cls}96:"]
+    for key in keys:
+        out.append("\t" + code[key].lstrip() if key and key in code else fallback_code())
+    return "\n".join(out) + "\n"
+
+
+def adapt_code(cls: str, cfg: dict[str, object]) -> str:
+    source = (VENDOR / "src" / str(cfg["code_bank"])).read_text()
+    start = source.index(str(cfg["code_start"]))
+    end = source.index(str(cfg["code_end"]), start)
+    code = source[start:end]
+    projectile_start = cfg.get("projectile_start")
+    if projectile_start:
+        projectile = code.find(str(projectile_start))
+        if projectile >= 0:
+            code = code[:projectile]
+    code = re.sub(
+        rf"mMvIn_Validate {cls}, [0-9]+",
+        f"mMvIn_Validate {cls}\n.chkAir:\n\tjp   MoveInputReader_{cls}_NoMove",
+        code,
+    )
+    code = re.sub(rf"mMvIn_ChkEasy [^\n]+", str(cfg["easy"]), code, count=1)
+    code = re.sub(rf"mMvIn_ChkGA {cls}, ([^,]+), ([^,]+), [^\n]+", rf"mMvIn_ChkGA {cls}, \1, \2", code)
+    code = code.replace("IF VER_EN", "IF REV_LANG_EN")
+    code = code.replace("HITTYPE_GRAB_UB_NOSYNC", "HITTYPE_GRAB_START")
+    code = code.replace("HITTYPE_GRAB_FG_NOSYNC", "HITTYPE_GRAB_ROTL")
+    code = code.replace("HITTYPE_GRAB_UB_SYNC", "HITTYPE_GRAB_ROTU")
+    code = code.replace("SFX_SPECIAL", "SFX_MOVEJUMP_A")
+    code = code.replace("MOVE_RYO_KO_OU_KEN_GH", "MOVE_YURI_KO_OU_KEN_H")
+    code = code.replace("MoveInput_FBFDB", "MoveInput_FDBFDB")
+    code = code.replace("PCF_PUSHED|PCF_PUSHEDOTHER", "(1<<PCFB_PUSHED)|(1<<PCFB_PUSHEDOTHER)")
+    code = code.replace("MOVE_SHARED_DODGE", "MOVE_SHARED_ROLL_F")
+    code = re.sub(
+        r"(?m)^\s*mMvIn_ValSkipWithChar CHAR_ID_RUGAL, \.rugalEnd\s*$",
+        "\t\t; Joe-only import: the shared Rugal throw exit is unreachable.",
+        code,
+    )
+    code = re.sub(
+        r"mMvIn_ValStartCmdThrow_StdColi (\.[A-Za-z0-9_]+)",
+        r"call MoveInputS_TryStartCommandThrow_StdColi\n\tjp   nc, \1\n\tcall Task_PassControlFar\n\tld   a, PLAY_THROWACT_NEXT03\n\tld   [wPlayPlThrowActId], a",
+        code,
+    )
+    code = re.sub(
+        r"(?s); =============== MoveC_Base_ThrowA_DirD ===============.*?(?=; =============== MoveC_Base_NormA ===============)",
+        "",
+        code,
+    )
+    code = re.sub(r"mMvC_ValHit (\.[A-Za-z0-9_]+)(\s*;[^\n]*)?$", r"mMvC_ValHit \1, \1\2", code, flags=re.MULTILINE)
+    code = re.sub(
+        rf"(?m)^\s*call (?:(?:ProjInit|ProjC)_{cls}|ProjInit_Ryo)_[A-Za-z0-9_]+\s*$",
+        "\t; KOF95 projectile visual omitted during the first compatibility pass.",
+        code,
+    )
+    compat_inputs = ""
+    if cls == "Heidern":
+        code = code.replace("MoveInput_BDU_Charge", "MoveInput_Heidern_BDU_Charge95")
+        compat_inputs = """MoveInput_Heidern_BDU_Charge95:
+\tdb $03
+\tdb KEY_UP, KEY_UP, $01, $14
+\tdb KEY_DOWN, KEY_DOWN, $01, $0A
+\tdb KEY_RIGHT, KEY_RIGHT, $1E, $FF
+
+"""
+    elif cls == "Ralf":
+        code = code.replace("MoveInput_1BF_Charge", "MoveInput_Ralf_1BF_Charge95")
+        compat_inputs = """MoveInput_Ralf_1BF_Charge95:
+\tdb $03
+\tdb KEY_LEFT, KEY_LEFT, $01, $14
+\tdb KEY_RIGHT, KEY_RIGHT, $01, $0A
+\tdb KEY_RIGHT|KEY_DOWN, KEY_RIGHT|KEY_DOWN, $1E, $FF
+
+"""
+    return (
+        f"; Generated from Kak2X/kof95 commit {EXPECTED_VENDOR_COMMIT}\n"
+        + compat_inputs
+        + code
+    )
+
+
+def main() -> None:
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=VENDOR, text=True
+    ).strip()
+    if commit != EXPECTED_VENDOR_COMMIT:
+        raise SystemExit(f"unexpected kof95 commit: {commit}")
+
+    generated = ROOT / "src/mixkof"
+    generated.mkdir(parents=True, exist_ok=True)
+    icons = bytearray((ROOT / "data/gfx/char_icons_mix.bin").read_bytes()[: 21 * 0x40])
+    icons95 = (VENDOR / "data/gfx/char_icons.bin").read_bytes()
+
+    source_declarations = "\n".join(
+        path.read_text() for path in sorted((VENDOR / "src").glob("bank*.asm"))
+    )
+    for slug, cfg in FIGHTERS.items():
+        cls = str(cfg["class"])
+        source_gfx = VENDOR / "data/gfx/char"
+        output_gfx = ROOT / f"data/gfx/char/kof95_{slug}"
+        output_gfx.mkdir(parents=True, exist_ok=True)
+        files = sorted(source_gfx.glob(f"{slug}_*.bin"))
+        for source in files:
+            shutil.copyfile(source, output_gfx / source.name)
+
+        declaration_header = (
+            f"; Generated from Kak2X/kof95 commit {EXPECTED_VENDOR_COMMIT}"
+        )
+        declarations: list[tuple[str, str]] = []
+        pattern = rf'^(GFX_Char_{cls}_[A-Za-z0-9_]+): INCBIN "data/gfx/char/({slug}_[^"]+\.bin)"$'
+        for label, filename in re.findall(pattern, source_declarations, re.MULTILINE):
+            declarations.append((label, filename))
+
+        gfx_banks = int(cfg.get("gfx_banks", 1))
+        chunks: list[list[tuple[str, str]]] = [[] for _ in range(gfx_banks)]
+        chunk_sizes = [0] * gfx_banks
+        chunk = 0
+        for declaration in declarations:
+            size = (output_gfx / declaration[1]).stat().st_size
+            if chunk_sizes[chunk] + size > 0x4000 and chunk + 1 < gfx_banks:
+                chunk += 1
+            chunks[chunk].append(declaration)
+            chunk_sizes[chunk] += size
+        if any(size > 0x4000 for size in chunk_sizes):
+            raise SystemExit(f"{cls} graphics do not fit in {gfx_banks} banks: {chunk_sizes}")
+        for index, declarations_chunk in enumerate(chunks):
+            suffix = "" if gfx_banks == 1 else f"_{index}"
+            lines = [declaration_header]
+            lines.extend(
+                f'{label}: INCBIN "data/gfx/char/kof95_{slug}/{filename}"'
+                for label, filename in declarations_chunk
+            )
+            (generated / f"{slug}95_gfx{suffix}.asm").write_text("\n".join(lines) + "\n")
+
+        obj = (VENDOR / f"data/objlst/char/{slug}.asm").read_text()
+        obj = re.sub(
+            r"(?m)^(\s*)db (.+?) ; iOBJLstHdrA_YOffset$",
+            r"\1db $00 ; iOBJLstHdrA_XOffset\n\1db \2 ; iOBJLstHdrA_YOffset",
+            obj,
+        )
+        (generated / f"{slug}95_objlst.asm").write_text(
+            f"; Generated from Kak2X/kof95 commit {EXPECTED_VENDOR_COMMIT}\n" + obj
+        )
+        tables = emit_table(cls, cfg)
+        tables = tables.replace("MoveC_Base_Hop", "MoveC_Base_HopB")
+        tables = tables.replace("MoveC_Base_Dodge", "MoveC_Base_Roll")
+        tables = tables.replace("MoveC_Hit_GrabNoSync", "MoveC_Hit_Grab_Rot")
+        tables = tables.replace("MoveC_Hit_GrabSync", "MoveC_Hit_Grab_Rot")
+        tables = tables.replace("MoveC_Terry_PunchHN", "MoveC_Base_NormH")
+        (generated / f"{slug}96_tables.asm").write_text(tables)
+        (generated / f"{slug}95_code.asm").write_text(adapt_code(cls, cfg))
+
+        index = int(cfg["icon"])
+        raw = icons95[index * 0x40 : (index + 1) * 0x40]
+        icons.extend(
+            b"".join(raw[tile * 0x10 : (tile + 1) * 0x10] for tile in (0, 2, 1, 3))
+        )
+        print(f"Imported {cls}: {len(files)} frames, gfx banks {chunk_sizes}")
+
+    (ROOT / "data/gfx/char_icons_mix.bin").write_bytes(icons)
+
+
+if __name__ == "__main__":
+    main()
