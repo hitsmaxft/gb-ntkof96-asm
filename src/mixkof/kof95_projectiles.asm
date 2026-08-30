@@ -74,7 +74,7 @@ OBJLstHdrA_Proj_Benimaru_ThunderBall8:
 	;    Y   X  ID+FLAG
 	db $10,$FA,$00 ; $00
 OBJLstHdrA_Proj_Benimaru_ThunderBall7:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db $00 ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -101,7 +101,7 @@ OBJLstHdrA_Proj_Benimaru_ThunderBall7:
 	db $34,$FE,$06|OLR_XFLIP|OLR_YFLIP ; $0E
 	db $34,$06,$08|OLR_XFLIP|OLR_YFLIP ; $0F
 OBJLstHdrA_Proj_Benimaru_ThunderBall9:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db $00 ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -128,7 +128,7 @@ OBJLstHdrA_Proj_Benimaru_ThunderBall9:
 	db $34,$FE,$0E|OLR_XFLIP|OLR_YFLIP ; $0E
 	db $34,$06,$10|OLR_XFLIP|OLR_YFLIP ; $0F
 OBJLstHdrA_Proj_Benimaru_ThunderBall0:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db $00 ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -145,7 +145,7 @@ OBJLstHdrA_Proj_Benimaru_ThunderBall0:
 	db $10,$12,$14|OLR_YFLIP ; $04
 	db $20,$12,$12|OLR_YFLIP ; $05
 OBJLstHdrA_Proj_Benimaru_ThunderBall3:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db $00 ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -205,7 +205,7 @@ OBJLstHdrA_Proj_Ryo_HaohShoukouKen1:
 	db $00 ; iOBJLstHdrA_XOffset
 	db $00 ; iOBJLstHdrA_YOffset
 OBJLstHdrA_Proj_Ryo_HaohShoukouKen0:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db COLIBOX_0B ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -269,7 +269,7 @@ OBJLstHdrA_Proj_Yuri_RaiOhKen3:
 	db $00 ; iOBJLstHdrA_XOffset
 	db $00 ; iOBJLstHdrA_YOffset
 OBJLstHdrA_Proj_Yuri_RaiOhKen0:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db COLIBOX_07 ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
@@ -282,7 +282,7 @@ OBJLstHdrA_Proj_Yuri_RaiOhKen0:
 	db $34,$F8,$16 ; $00
 	db $34,$00,$16|OLR_XFLIP ; $01
 OBJLstHdrA_Proj_Yuri_RaiOhKen2:
-	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
 	db COLIBOX_0B ; iOBJLstHdrA_HitboxId
 	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank

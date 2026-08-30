@@ -435,7 +435,33 @@ def build_projectile_assets() -> None:
                 required.add(dependency)
                 pending.append(dependency)
 
-    obj = "\n".join(blocks[label].rstrip() for label in order if label in required) + "\n"
+    selected_blocks = []
+    for label in order:
+        if label not in required:
+            continue
+        block = blocks[label].rstrip()
+        # KOF95 always treats the upper two OBJ tile-number bits as per-tile
+        # X/Y flip flags. KOF96 only does that when OLF_USETILEFLAGS is set in
+        # the mapping header. Preserve that renderer semantic when importing
+        # mappings which actually contain OLR_XFLIP/OLR_YFLIP; otherwise those
+        # values become unrelated $4x/$8x/$Cx tile numbers at runtime.
+        if label.startswith("OBJLstHdrA_") and (
+            "OLR_XFLIP" in block or "OLR_YFLIP" in block
+        ):
+            block, count = re.subn(
+                r"(?m)^(\s*)db (.+?) ; iOBJLstHdrA_Flags$",
+                lambda match: (
+                    f"{match.group(1)}db OLF_USETILEFLAGS|{match.group(2)} "
+                    "; iOBJLstHdrA_Flags"
+                ),
+                block,
+                count=1,
+            )
+            if count != 1:
+                raise ValueError(f"missing projectile OBJ flags for {label}")
+        selected_blocks.append(block)
+
+    obj = "\n".join(selected_blocks) + "\n"
     obj = re.sub(
         r"(?m)^(\s*)db (.+?) ; iOBJLstHdrA_YOffset$",
         r"\1db $00 ; iOBJLstHdrA_XOffset\n\1db \2 ; iOBJLstHdrA_YOffset",
