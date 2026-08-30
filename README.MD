@@ -87,10 +87,10 @@ Ground `SELECT+A` charges POW and `SELECT+B` taunts. Forward, down-forward,
 down, down-back, or back plus `SELECT` chooses one of five character-specific
 specials whose placement follows the original motion where possible. Release
 `SELECT` before 6 frames for the light version, or hold it for 6 frames for the
-heavy version. Double-tapping forward or back and then pressing `SELECT` takes
-priority over those five shortcuts and starts the fighter's forward-side or
-back-side super slot; the same 6-frame hold selects its light or heavy version.
-Existing airborne `SELECT+A/B` shortcuts
+heavy version. Completing a down-forward or down-back motion and then pressing
+`SELECT` takes priority over those five shortcuts and starts the fighter's
+super whose original command ends in that direction; the same 6-frame hold
+selects its light or heavy version. Existing airborne `SELECT+A/B` shortcuts
 remain available with the same tap/hold strength selection. Forward or back
 plus a newly pressed A/B also emits the corresponding heavy normal immediately.
 

@@ -199,7 +199,7 @@ ENDM
 ; SELECT+A charges meter and SELECT+B taunts.
 ; IN
 ; - 1-5: forward, down-forward, down, down-back, back + SELECT
-; - 6-7: completed forward-forward/back-back motion + SELECT super
+; - 6-7: completed down-forward/down-back motion + SELECT super
 MACRO mMvIn_ChkEasyDir
 	IF !REV_VER_2
 	ld   hl, .easyTable_\@

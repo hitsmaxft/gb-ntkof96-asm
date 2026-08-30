@@ -101,7 +101,7 @@ FIGHTERS = {
             "MOVE_RALF_BAKUDAN_PUNCH_L", "MOVE_RALF_BAKUDAN_PUNCH_H",
         ],
         "super": "MOVE_RALF_BARIBARI_VULCAN_PUNCH_S",
-        "easy": "mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInputReader_Ralf_NoMove",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInit_Ralf_BaribariVulcanPunch",
     },
 }
 
