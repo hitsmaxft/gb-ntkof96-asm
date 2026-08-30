@@ -64,7 +64,7 @@ MoveAnimTbl_Joe96:
 	mMvAnDef OBJLstPtrTable_Joe_HitLow, $00, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_LaunchUB, $10, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_LaunchDBShake, $0C, $FF, $00, $00, $00
-	mMvAnDef OBJLstPtrTable_Joe_LaunchDBShake, $0C, $FF, $00, $00, $00
+	mMvAnDef OBJLstPtrTable_Joe_HitSweep, $00, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_LaunchSwoopup, $18, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_HitSweep, $08, $02, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Joe_LaunchUBRec, $18, $02, $00, $00, $00

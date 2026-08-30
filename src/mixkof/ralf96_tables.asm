@@ -67,7 +67,7 @@ MoveAnimTbl_Ralf96:
 	mMvAnDef OBJLstPtrTable_Ralf_HitLow, $00, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Ralf_LaunchUB, $10, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Ralf_LaunchDBShake, $0C, $FF, $00, $00, $00
-	mMvAnDef OBJLstPtrTable_Ralf_LaunchDBShake, $0C, $FF, $00, $00, $00
+	mMvAnDef OBJLstPtrTable_Ralf_HitSweep, $00, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Ralf_LaunchSwoopup, $18, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Ralf_HitSweep, $08, $02, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Ralf_LaunchUBRec, $18, $02, $00, $00, $00

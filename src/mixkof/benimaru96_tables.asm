@@ -64,7 +64,7 @@ MoveAnimTbl_Benimaru96:
 	mMvAnDef OBJLstPtrTable_Benimaru_HitLow, $00, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Benimaru_LaunchUB, $10, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Benimaru_LaunchDBShake, $0C, $FF, $00, $00, $00
-	mMvAnDef OBJLstPtrTable_Benimaru_LaunchDBShake, $0C, $FF, $00, $00, $00
+	mMvAnDef OBJLstPtrTable_Benimaru_HitSweep, $00, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Benimaru_LaunchSwoopup, $18, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Benimaru_HitSweep, $08, $02, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Benimaru_LaunchUBRec, $18, $02, $00, $00, $00

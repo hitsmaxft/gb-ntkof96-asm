@@ -76,7 +76,7 @@ FIGHTERS = {
             "MOVE_HEIDERN_MOON_SLASHER_L", "MOVE_HEIDERN_MOON_SLASHER_H",
         ],
         "super": "MOVE_HEIDERN_FINAL_BRINGER_S",
-        "easy": "mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_StormBringer, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_CrossCutter, MoveInit_Heidern_FinalBringer, MoveInit_Heidern_FinalBringer",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_StormBringer, MoveInit_Heidern_StormBringer, MoveInputReader_Heidern_NoMove, MoveInit_Heidern_FinalBringer",
     },
     "ralf": {
         "class": "Ralf",
@@ -115,7 +115,7 @@ TAIL = [
     "MOVE_SHARED_THROW_G", "MOVE_SHARED_THROW_A", "MOVE_SHARED_POST_BLOCKSTUN",
     "MOVE_SHARED_POST_BLOCKSTUN", "MOVE_SHARED_LAUNCH_UB", "MOVE_SHARED_HIT0MID",
     "MOVE_SHARED_HIT1MID", "MOVE_SHARED_HITLOW", "MOVE_SHARED_LAUNCH_UB",
-    "MOVE_SHARED_LAUNCH_DB_SHAKE", "MOVE_SHARED_LAUNCH_DB_SHAKE",
+    "MOVE_SHARED_LAUNCH_DB_SHAKE", "MOVE_SHARED_GROUND_SHAKE",
     "MOVE_SHARED_LAUNCH_SWOOPUP", "MOVE_SHARED_HIT_SWEEP",
     "MOVE_SHARED_LAUNCH_UB_REC", "MOVE_SHARED_HIT_MULTIMID0",
     "MOVE_SHARED_HIT_MULTIMID1", "MOVE_SHARED_LAUNCH_DB_SHAKE",
@@ -197,7 +197,19 @@ def emit_table(cls: str, cfg: dict[str, object]) -> str:
         "\tdb $4C,$00,$00,$00,$00,$00,$00,$00",
     ]
     for key in keys:
-        out.append("\t" + anim[key].lstrip() if key and key in anim else fallback_anim(cls))
+        if key == "MOVE_SHARED_GROUND_SHAKE":
+            # KOF96 split grounded HITTYPE_LAUNCH_FAST_DB into a dedicated
+            # three-frame state. KOF95 has no matching table row: reusing its
+            # LaunchDBShake row leaves frame 0 at ANIMSPEED_NONE ($FF), while
+            # MoveC_Hit_Ground_Shake waits for that frame to end. Use the
+            # three-frame sweep mapping and KOF96's immediate startup timing,
+            # exactly like the native KOF96 character tables.
+            out.append(
+                f"\tmMvAnDef OBJLstPtrTable_{cls}_HitSweep, "
+                "$00, $00, $00, $00, $00"
+            )
+        else:
+            out.append("\t" + anim[key].lstrip() if key and key in anim else fallback_anim(cls))
     out += ["", f"MoveCodePtrTbl_{cls}96:"]
     # KOF96 handles $00-$2E and $70+ through shared resident code. Its
     # character-specific code table therefore starts at MOVE_SHARED_PUNCH_L

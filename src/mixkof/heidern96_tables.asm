@@ -64,7 +64,7 @@ MoveAnimTbl_Heidern96:
 	mMvAnDef OBJLstPtrTable_Heidern_HitLow, $00, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Heidern_LaunchUB, $10, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Heidern_LaunchDBShake, $0C, $FF, $00, $00, $00
-	mMvAnDef OBJLstPtrTable_Heidern_LaunchDBShake, $0C, $FF, $00, $00, $00
+	mMvAnDef OBJLstPtrTable_Heidern_HitSweep, $00, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Heidern_LaunchSwoopup, $18, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Heidern_HitSweep, $08, $02, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Heidern_LaunchUBRec, $18, $02, $00, $00, $00

@@ -163,11 +163,25 @@ MoveInputReader_Heidern:
 	; SELECT+A -> Neck Roller. Keep Neck Roller on the diagonal shortcut and
 	; Final Bringer on completed DB. The normal routes follow the source
 	; motions: BF -> forward, DU punch/kick -> down/diagonal, and FDB ->
-	; down-back. Storm Bringer cannot also occupy back: holding SELECT for the
-	; heavy route walks Heidern out of command-throw range before dispatch.
-	; Back therefore deliberately shares the safe Cross Cutter route.
+	; down-back. Back also exposes the requested FDB+P Storm Bringer route.
 	;             F                         DF                       D                         DB                         B                         super DF                         super DB
-	mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_StormBringer, MoveInit_Heidern_CrossCutter, MoveInputReader_Heidern_NoMove, MoveInit_Heidern_FinalBringer
+	; Back + SELECT represents the FDB+P route and starts Storm Bringer.
+	mMvIn_ChkEasyDir MoveInit_Heidern_CrossCutter, MoveInit_Heidern_NeckRoller, MoveInit_Heidern_MoonSlasher, MoveInit_Heidern_StormBringer, MoveInit_Heidern_StormBringer, MoveInputReader_Heidern_NoMove, MoveInit_Heidern_FinalBringer
+	; The heavy shortcut waits six frames. Suppress basic horizontal movement
+	; while that specific route is pending, otherwise holding back moves Heidern
+	; out of the original command-throw range before dispatch. The normal FDB+P
+	; input and its proximity check remain unchanged.
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	and  $F0
+	cp   $70
+	jr   nz, .easyBackReady
+	ld   hl, iPlInfo_JoyKeysLH
+	add  hl, bc
+	res  KEYB_LEFT, [hl]
+	res  KEYB_RIGHT, [hl]
+.easyBackReady:
 	mMvIn_ChkGA Heidern, .chkPunch, .chkKick
 
 .chkPunch:

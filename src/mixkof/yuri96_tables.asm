@@ -64,7 +64,7 @@ MoveAnimTbl_Yuri96:
 	mMvAnDef OBJLstPtrTable_Yuri_HitLow, $00, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Yuri_LaunchUB, $10, $05, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Yuri_LaunchDBShake, $0C, $FF, $00, $00, $00
-	mMvAnDef OBJLstPtrTable_Yuri_LaunchDBShake, $0C, $FF, $00, $00, $00
+	mMvAnDef OBJLstPtrTable_Yuri_HitSweep, $00, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Yuri_LaunchSwoopup, $18, $00, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Yuri_HitSweep, $08, $02, $00, $00, $00
 	mMvAnDef OBJLstPtrTable_Yuri_LaunchUBRec, $18, $02, $00, $00, $00
