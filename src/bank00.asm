@@ -5620,6 +5620,7 @@ Play_CharStageMapTbl:
 	db STAGE_ID_FATALFURY ; CHAR_ID_JOE
 	db STAGE_ID_YAGAMI ; CHAR_ID_HEIDERN
 	db STAGE_ID_HERO ; CHAR_ID_RALF
+	db STAGE_ID_HERO ; CHAR_ID_KENSOU
 
 ; =============== Serial_DoHandshake ===============
 ; Performs an handshake between master and slave GBs.
@@ -8410,6 +8411,7 @@ Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_Joe ; CHAR_ID_JOE
 	dw BGXDef_Play_HUD_CharName_Heidern ; CHAR_ID_HEIDERN
 	dw BGXDef_Play_HUD_CharName_Ralf ; CHAR_ID_RALF
+	dw BGXDef_Play_HUD_CharName_Kensou ; CHAR_ID_KENSOU
 
 ; =============== Play_DrawHUDEmptyBars ===============
 ; Draws the tilemaps for all empty bars in the HUD.

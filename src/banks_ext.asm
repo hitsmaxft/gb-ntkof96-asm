@@ -99,6 +99,8 @@ MixKOF_WinAnimEntryTbl:
 	db $08
 	dp OBJLstPtrTable_Ralf_Win
 	db $08
+	dp OBJLstPtrTable_Kensou_Win
+	db $08
 
 Title_DrawTrainingText:
 	ld   hl, TextDef_Menu_Training
@@ -475,6 +477,10 @@ MixKOF_ImportedCharHeaderTbl:
 	dpr MoveInputReader_Ralf
 	db $00
 	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Kensou96, MoveCodePtrTbl_Kensou96
+	dpr MoveInputReader_Kensou
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
 
 MixKOF_GetMoveTblBank_Banked:
 	ld   hl, iPlInfo_CharId
@@ -492,6 +498,8 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   z, .heidern
 	cp   CHAR_ID_RALF
 	jr   z, .ralf
+	cp   CHAR_ID_KENSOU
+	jr   z, .kensou
 	ld   a, BANK(MoveAnimTbl_Marker)
 	jr   .save
 .kim:
@@ -511,6 +519,9 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   .save
 .ralf:
 	ld   a, BANK(MoveAnimTbl_Ralf96)
+	jr   .save
+.kensou:
+	ld   a, BANK(MoveAnimTbl_Kensou96)
 
 .save:
 	ldh  [hMoveTblBank], a
@@ -599,6 +610,7 @@ MixKOF_ProjectileGFXPtrTbl:
 	dw MixKOF_ProjectileGFX_Joe
 	dw MixKOF_ProjectileGFX_Heidern
 	dw $0000
+	dw MixKOF_ProjectileGFX_Kensou
 
 MixKOF_ProjectileGFX_Benimaru:
 	db $14
@@ -612,11 +624,15 @@ MixKOF_ProjectileGFX_Joe:
 MixKOF_ProjectileGFX_Heidern:
 	db $12
 	INCBIN "data/gfx/proj/kof95/heidern.bin"
+MixKOF_ProjectileGFX_Kensou:
+	db $0A
+	INCBIN "data/gfx/proj/kof95/kensou.bin"
 
 	INCLUDE "src/mixkof/kof95_projectiles.asm"
 SECTION "bank3D", ROMX, BANK[$3D]
-	ds $4000, $FF
+	INCLUDE "src/mixkof/kensou95_gfx.asm"
 SECTION "bank3E", ROMX, BANK[$3E]
-	ds $4000, $FF
+	INCLUDE "src/mixkof/kensou95_objlst.asm"
 SECTION "bank3F", ROMX, BANK[$3F]
-	ds $4000, $FF
+	INCLUDE "src/mixkof/kensou96_tables.asm"
+	INCLUDE "src/mixkof/kensou95_code.asm"

@@ -808,6 +808,7 @@ DEF iPlInfo_Joe_Bakuretsuken_LoopFlag          EQU $83
 DEF iPlInfo_Heidern_NeckRoller_LoopCount       EQU $83
 DEF iPlInfo_Heidern_StormBringer_FromSuper     EQU $83
 DEF iPlInfo_Ralf_VulcanPunch_LoopCount         EQU $83
+DEF iPlInfo_Kensou_RyuuGakuSai_FromSuper       EQU $83
 DEF iPlInfo_MrKarate_RyukoRanbuD                EQU $84 ; If set, the move counts as the desperation version. The move itself doesn't use this, but the value gets passed over to Zenretsuken.
 DEF iPlInfo_Terry_PowerGeyserE_LastXPos         EQU $83 ; Last random X position generated for a projectile
 DEF iPlInfo_Athena_PsychoTeleport_InvulnTimer   EQU $83 ; When this elapses, the player isn't invulnerable anymore

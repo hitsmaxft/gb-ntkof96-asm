@@ -2710,6 +2710,7 @@ CharSel_CharNameBGPtrTbl:
 	dw $9A30 ; CHAR_ID_JOE
 	dw $9A2D ; CHAR_ID_HEIDERN
 	dw $9A2F ; CHAR_ID_RALF
+	dw $9A2D ; CHAR_ID_KENSOU
 ; =============== CharSel_CharNamePtrTable ===============
 ; Ptr table to the character names, indexed by character ID.
 CharSel_CharNamePtrTable:
@@ -2739,6 +2740,7 @@ CharSel_CharNamePtrTable:
 	dw TextC_Char_Joe
 	dw TextC_Char_Heidern
 	dw TextC_Char_Ralf
+	dw TextC_Char_Kensou
 
 ; =============== TextC_Char_* ===============
 ; These lack the tilemap offset, as they are passed to TextPrinter_Instant_CustomPos.
@@ -2772,6 +2774,7 @@ TextC_Char_Yuri:     mTxtDef "YURI"
 TextC_Char_Joe:      mTxtDef "JOE"
 TextC_Char_Heidern:  mTxtDef "HEIDERN"
 TextC_Char_Ralf:     mTxtDef "RALF"
+TextC_Char_Kensou:   mTxtDef "KENSOU"
 
 ; =============== CharSel_AnimCursorPalFast ===============
 ; Cycles the cursor palette fast, used when still selecting something.
@@ -2808,13 +2811,13 @@ CharSel_AnimCursorPal:
 	; Otherwise, A == 0
 .pal0:
 	ld   a, $3C			; A = OBP pal 0
-	jp   .setPal
+	jr   .setPal
 .pal1:
 	ld   a, $34
-	jp   .setPal
+	jr   .setPal
 .pal2:
 	ld   a, $F0
-	jp   .setPal
+	jr   .setPal
 .pal3:
 	ld   a, $F4
 	
@@ -3167,7 +3170,7 @@ CharSelect_IsCPUOpponent:
 	or   a						; Playing on the 1P side? (== PL1)
 	jp   z, .retClear			; If so, return clear
 	
-	jp   .retSet
+	jr   .retSet
 .chkCpu2P:
 	; Currently handling 2P.
 	; For 2P to be a CPU opponent, 1P must have control on the char select screen
@@ -3208,11 +3211,11 @@ CharSelect_IsLastWinner:
 	; Final check
 	ld   a, [wLastWinner]
 	bit  PLB1, a			; Did 1P win the last round?
-	jp   nz, .retSet		; If so, return set
+	jr   nz, .retSet		; If so, return set
 	
 	; Otherwise, we game over'd before.
 	; Allow changing the team.
-	jp   .retClear
+	jr   .retClear
 .pl2:
 	; Not applicable here if 2P is the CPU opponent
 	ld   a, [wJoyActivePl]
@@ -3226,7 +3229,7 @@ CharSelect_IsLastWinner:
 	
 	; Otherwise, we game over'd before.
 	; Allow changing the team.
-	jp   .retClear
+	jr   .retClear
 .retSet:
 	scf		; C flag = 1
 	ret
@@ -3245,7 +3248,7 @@ CharSel_IdMapTbl:
 	; Imported KOF95 fighters with gameplay registration.
 	db CHAR_ID_BENIMARU/2, CHAR_ID_YURI/2
 	db CHAR_ID_JOE/2, CHAR_ID_HEIDERN/2, CHAR_ID_RALF/2
-	ds 1, CHAR_ID_NONE
+	db CHAR_ID_KENSOU/2
 	db CHAR_ID_KIM/2
 	ds 5, CHAR_ID_NONE
 	; One reserved cell completes the single 6x5 navigation grid.

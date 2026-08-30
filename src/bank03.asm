@@ -2446,7 +2446,7 @@ ELSE
 	add  hl, bc
 	ld   a, [hl]
 	cp   $5A			; iPlInfo_PlDistance >= $5A?
-	jp   nc, .setMoveF	; If so, jump
+	jr   nc, .setMoveF	; If so, jump
 	; iPlInfo_CPUIdleMove = CMA_MOVEB
 	ld   a, CMA_MOVEB
 	ld   hl, iPlInfo_CPUIdleMove
@@ -2459,7 +2459,7 @@ ELSE
 	add  hl, bc
 	ld   a, [hl]
 	cp   $55			; iPlInfo_PlDistance >= $55?
-	jp   nc, .setMoveF	; If so, jump
+	jr   nc, .setMoveF	; If so, jump
 	; iPlInfo_CPUIdleMove = CMA_NONE
 	ld   a, CMA_NONE
 	ld   hl, iPlInfo_CPUIdleMove
@@ -3539,6 +3539,7 @@ CPU_MoveListPtrTable:
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_JOE
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_HEIDERN
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_RALF
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_KENSOU
 
 ; =============== CPU_MoveInputList_* ===============
 ; List of character-specific move inputs.

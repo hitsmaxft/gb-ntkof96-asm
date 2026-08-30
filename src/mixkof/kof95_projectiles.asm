@@ -61,6 +61,12 @@ OBJLstPtrTable_Proj_Heidern_CrossCutter:
 	dw OBJLstHdrA_Proj_Heidern_CrossCutter2, OBJLSTPTR_NONE
 	dw OBJLstHdrA_Proj_Ryo_KoOuKenG1, OBJLSTPTR_NONE
 	dw OBJLSTPTR_NONE
+OBJLstPtrTable_Proj_Kensou_ChouKyuuDan95:
+	dw OBJLstHdrA_Proj_Kensou_ChouKyuuDan0, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Ryo_KoOuKenG1, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Kensou_ChouKyuuDan2, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Ryo_KoOuKenG1, OBJLSTPTR_NONE
+	dw OBJLSTPTR_NONE
 OBJLstHdrA_Proj_Benimaru_ThunderBall8:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
@@ -182,6 +188,30 @@ OBJLstHdrA_Proj_Ryo_KoOuKenG0:
 	;    Y   X  ID+FLAG
 	db $28,$F8,$02 ; $00
 	db $28,$00,$04 ; $01
+OBJLstHdrA_Proj_Kensou_ChouKyuuDan0:
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0A ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $02 ; OBJ Count
+	db $28,$F8,$02
+	db $28,$00,$02|OLR_XFLIP
+OBJLstHdrA_Proj_Kensou_ChouKyuuDan2:
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0A ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $02 ; OBJ Count
+	db $28,$F8,$04
+	db $28,$00,$04|OLR_XFLIP
 OBJLstHdrA_Proj_Ryo_KoOuKenG2:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId

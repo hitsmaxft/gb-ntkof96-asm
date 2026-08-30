@@ -40,6 +40,9 @@ BGXDef_Play_HUD_CharName_Heidern:
 	db $06, $20, $21, $06, $03, $21, $13 ; "HEIDER"
 BGXDef_Play_HUD_CharName_Ralf:
 	db $03, $13, $24, $1A ; "RAL"
+; Recompose KENSOU from resident glyphs (KRAUSER/GEESE/ANDY/ROBERT).
+BGXDef_Play_HUD_CharName_Kensou:
+	db $06, $33, $2B, $0D, $2F, $15, $37
 
 ; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"
