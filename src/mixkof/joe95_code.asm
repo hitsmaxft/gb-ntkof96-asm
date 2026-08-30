@@ -224,6 +224,14 @@ MoveInit_Joe_ScrewUpper:
 	call Play_Pl_ClearJoyDirBuffer
 	ld   a, MOVE_JOE_SCREW_UPPER_S
 	call MoveInputS_SetSpecMove_StopSpeed
+	; KOF95 Joe's Screw Upper has no KOF96 diagonal SuperSparkle overlay.
+	; The common KOF96 super initializer has already created that extra object,
+	; so hide it before the first render/update while preserving its sound and
+	; the normal super flags.
+	ld   hl, (OBJINFO_SIZE*4)+iOBJInfo_Status
+	add  hl, de
+	xor  a
+	ld   [hl], a
 	call Play_Proj_CopyMoveDamageFromPl
 	jp   MoveInputReader_Joe_MoveSet
 	
