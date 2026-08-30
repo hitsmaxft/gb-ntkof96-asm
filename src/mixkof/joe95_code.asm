@@ -148,11 +148,12 @@ MoveInputReader_Joe:
 	jp   MoveInputReader_Joe_NoMove
 
 .chkGround:
-	; Keep every KOF95 command on a distinct easy route. In particular,
-	; down-forward + SELECT represents the FDF (dragon-punch) route and must
-	; start Tiger Kick, while Hurricane Upper's BDF punch uses back + SELECT.
-	;             F                       DF                        D                           DB                         B                           super DF                 super DB
-	mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
+	; Follow the KOF96 directional shortcut semantics used by native fighters:
+	; F selects the DF command slot, DB selects the BDF slot, and B selects the
+	; DB slot. Joe has no FDF command, so BF Slash Kick occupies the spare DF
+	; shortcut while PPP remains on D.
+	;             F                       DF                        D                           DB                          B                         super DF                 super DB
+	mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
 	mMvIn_ChkGA Joe, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -190,10 +191,7 @@ MoveInit_Joe_HurricaneUpper:
 ; =============== MoveInit_Joe_SlashKick ===============
 MoveInit_Joe_SlashKick:
 	call Play_Pl_ClearJoyDirBuffer
-	; The imported KOF95 kick strength bit is reversed relative to KOF96's
-	; canonical PF2B_HEAVY flag for Joe. Swap the move IDs so light/heavy kick
-	; inputs start the matching visible variant.
-	mMvIn_GetLHK MOVE_JOE_SLASH_KICK_H, MOVE_JOE_SLASH_KICK_L
+	mMvIn_GetLHK MOVE_JOE_SLASH_KICK_L, MOVE_JOE_SLASH_KICK_H
 	call MoveInputS_SetSpecMove_StopSpeed
 	jp   MoveInputReader_Joe_MoveSet
 	
@@ -207,7 +205,7 @@ MoveInit_Joe_Bakuretsuken:
 ; =============== MoveInit_Joe_TigerKick ===============
 MoveInit_Joe_TigerKick:
 	call Play_Pl_ClearJoyDirBuffer
-	mMvIn_GetLHK MOVE_JOE_TIGER_KICK_H, MOVE_JOE_TIGER_KICK_L
+	mMvIn_GetLHK MOVE_JOE_TIGER_KICK_L, MOVE_JOE_TIGER_KICK_H
 	call MoveInputS_SetSpecMove_StopSpeed
 	ld   hl, iPlInfo_Flags1
 	add  hl, bc
@@ -217,7 +215,7 @@ MoveInit_Joe_TigerKick:
 ; =============== MoveInit_Joe_OugonNoKakato ===============
 MoveInit_Joe_OugonNoKakato:
 	call Play_Pl_ClearJoyDirBuffer
-	mMvIn_GetLHK MOVE_JOE_OUGON_NO_KAKATO_H, MOVE_JOE_OUGON_NO_KAKATO_L
+	mMvIn_GetLHK MOVE_JOE_OUGON_NO_KAKATO_L, MOVE_JOE_OUGON_NO_KAKATO_H
 	call MoveInputS_SetSpecMove_StopSpeed
 	jp   MoveInputReader_Joe_MoveSet
 	

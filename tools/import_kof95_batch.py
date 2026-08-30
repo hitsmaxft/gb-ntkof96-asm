@@ -61,7 +61,7 @@ FIGHTERS = {
             "MOVE_JOE_OUGON_NO_KAKATO_L", "MOVE_JOE_OUGON_NO_KAKATO_H",
         ],
         "super": "MOVE_JOE_SCREW_UPPER_S",
-        "easy": "mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
     },
     "heidern": {
         "class": "Heidern",
