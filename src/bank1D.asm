@@ -46,6 +46,9 @@ BGXDef_Play_HUD_CharName_Kensou:
 ; The resident HUD sheet has no J glyph; the selector still prints EIJI.
 BGXDef_Play_HUD_CharName_Eiji:
 	db $04, $17, $25, $25, $25 ; "EIII"
+; Recompose BILLY from resident BENIMARU/IORI/RALF/YURI glyphs.
+BGXDef_Play_HUD_CharName_Billy:
+	db $05, $16, $25, $1A, $1A, $02
 
 ; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"

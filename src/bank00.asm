@@ -5622,6 +5622,7 @@ Play_CharStageMapTbl:
 	db STAGE_ID_HERO ; CHAR_ID_RALF
 	db STAGE_ID_HERO ; CHAR_ID_KENSOU
 	db STAGE_ID_YAGAMI ; CHAR_ID_EIJI
+	db STAGE_ID_FATALFURY ; CHAR_ID_BILLY
 
 ; =============== Serial_DoHandshake ===============
 ; Performs an handshake between master and slave GBs.
@@ -8414,6 +8415,7 @@ Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_Ralf ; CHAR_ID_RALF
 	dw BGXDef_Play_HUD_CharName_Kensou ; CHAR_ID_KENSOU
 	dw BGXDef_Play_HUD_CharName_Eiji ; CHAR_ID_EIJI
+	dw BGXDef_Play_HUD_CharName_Billy ; CHAR_ID_BILLY
 
 ; =============== Play_DrawHUDEmptyBars ===============
 ; Draws the tilemaps for all empty bars in the HUD.
@@ -11919,10 +11921,10 @@ OBJLstS_SyncXFlip:
 	ld   hl, iOBJInfo_OBJLstFlags
 	add  hl, de					; Seek to flags
 	bit  SPRXB_PLDIR_R, [hl]	; Is the sprite mapping internally flipped?
-	jp   z, .noFlip				; If not, jump
+	jr   z, .noFlip				; If not, jump
 .flip:
 	set  SPRB_XFLIP, [hl]		; Flip the sprite
-	jp   .ret
+	jr   .ret
 .noFlip:
 	res  SPRB_XFLIP, [hl]		; Visually unflip the sprite
 .ret:

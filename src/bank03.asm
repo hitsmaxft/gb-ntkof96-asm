@@ -2525,9 +2525,9 @@ Play_CPU_OnPlNear:
 	; Depending on difficulty...
 	ld   a, [wDifficulty]
 	cp   DIFFICULTY_NORMAL
-	jp   z, .norm
+	jr   z, .norm
 	cp   DIFFICULTY_HARD
-	jp   z, .hard
+	jr   z, .hard
 .easy:
 	; Check hardcoded stage difficulties
 	ld   a, [wCharSeqId]
@@ -3541,6 +3541,7 @@ CPU_MoveListPtrTable:
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_RALF
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_KENSOU
 	dw CPU_MoveInputList_Ryo ; CHAR_ID_EIJI
+	dw CPU_MoveInputList_Ryo ; CHAR_ID_BILLY
 
 ; =============== CPU_MoveInputList_* ===============
 ; List of character-specific move inputs.

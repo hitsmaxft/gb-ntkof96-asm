@@ -71,6 +71,14 @@ OBJLstPtrTable_Proj_Eiji_Zantetsuha:
 	dw OBJLstHdrA_Proj_Eiji_Zantetsuha0, OBJLSTPTR_NONE
 	dw OBJLstHdrA_Proj_Ryo_HaohShoukouKen1, OBJLSTPTR_NONE
 	dw OBJLSTPTR_NONE
+OBJLstPtrTable_Proj_Billy_ChouKaenSenpuuKon:
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon0, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon1, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon2, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon3, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon4, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon5, OBJLSTPTR_NONE
+	dw OBJLSTPTR_NONE
 OBJLstHdrA_Proj_Benimaru_ThunderBall8:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
@@ -235,6 +243,76 @@ OBJLstHdrA_Proj_Eiji_Zantetsuha0:
 	db $30,$F8,$02|OLR_YFLIP
 	db $38,$00,$04|OLR_YFLIP
 	db $38,$08,$06|OLR_YFLIP
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon0:
+	; Keep KOF95 tile-number semantics explicit even though these six frames
+	; currently use only header-wide flips and sub-$40 tile IDs.
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $04 ; OBJ Count
+	db $18,$FA,$02
+	db $18,$02,$04
+	db $20,$0A,$06
+	db $30,$0A,$08
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon3:
+	db OLF_USETILEFLAGS|OLF_XFLIP|OLF_YFLIP|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon0.bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon1:
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $05 ; OBJ Count
+	db $21,$ED,$0A
+	db $19,$F5,$0C
+	db $19,$FD,$0E
+	db $19,$05,$10
+	db $21,$0D,$12
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon4:
+	db OLF_USETILEFLAGS|OLF_XFLIP|OLF_YFLIP|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon1.bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon2:
+	db OLF_USETILEFLAGS|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $05 ; OBJ Count
+	db $2B,$EC,$14
+	db $1B,$EC,$16
+	db $1B,$F4,$18
+	db $1B,$FC,$1A
+	db $1B,$04,$1C
+OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon5:
+	db OLF_USETILEFLAGS|OLF_XFLIP|OLF_YFLIP|OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_0D ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; buffered projectile GFX
+	dw OBJLstHdrA_Proj_Billy_ChouKaenSenpuuKon2.bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
 OBJLstHdrA_Proj_Ryo_KoOuKenG2:
 	db OLF_NOBUF ; iOBJLstHdrA_Flags
 	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId

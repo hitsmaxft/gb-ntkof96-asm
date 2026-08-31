@@ -3236,7 +3236,8 @@ CharSel_IdMapTbl:
 	db CHAR_ID_KENSOU/2
 	db CHAR_ID_KIM/2
 	db CHAR_ID_EIJI/2
-	ds 4, CHAR_ID_NONE
+	db CHAR_ID_BILLY/2
+	ds 3, CHAR_ID_NONE
 	; One reserved cell completes the single 6x5 navigation grid.
 	db CHAR_ID_NONE
 .end:

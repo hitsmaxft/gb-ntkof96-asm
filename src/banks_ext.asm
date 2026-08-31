@@ -103,6 +103,8 @@ MixKOF_WinAnimEntryTbl:
 	db $08
 	dp OBJLstPtrTable_Eiji_Win
 	db $08
+	dp OBJLstPtrTable_Billy_Win
+	db $08
 
 Title_DrawTrainingText:
 	ld   hl, TextDef_Menu_Training
@@ -386,8 +388,12 @@ SECTION "bank22", ROMX, BANK[$22]
 INCLUDE "src/mixkof/kim95_objlst.asm"
 SECTION "bank23", ROMX, BANK[$23]
 INCLUDE "src/mixkof/kim96_tables.asm"
+	INCLUDE "src/mixkof/billy95_gfx.asm"
 SECTION "bank24", ROMX, BANK[$24]
 INCLUDE "src/mixkof/kim95_code.asm"
+	INCLUDE "src/mixkof/billy95_objlst.asm"
+	INCLUDE "src/mixkof/billy96_tables.asm"
+	INCLUDE "src/mixkof/billy95_code.asm"
 SECTION "bank25", ROMX, BANK[$25]
 GFX_Char_Icons: INCBIN "data/gfx/char_icons_mix.bin"
 SECTION "bank26", ROMX, BANK[$26]
@@ -487,6 +493,10 @@ MixKOF_ImportedCharHeaderTbl:
 	dpr MoveInputReader_Eiji
 	db $00
 	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Billy96, MoveCodePtrTbl_Billy96
+	dpr MoveInputReader_Billy
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
 
 MixKOF_GetMoveTblBank_Banked:
 	ld   hl, iPlInfo_CharId
@@ -508,6 +518,8 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   z, .kensou
 	cp   CHAR_ID_EIJI
 	jr   z, .eiji
+	cp   CHAR_ID_BILLY
+	jr   z, .billy
 	ld   a, BANK(MoveAnimTbl_Marker)
 	jr   .save
 .kim:
@@ -533,6 +545,9 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   .save
 .eiji:
 	ld   a, BANK(MoveAnimTbl_Eiji96)
+	jr   .save
+.billy:
+	ld   a, BANK(MoveAnimTbl_Billy96)
 
 .save:
 	ldh  [hMoveTblBank], a
@@ -623,6 +638,7 @@ MixKOF_ProjectileGFXPtrTbl:
 	dw $0000
 	dw MixKOF_ProjectileGFX_Kensou
 	dw MixKOF_ProjectileGFX_Eiji
+	dw MixKOF_ProjectileGFX_Billy
 
 MixKOF_ProjectileGFX_Benimaru:
 	db $14
@@ -642,6 +658,9 @@ MixKOF_ProjectileGFX_Kensou:
 MixKOF_ProjectileGFX_Eiji:
 	db $08
 	INCBIN "data/gfx/proj/kof95/eiji.bin"
+MixKOF_ProjectileGFX_Billy:
+	db $1C
+	INCBIN "data/gfx/proj/kof95/billy.bin"
 
 	INCLUDE "src/mixkof/kof95_projectiles.asm"
 SECTION "bank3D", ROMX, BANK[$3D]
