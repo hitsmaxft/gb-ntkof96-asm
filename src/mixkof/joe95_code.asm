@@ -148,12 +148,11 @@ MoveInputReader_Joe:
 	jp   MoveInputReader_Joe_NoMove
 
 .chkGround:
-	; Follow the KOF96 directional shortcut semantics used by native fighters:
-	; F selects the DF command slot, DB selects the BDF slot, and B selects the
-	; DB slot. Joe has no FDF command, so BF Slash Kick occupies the spare DF
-	; shortcut while PPP remains on D.
-	;             F                       DF                        D                           DB                          B                         super DF                 super DB
-	mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
+	; Keep every KOF95 command on a distinct easy route. Treat Tiger Kick as
+	; the FDF (dragon-punch) command on down-forward + SELECT. Hurricane Upper's
+	; BDF punch uses back + SELECT, so it remains available without a conflict.
+	;             F                       DF                        D                           DB                         B                           super DF                 super DB
+	mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove
 	mMvIn_ChkGA Joe, .chkPunch, .chkKick
 	
 .chkPunch:

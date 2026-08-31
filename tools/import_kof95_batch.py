@@ -61,7 +61,7 @@ FIGHTERS = {
             "MOVE_JOE_OUGON_NO_KAKATO_L", "MOVE_JOE_OUGON_NO_KAKATO_H",
         ],
         "super": "MOVE_JOE_SCREW_UPPER_S",
-        "easy": "mMvIn_ChkEasyDir MoveInit_Joe_TigerKick, MoveInit_Joe_SlashKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
+        "easy": "mMvIn_ChkEasyDir MoveInit_Joe_SlashKick, MoveInit_Joe_TigerKick, MoveInit_Joe_Bakuretsuken, MoveInit_Joe_OugonNoKakato, MoveInit_Joe_HurricaneUpper, MoveInit_Joe_ScrewUpper, MoveInputReader_Joe_NoMove",
         # KOF96 has only one standing light/heavy kick slot. Do not flatten
         # Joe's KOF95 near variants into those slots: his near light kick uses
         # custom code that adds a second 6-damage HEAVYHIT phase, while the
