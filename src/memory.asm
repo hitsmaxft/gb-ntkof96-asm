@@ -19,7 +19,6 @@ DEF vBGMaxPowBarRow         EQU $9CA0
 
 DEF vBGPause1P              EQU $9C46
 DEF vBGPause2P              EQU $9C4B
-
 DEF vBGBoxWin1P0            EQU $9C42
 DEF vBGBoxWin1P1            EQU $9C43
 DEF vBGBoxWin2P0            EQU $9C51
@@ -143,7 +142,7 @@ wRoundTotal                 :db ; EQU $C164 ; Total number of rounds played sinc
 wJoyActivePl                :db ; EQU $C165 ; Determines the active player side in 1P modes. (PL*)
 wStageId                    :db ; EQU $C166 ; Stage ID. Determines music, backdrop and palette.
 wRoundNum                   :db ; EQU $C167 ; Round number in a stage
-ds 1
+wTrainingMode               :db ; EQU $C168 ; If set, enables training-mode battle rules.
 wRoundTime                  :db ; EQU $C169 ; Round timer
 wRoundTimeSub               :db ; EQU $C16A ; Round subsecond timer
 
@@ -174,8 +173,7 @@ wPauseFlags                 :db ; EQU $C17D ; Contains flags for the pause state
 wUnused_ContinueUsed        :db ; EQU $C17E ; If set, a continue was used. Not read by anything.
 wCharSeqId                  :db ; EQU $C17F ; "Stage sequence number". Index to the char sequence table, essentially the number of beat opponents after clearing a stage
 wCharSeqTbl                 :ds $14 ; EQU $C180 ; "Stage sequence". Sequence of CPU opponents in order, containing initially CHARSEL_ID_* for normal rounds and CHAR_ID_* for bosses
-wCharSelIdMapTbl            :ds $15 ; EQU $C194 ; Maps cursor locations in the char select screen (CHARSEL_ID_*) to actual character IDs (CHAR_ID_*)
-                                      ; $15 bytes ($C194-$C1A8), this is updated when flipping a tile. Also used to disable locked characters.
+wCharSelIdMapTblLegacy      :ds $15 ; EQU $C194 ; Original 21-byte table, retained to preserve the fixed WRAM layout.
 
 
 
@@ -259,6 +257,16 @@ wCharSelP2CursorMode        :db ; EQU $C1B5
 wCharSelCurPl               :db ; EQU $C1B6 ; Player num currently handled in the character select screen.
 wCharSelRandomDelay1P       :db ; EQU $C1B7 ; Delay until the CPU autopicks the next character
 wCharSelRandomDelay2P       :db ; EQU $C1B8 ; Delay until the CPU autopicks the next character
+; Temporary state for table-driven START portrait variants.
+wCharSelVariantDescPtr      :ds 2
+wCharSelVariantCursorOBJPtr :ds 2
+wCharSelVariantIdMapPtr     :ds 2
+wCharSelVariantFlipOffset   :db
+wCharSelVariantOBJFlags     :db
+wCharSelVariantWork         :db ; Variant count while searching, then flip direction
+wCharSelVariantCursorPos    :db
+wCharSelVariantPortraitId   :db
+wCharSelVariantTileId       :db ; Derived portrait asset index during START switching.
 
 NEXTU
 ;
@@ -299,7 +307,8 @@ NEXTU
 ;
 ; GAMEPLAY
 ;
-ds $C1CA-$C1A9
+wPlayPauseHintBGBackup    :ds $04 ; Background under the per-player "AB MENU" pause hint
+ds $C1CA-$C1AD
 wPlaySecIconBuffer          :db ; EQU $C1CA ; Buffer for drawing the overlapping secondary icons in team mode
 DEF wPlayCrossBuffer              EQU wPlaySecIconBuffer+$100
 DEF wPlayCrossMaskBuffer          EQU wPlaySecIconBuffer+$140
@@ -424,6 +433,11 @@ wGFXBufInfo_Pl2             :ds $20 ; EQU $D8E0
 wPlInfo_Pl1                 :ds $100 ; EQU $D900
 wPlInfo_Pl2                 :ds $100 ; EQU $DA00
 
+; The 6x5 mixed-roster selector needs 30 entries. During character selection
+; the gameplay player structures are inactive, so use their custom scratch
+; area instead of growing the tightly packed C1xx mode block.
+DEF wCharSelIdMapTbl EQU wPlInfo_Pl1+$8C
+
 SECTION "OAM Mirror", WRAM0[$DF00]
 wWorkOAM                    :ds OBJ_SIZE*OBJCOUNT_MAX ; EQU $DF00
 DEF wWorkOAM_End            EQU wWorkOAM+OBJ_SIZE*OBJCOUNT_MAX ; $DFA0
@@ -453,7 +467,7 @@ hTaskTbl                    :ds $03*TASK_SIZE ; EQU $FFC8 ; Task struct list
 hROMBank                    :db     ; EQU $FFE0 ; Currently loaded ROM bank
 
 
-ds 1
+hMoveTblBank                :db     ; EQU $FFE1 ; Temporary character move-table bank
 hScrollY                    :db ; EQU $FFE2 ; Y screen position
 hScrollYSub                 :db ; EQU $FFE3 ; Y screen subpixel position
 hScrollX                    :db ; EQU $FFE4 ; X screen position
@@ -581,6 +595,10 @@ DEF iOBJInfo_Play_DamageFlags3         EQU iOBJInfo_Custom+$05 ; Damage flags ap
 DEF iOBJInfo_Play_HitMode              EQU iOBJInfo_Custom+$06 ; If set, marks what happens when the projectile hits a target
 DEF iOBJInfo_Play_Priority             EQU iOBJInfo_Custom+$07 ; Higher priority projectiles erase others
 DEF iOBJInfo_Play_EnaTimer             EQU iOBJInfo_Custom+$08 ; Visibility timer. When it elapses, the ExOBJ disappears.
+; Nakoruru's Mamahaha is an independent helper object, not a projectile.
+DEF iOBJInfo_Bird_Mode                 EQU iOBJInfo_Custom+$07
+DEF iOBJInfo_Bird_Timer                EQU iOBJInfo_Custom+$08
+DEF iOBJInfo_Bird_Unused_29            EQU iOBJInfo_Custom+$09
 ;--
 ; For Athena's Shining Crystal Bit (before throw)
 DEF iOBJInfo_Proj_ShCrystCharge_OrigX           EQU iOBJInfo_Custom+$08 ; X Origin for the projectile. The small spheres are positioned relative to this.
@@ -770,7 +788,7 @@ DEF iPlInfo_OBJInfoYOther              EQU $81 ; Copy of iOBJInfo_Y
 DEF iPlInfo_PowOther                   EQU $82
 ; Custom, move-specific
 DEF iPlInfo_RunningJump                         EQU $83 ; If set, the last jump was started during a forward run (move MOVE_SHARED_RUN_F)
-DEF iPlInfo_Kyo_AraKami_SubInputMask            EQU $83 ; Flags which inputs were performed for the submoves
+DEF iPlInfo_Kyo_AraKami_SubInputMask            EQU $83 ; Latched physical A/B presses for Ara Kami and Doku Kami submoves
 DEF iPlInfo_Kyo_NueTumi_AutoguardShakeDone      EQU $83 ; Marks if the powerup hitstop was done. Seems pointless.
 DEF iPlInfo_Kyo_UraOrochiNagi_ChargeTimer       EQU $83 ; Animation loop limit when charging the move.
 DEF iPlInfo_Daimon_HeavenHellDrop_GrabLoopsLeft EQU $83 ; How many 180 grab loops are performed
@@ -789,6 +807,20 @@ DEF iPlInfo_Goenitz_Shinyaotome_LoopTimer       EQU $83 ; Attack loop for all su
 DEF iPlInfo_Goenitz_Jissoukoku_InvulnTimer      EQU $83 ; When this elapses, the player isn't invulnerable anymore
 DEF iPlInfo_MrKarate_ShouranKyaku_LoopCount     EQU $83
 DEF iPlInfo_MrKarate_Zenretsuken_LoopCount      EQU $83
+DEF iPlInfo_Benimaru_ShinkuuKatateGoma_LoopCount EQU $83
+DEF iPlInfo_Billy_KyoushuuHit                     EQU $83 ; Prevent 96 collision flags from rearming the 95 descent hit
+DEF iPlInfo_Joe_Bakuretsuken_LoopFlag          EQU $83
+DEF iPlInfo_Heidern_NeckRoller_LoopCount       EQU $83
+DEF iPlInfo_Heidern_StormBringer_FromSuper     EQU $83
+DEF iPlInfo_Ralf_VulcanPunch_LoopCount         EQU $83
+DEF iPlInfo_Kensou_RyuuGakuSai_FromSuper       EQU $83
+DEF iPlInfo_Rugal_DarkBarrier_LoopCount        EQU $83
+DEF iPlInfo_Nakoruru_MamahahaFlight_Mode       EQU $83
+DEF iPlInfo_Nakoruru_MamahahaFlight_TimeLeft   EQU $84
+DEF iPlInfo_Dodge95_TimeLeft                   EQU $84 ; Fixed 95 dodge lifetime; avoids per-character animation-end differences
+DEF iPlInfo_Ryo_Zanretsuken_VShift             EQU $83
+DEF iPlInfo_Athena_PsychoReflector_LoopCount   EQU $83
+DEF iPlInfo_Athena_PsychoSword_77              EQU $83
 DEF iPlInfo_MrKarate_RyukoRanbuD                EQU $84 ; If set, the move counts as the desperation version. The move itself doesn't use this, but the value gets passed over to Zenretsuken.
 DEF iPlInfo_Terry_PowerGeyserE_LastXPos         EQU $83 ; Last random X position generated for a projectile
 DEF iPlInfo_Athena_PsychoTeleport_InvulnTimer   EQU $83 ; When this elapses, the player isn't invulnerable anymore
@@ -800,10 +832,13 @@ DEF iPlInfo_OIori_KinYaOtome_LoopCount          EQU $83
 DEF iPlInfo_Ryo_HienShippuKyaku_Unused_83       EQU $83 ; Nonexisting
 DEF iPlInfo_Hit_SwoopUp_OkSpeedY                EQU $83
 DEF iPlInfo_ForceDizzy                          EQU $83 ; If set, the dizzy time is infinite until getting knocked down.
+DEF iPlInfo_EasyMoveSelectState                 EQU $85 ; Easy Move SELECT encoded route (high nybble) and held-frame countdown (low nybble); $FF after heavy activation
 ; CPU block
 DEF iPlInfo_CPUIdleTimer               EQU $86 ; Delays picking a new idle move. Until it elapses, the existing iPlInfo_CPUIdleMove is valid.
 DEF iPlInfo_CPUIdleMove                EQU $87 ; ID of the idle movement mode. (CMA_*)
 DEF iPlInfo_CPUWaitTimer               EQU $89 ; Delays CPU input logic until it elapses
+DEF iPlInfo_SuperCancelFlags           EQU $8A ; PSCB_* pending/active state for Super Cancel damage
+DEF iPlInfo_BattleSystem               EQU $8B ; BATTLESYS_*, selected independently for each player side
 
 ; D-Pad Move input (MoveInput_*)
 ; Format: <iMoveInput_Length>[<iMoveInputItem*> last, <iMoveInputItem*> last-1, ...]		

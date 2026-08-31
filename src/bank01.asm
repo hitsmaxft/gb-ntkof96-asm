@@ -189,6 +189,7 @@ Play_Main:
 	ei
 	; Here we go
 .mainLoop:
+	call Play_TrainingMode_UpdateHealth
 	call Play_ChkEnd
 	call Play_DoPlInput
 	call Play_ChkPause
@@ -342,7 +343,13 @@ Play_DoPlInput:
 	; Generate inputs for the CPU
 	ld   bc, wPlInfo_Pl1
 	ld   de, wOBJInfo_Pl1
+	ld   a, [wTrainingMode]
+	or   a
+	jr   nz, .training1P
 	call HomeCall_Play_CPU_Do
+	jr   .do2P
+.training1P:
+	call Play_TrainingMode_SetCPUInput
 	
 .do2P:
 
@@ -463,8 +470,68 @@ Play_DoPlInput:
 	; Generate inputs for the CPU
 	ld   bc, wPlInfo_Pl2
 	ld   de, wOBJInfo_Pl2
+	ld   a, [wTrainingMode]
+	or   a
+	jr   nz, .training2P
 	call HomeCall_Play_CPU_Do
+	jr   .end
+.training2P:
+	call Play_TrainingMode_SetCPUInput
 .end:
+	IF !REV_VER_2
+	jp   Play_EasyMove_ForceDirectionalHeavy
+	ELSE
+	ret
+	ENDC
+
+; =============== Play_TrainingMode_UpdateHealth ===============
+; Prevents either player from being knocked out in training mode.
+Play_TrainingMode_UpdateHealth:
+	ld   a, [wTrainingMode]
+	or   a
+	ret  z
+	ld   a, PLAY_HEALTH_MAX
+	ld   [wPlInfo_Pl1+iPlInfo_Health], a
+	ld   [wPlInfo_Pl1+iPlInfo_HealthVisual], a
+	ld   [wPlInfo_Pl2+iPlInfo_Health], a
+	ld   [wPlInfo_Pl2+iPlInfo_HealthVisual], a
+	ret
+
+; =============== Play_TrainingMode_SetCPUInput ===============
+; Disables normal AI. The CPU only walks forward while its opponent charges POW.
+; IN
+; - BC: Ptr to CPU wPlInfo structure
+; - DE: Ptr to CPU wOBJInfo structure
+Play_TrainingMode_SetCPUInput:
+	xor  a
+	ld   hl, iPlInfo_JoyNewKeys
+	add  hl, bc
+	ld   [hl], a
+	inc  hl ; iPlInfo_JoyKeys
+	ld   [hl], a
+	inc  hl ; iPlInfo_JoyNewKeysLH
+	ld   [hl], a
+	ld   hl, iPlInfo_JoyBufKeysLH
+	add  hl, bc
+	ld   [hl], a
+
+	ld   hl, iPlInfo_MoveIdOther
+	add  hl, bc
+	ld   a, [hl]
+	cp   MOVE_SHARED_CHARGEMETER
+	ret  nz
+
+	; Forward follows the CPU's current facing direction.
+	ld   hl, iOBJInfo_OBJLstFlags
+	add  hl, de
+	ld   a, KEY_LEFT
+	bit  SPRXB_PLDIR_R, [hl]
+	jr   z, .setForward
+	ld   a, KEY_RIGHT
+.setForward:
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   [hl], a
 	ret
 	
 ; =============== Play_ChkPause ===============
@@ -487,6 +554,10 @@ Play_ChkPause:
 	set  PLB1, [hl]		; Set pause flag
 	call Play_Pause
 .mainLoop1P:
+	ldh  a, [hJoyKeys]
+	and  a, KEY_A|KEY_B
+	cp   KEY_A|KEY_B
+	jr   z, .toTitle
 	ldh  a, [hJoyNewKeys]
 	bit  KEYB_START, a		; Pressed START?
 	jp   nz, .unpause1P		; If so, unpause the game
@@ -507,7 +578,7 @@ Play_ChkPause:
 .chk2P:
 	ldh  a, [hJoyNewKeys2]
 	and  a, KEY_START		; Did 2P press START?
-	jp   z, .ret			; If not, return
+	ret  z					; If not, return
 	;
 	; As long as the game is paused, this main loop takes exclusive control.
 	;
@@ -515,6 +586,10 @@ Play_ChkPause:
 	set  PLB2, [hl]		; Set pause flag
 	call Play_Pause
 .mainLoop2P:
+	ldh  a, [hJoyKeys2]
+	and  a, KEY_A|KEY_B
+	cp   KEY_A|KEY_B
+	jr   z, .toTitle
 	ldh  a, [hJoyNewKeys2]
 	bit  KEYB_START, a		; Pressed START?
 	jp   nz, .unpause2P		; If so, unpause the game
@@ -531,6 +606,18 @@ Play_ChkPause:
 	ld   hl, wPauseFlags
 	res  PLB2, [hl]		; Unset pause flag
 	ret
+.toTitle:
+	; Restore animation/sound state before replacing the gameplay task.
+	call Play_Unpause
+	xor  a
+	ld   [wPauseFlags], a
+	; Gameplay owns two additional player tasks. Remove them and stop pending
+	; graphics copies before entering the single-task title module, otherwise
+	; they resume behind the title screen and eventually corrupt execution.
+	call Play_PrepForWinScreen
+	ld   b, BANK(Module_Title)
+	ld   hl, Module_Title
+	rst  $00
 .ret:
 	ret
 ; =============== Play_Pause ===============
@@ -544,30 +631,9 @@ Play_Pause:
 	ld   a, SNC_PAUSE
 	call HomeCall_Sound_ReqPlayExId
 	
-	; Draw "PAUSE" on the HUD.
-	; This gets drawn to the side of the player that paused the game.
-	ld   a, [wPauseFlags]
-	bit  PLB1, a		; Did 1P pause the game?
-	jp   z, .bg2P		; If not, jump
-.bg1P:
-	ld   hl, vBGPause1P	; HL = Tilemap ptr for 1P side
-	jp   .drawBG
-.bg2P:
-	ld   hl, vBGPause2P	; HL = Tilemap ptr for 2P side
-.drawBG:
-	; This uses tile IDs $F9-$FB.
-	ld   b, $03			; B = Number of tiles
-	ld   a, $F9			; A = Initial tile ID
-.loop:
-	push af
-	di
-	mWaitForVBlankOrHBlank
-	pop  af
-	ldi  [hl], a		; Write tile ID, VRAMPtr++
-	ei
-	inc  a				; TileID++
-	dec  b				; Drawn all tiles?
-	jp   nz, .loop		; If not, loop
+	ld   b, BANK(MixKOF_DrawPauseOriginal)
+	ld   hl, MixKOF_DrawPauseOriginal
+	rst  $08
 	
 	call Task_PassControlFar
 	ret
@@ -583,26 +649,9 @@ Play_Unpause:
 	ld   a, SNC_UNPAUSE
 	call HomeCall_Sound_ReqPlayExId
 	
-	; Blank out "PAUSE" from the HUD
-	ld   a, [wPauseFlags]
-	bit  PLB1, a		; Did 1P pause the game?
-	jp   z, .bg2P		; If not, jump
-.bg1P:
-	ld   hl, vBGPause1P	; HL = Tilemap ptr for 1P side
-	jp   .drawBG
-.bg2P:
-	ld   hl, vBGPause2P	; HL = Tilemap ptr for 2P side
-.drawBG:
-	; Fill with blank ($00) tiles
-	ld   b, $03			; B = Number of tiles
-.loop:
-	di
-	mWaitForVBlankOrHBlank
-	xor  a				
-	ldi  [hl], a		; Write blank tile, VRAMPtr++
-	ei
-	dec  b				; Drawn all tiles?
-	jp   nz, .loop		; If not, loop
+	ld   b, BANK(MixKOF_ClearPauseOriginal)
+	ld   hl, MixKOF_ClearPauseOriginal
+	rst  $08
 	ret
 	
 ; =============== Play_FrameAdv ===============
@@ -5764,7 +5813,7 @@ Play_WriteBtnKeysToBuffer2P: mWriteBtnKeysToBuffer wPlInfo_Pl2
 ; =============== END OF BANK ===============
 ; Junk area below with incomplete copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunk "L017FA8"
+	mIncJunkFrom "L017FA8", $58
 ELSE
-	mIncJunk "L017F98"
+	mIncJunkFrom "L017F98", $56
 ENDC

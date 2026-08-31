@@ -95,6 +95,24 @@ ENDC
 	ENDC
 ENDM
 
+; =============== mIncJunkFrom ===============
+; Includes the tail of a junk area after new source has consumed its first bytes.
+; IN
+; - \1: Filename without extension
+; - \2: Starting byte offset
+MACRO mIncJunkFrom
+IF LABEL_JUNK
+Padding_\@:
+ENDC
+	IF !SKIP_JUNK
+		IF !REV_VER_2
+			INCBIN STRCAT("padding/", \1, ".bin"), \2
+		ELSE
+			INCBIN STRCAT("padding_en/", \1, ".bin"), \2
+		ENDC
+	ENDC
+ENDM
+
 ; =============== dp ===============
 ; Shorthand for far pointers in standard order.
 MACRO dp
@@ -161,9 +179,40 @@ ENDM									; Otherwise, assume air
 ; - 1: Move key for SELECT + B
 ; - 2: Move key for SELECT + A
 MACRO mMvIn_ChkEasy
-	call MoveInputS_CheckEasyMoveKeys
-	jp   c, \1 ; SELECT + B pressed? If so, jump
-	jp   z, \2 ; SELECT + A pressed? If so, jump
+	IF !REV_VER_2
+		ld   hl, .easyTable_\@
+		call MoveInputS_DispatchEasyMoveAir
+		jr   .easyEnd_\@
+	.easyTable_\@:
+		dw \1, \2
+	.easyEnd_\@:
+	ELSE
+		; Keep revision 2 bank layouts within their much smaller junk areas.
+		call MoveInputS_CheckEasyMoveKeys
+		jp   c, \1 ; SELECT + B pressed? If so, jump
+		jp   z, \2 ; SELECT + A pressed? If so, jump
+	ENDC
+ENDM
+
+; =============== mMvIn_ChkEasyDir ===============
+; Adds facing-relative SELECT shortcuts. Neutral SELECT is reserved, while
+; SELECT+A charges meter and SELECT+B taunts.
+; IN
+; - 1-5: forward, down-forward, down, down-back, back + SELECT
+; - 6-7: completed down-forward/down-back motion + SELECT super
+MACRO mMvIn_ChkEasyDir
+	IF !REV_VER_2
+	ld   hl, .easyTable_\@
+	call MoveInputS_DispatchEasyMoveDir
+	jr   .easyEnd_\@
+	.easyTable_\@:
+		dw MoveInputS_StartEasyTaunt, MoveInputS_StartEasyCharge
+		dw \1, \2, \3, \4, \5, \6, \7
+	.easyEnd_\@:
+	ELSE
+		; Keep revision 2 bank layouts within their much smaller junk areas.
+		mMvIn_ChkEasy \7, \1
+	ENDC
 ENDM
 
 ; =============== mMvIn_ChkGA ===============
@@ -346,6 +395,13 @@ MACRO mMvIn_ChkBtnStrict
 	jp   c, \2							; If so, jump
 ENDM
 
+; KOF95 compatibility form used by Joe's repeating Bakuretsuken.
+MACRO mMvIn_ChkBtnStrictNot
+	ld   hl, \1
+	call MoveInputS_ChkInputBtnStrict
+	jp   nc, \2
+ENDM
+
 ; =============== mMvIn_ChkL ===============
 ; Checks if the attack is a light.
 ; IN
@@ -379,6 +435,39 @@ MACRO mMvIn_GetLH
 .light:
 	ld   a, \1
 	jp   .setMove
+.heavy:
+	ld   a, \2
+.setMove:
+ENDM
+
+; KOF95 compatibility helpers. The KOF95 readers split punch and kick before
+; reaching these macros, while KOF96 records the chosen strength in
+; PF2B_HEAVY. Use that canonical flag so both physical A/B inputs and the
+; timed SELECT shortcuts select the same light/heavy move ID.
+MACRO mMvIn_ChkLHP
+	ld   hl, iPlInfo_Flags2
+	add  hl, bc
+	bit  PF2B_HEAVY, [hl]
+	jr   nz, \1
+ENDM
+MACRO mMvIn_ChkLHK
+	ld   hl, iPlInfo_Flags2
+	add  hl, bc
+	bit  PF2B_HEAVY, [hl]
+	jr   nz, \1
+ENDM
+MACRO mMvIn_GetLHP
+	mMvIn_ChkLHP .heavy
+	ld   a, \1
+	jr   .setMove
+.heavy:
+	ld   a, \2
+.setMove:
+ENDM
+MACRO mMvIn_GetLHK
+	mMvIn_ChkLHK .heavy
+	ld   a, \1
+	jr   .setMove
 .heavy:
 	ld   a, \2
 .setMove:
@@ -503,6 +592,11 @@ ENDM
 ; Moves the player horizontally, relative to the 1P side (negative values move backwards).
 ; IN
 ; - 1: Horizontal movement (pixels + subpixels)
+MACRO mMvC_SetMoveHAbs
+	ld   hl, \1
+	call Play_OBJLstS_MoveH
+ENDM
+
 MACRO mMvC_SetMoveH
 	ld   hl, \1
 	call Play_OBJLstS_MoveH_ByXFlipR

@@ -210,7 +210,33 @@ Play_HUDTileIdTbl:
 BG_Play_HUDHit:
 	db $D4
 	db $D5
-	mIncJunk "L0000DD"
+
+SECTION "MixKOF ROM0 Helpers", ROM0[$00DD]
+MixKOF_GetMoveTblBank:
+	push bc
+	push de
+	ld   d, b
+	ld   e, c
+	ld   b, BANK(MixKOF_GetMoveTblBank_Banked)
+	ld   hl, MixKOF_GetMoveTblBank_Banked
+	rst  $08
+	pop  de
+	pop  bc
+	ldh  a, [hMoveTblBank]
+	ret
+MixKOF_SaveMoveTblBank:
+	push af
+		call MixKOF_GetMoveTblBank
+		ldh  [hMoveTblBank], a
+	pop  af
+	ret
+MixKOF_SwitchMoveTblBank:
+	push af
+		call MixKOF_GetMoveTblBank
+		ld   [MBC1RomBank], a
+		ldh  [hROMBank], a
+	pop  af
+	ret
 
 SECTION "EntryPoint", ROM0[$0100]
 ; =============== HW ENTRY POINT ===============
@@ -229,8 +255,8 @@ IF REV_LOGO_EN == 0
 	db   $00			; DMG - classic gameboy
 	db   $41,$37		; new license
 	db   $03			; SGB flag: SGB capable
-	db   $01			; cart type: MBC1
-	db   $04			; ROM size: 512KiB
+	db   $19			; cart type: MBC5
+	db   $05			; ROM size: 1MiB
 	db   $00			; RAM size: 0KiB
 	db   $00			; destination code: Japanese
 	db   $33			; old license: SGB capable
@@ -242,8 +268,8 @@ ELSE
 	db   $45			; DMG - classic gameboy
 	db   $33,$38		; new license
 	db   $03			; SGB flag: SGB capable
-	db   $01			; cart type: MBC1
-	db   $04			; ROM size: 512KiB
+	db   $19			; cart type: MBC5
+	db   $05			; ROM size: 1MiB
 	db   $00			; RAM size: 0KiB
 	db   $01			; destination code: non-Japanese
 	db   $33			; old license: SGB capable
@@ -789,6 +815,8 @@ Task_CreateAt:
 	push af
 	push bc
 	push de
+	; Keep the state pointer across Play_Pl_GetDirKeys_ByXFlipR, which leaves HL
+	; pointing at iOBJInfo_OBJLstFlags.
 	push hl
 	call Task_IndexTask
 	ld   [hl], TASK_EXEC_NEW
@@ -5372,14 +5400,20 @@ Play_LoadStage:
 		; A = CPU opponent
 		ld   a, [wJoyActivePl]
 		or   a				; Playing on the 2P side?
-		jp   nz, .pl2Active	; If so, jump
+		jr   nz, .pl2Active	; If so, jump
 	.pl1Active:
 		ld   hl, wPlInfo_Pl2+iPlInfo_CharId		; HL = Ptr to 2P CPU char id
-		jp   .getIdx
+		jr   .getIdx
 	.pl2Active:
 		ld   hl, wPlInfo_Pl1+iPlInfo_CharId		; HL = Ptr to 1p CPU char id
 	.getIdx:
 		ld   a, [hl]	; A = CharId * 2
+		cp   CHAR_ID_KIM
+		jr   c, .getNativeStage
+		ld   a, STAGE_ID_HERO
+		ld   [wStageId], a
+		jr   .stageReady
+	.getNativeStage:
 
 		; Index the Char-to-Stage mapping table
 		srl  a				; /2 to balance out the *2
@@ -5390,6 +5424,7 @@ Play_LoadStage:
 		add  hl, de			; Index it
 		ld   a, [hl]		; A = StageId
 		ld   [wStageId], a	; Save it
+	.stageReady:
 
 		;--
 		; The extra round fighting against IORI' or LEONA' uses an hardcoded stage.
@@ -5397,10 +5432,10 @@ Play_LoadStage:
 		;       Likely a leftover from 95,
 		ld   a, [wCharSeqId]
 		cp   STAGESEQ_BONUS	; RoundId == STAGESEQ_BONUS?
-		jp   nz, .load		; If not, skip
+		jr   nz, .load		; If not, skip
 		ld   a, STAGE_ID_STADIUM_EXTRA
 		ld   [wStageId], a
-		jp   .load
+		jr   .load
 		;--
 	.load:
 
@@ -5586,6 +5621,15 @@ Play_CharStageMapTbl:
 	db STAGE_ID_STADIUM_EXTRA ; CHAR_ID_OIORI
 	db STAGE_ID_STADIUM_EXTRA ; CHAR_ID_OLEONA
 	db STAGE_ID_STADIUM_KAGURA ; CHAR_ID_KAGURA
+	db STAGE_ID_HERO ; CHAR_ID_KIM
+	db STAGE_ID_HERO ; CHAR_ID_BENIMARU
+	db STAGE_ID_FATALFURY ; CHAR_ID_YURI
+	db STAGE_ID_FATALFURY ; CHAR_ID_JOE
+	db STAGE_ID_YAGAMI ; CHAR_ID_HEIDERN
+	db STAGE_ID_HERO ; CHAR_ID_RALF
+	db STAGE_ID_HERO ; CHAR_ID_KENSOU
+	db STAGE_ID_YAGAMI ; CHAR_ID_EIJI
+	db STAGE_ID_FATALFURY ; CHAR_ID_BILLY
 
 ; =============== Serial_DoHandshake ===============
 ; Performs an handshake between master and slave GBs.
@@ -6431,15 +6475,19 @@ Module_Play:
 	; Load projectile graphics over
 	call Play_LoadProjectileOBJInfo
 
-	; Start the main gameplay loop
-	ld   a, BANK(Play_Main) ; BANK $01
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
-	jp   Play_Main
+	; Start persistent character helpers after Play_LoadProjectileOBJInfo has
+	; finished clearing/reinitializing all projectile and sparkle OBJInfo slots.
+	; The helper then switches to the normal main gameplay loop.
+	ld   b, BANK(MixKOF_StartPlayWithPersistentHelpers)
+	ld   hl, MixKOF_StartPlayWithPersistentHelpers
+	jp   $0000
 
 ; =============== Play_InitRound ===============
 ; Initializes the round variables, including both players.
 Play_InitRound:
+	IF !REV_VER_2
+	call Play_Pl_ClearRoundInput
+	ENDC
 
 	; Load character-specific settings
 	ld   bc, wPlInfo_Pl1
@@ -6497,6 +6545,8 @@ Play_InitRound:
 	ld   [wPlInfo_Pl2+iPlInfo_HitComboRecvSet], a
 	ld   [wPlInfo_Pl1+iPlInfo_NoSpecialTimer], a
 	ld   [wPlInfo_Pl2+iPlInfo_NoSpecialTimer], a
+	ld   [wPlInfo_Pl1+iPlInfo_SuperCancelFlags], a
+	ld   [wPlInfo_Pl2+iPlInfo_SuperCancelFlags], a
 	ld   a, $FF
 	ld   [wPlInfo_Pl1+iPlInfo_PlDistance], a
 	ld   [wPlInfo_Pl2+iPlInfo_PlDistance], a
@@ -6675,6 +6725,18 @@ Play_LoadChar:
 	ld   [hl], a
 
 .loadCharInfo:
+	ld   hl, iPlInfo_CharId
+	add  hl, bc
+	ld   a, [hl]
+	cp   CHAR_ID_KIM
+	jr   c, .loadBaseCharInfo
+	ld   d, b
+	ld   e, c
+	ld   b, BANK(MixKOF_Play_LoadImportedChar)
+	ld   hl, MixKOF_Play_LoadImportedChar
+	rst  $08
+	ret
+.loadBaseCharInfo:
 
 	;
 	; Load the character-specific settings into the player struct.
@@ -7049,6 +7111,12 @@ Play_LoadProjectileOBJInfo:
 ; -  A: Character ID
 ; - DE: Ptr to GFX destination in VRAM
 Play_LoadProjectileGFXFromDef:
+	ld   b, BANK(MixKOF_LoadProjectileGFX)
+	ld   hl, MixKOF_LoadProjectileGFX
+	jp   $0000
+.residentFromMix:
+	ld   a, c
+.resident:
 
 	;
 	; Determine which tiles to copy from the buffer through the "ProjGFXDef" structure
@@ -7175,6 +7243,12 @@ Play_ProjGFXDefPtrTbl:
 	dw ProjGFXDef_OIori 		; CHAR_ID_OIORI
 	dw ProjGFXDef_OLeona 		; CHAR_ID_OLEONA
 	dw ProjGFXDef_ChizuruKagura ; CHAR_ID_KAGURA
+	dw $0000                    ; CHAR_ID_KIM
+	dw $0000                    ; CHAR_ID_BENIMARU
+	dw $0000                    ; CHAR_ID_YURI
+	dw $0000                    ; CHAR_ID_JOE
+	dw $0000                    ; CHAR_ID_HEIDERN
+	dw $0000                    ; CHAR_ID_RALF
 
 ; =============== Play_DrawHUDBaseAndInitTimer ===============
 ; Draws the base tilemap (without health bars) for the HUD in the upper section.
@@ -7319,7 +7393,7 @@ Play_DrawHUDBaseAndInitTimer:
 	ld   hl, GFX_Play_HUD_2PHuman
 	ld   de, $8FE0
 	call CopyTilesAutoNum
-	jp   .ret
+	jr   .ret
 .p2CPU:
 	; Copy 1P CPU marker GFX
 	ld   hl, GFX_Play_HUD_2PCPU
@@ -8183,18 +8257,7 @@ Play_HUD_Draw1PCharName:
 	;      (name length + tile IDs relative to GFXLZ_Play_HUD_CharNames).
 	;
 
-	; Seek to ptr table entry
-	ld   b, $00							; BC = CharId * 2
-	ld   c, a
-	ld   hl, Play_HUD_CharNamesPtrTable ; HL = Ptr table with BGX tilemaps
-	add  hl, bc							; Seek to entry
-	; Read out the ptr to DE
-	ld   e, [hl]
-	inc  hl
-	ld   d, [hl]
-	; And move it to HL
-	push de
-	pop  hl
+	call Play_HUD_GetCharNamePtr
 
 	;--
 	;
@@ -8250,18 +8313,7 @@ Play_HUD_Draw2PCharName:
 	;      (name length + tile IDs relative to GFXLZ_Play_HUD_CharNames).
 	;
 
-	; Seek to ptr table entry
-	ld   b, $00							; BC = CharId * 2
-	ld   c, a
-	ld   hl, Play_HUD_CharNamesPtrTable ; HL = Ptr table with BGX tilemaps
-	add  hl, bc							; Seek to entry
-	; Read out the ptr to DE
-	ld   e, [hl]
-	inc  hl
-	ld   d, [hl]
-	; And move it to HL
-	push de
-	pop  hl
+	call Play_HUD_GetCharNamePtr
 
 	;--
 	ldi  a, [hl]		; Read name length; HL = Ptr to "BGX" tilemap
@@ -8320,6 +8372,24 @@ BG_Play_HUD_CharName1P: INCBIN "data/bg/play_hud_charname1p.bin"
 BG_Play_HUD_CharName1P_Unused_Extra: INCBIN "data/bg/play_hud_charname1p_unused_extra.bin"
 BG_Play_HUD_CharName2P: INCBIN "data/bg/play_hud_charname2p.bin"
 BG_Play_HUD_CharName2P_Unused_Extra: INCBIN "data/bg/play_hud_charname2p_unused_extra.bin"
+; Resolve native names from ROM0 and imported names from the bank1D table.
+; Character IDs are already doubled, so they directly index word tables.
+Play_HUD_GetCharNamePtr:
+	cp   CHAR_ID_KIM
+	jr   c, .native
+	sub  CHAR_ID_KIM
+	ld   hl, MixKOF_HUDImportedNamePtrTable
+	jr   .lookup
+.native:
+	ld   hl, Play_HUD_CharNamesPtrTable
+.lookup:
+	ld   b, $00
+	ld   c, a
+	add  hl, bc
+	ldi  a, [hl]
+	ld   h, [hl]
+	ld   l, a
+	ret
 Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_Kyo ; CHAR_ID_KYO
 	dw BGXDef_Play_HUD_CharName_Daimon ; CHAR_ID_DAIMON
@@ -8908,6 +8978,7 @@ Play_DoPl:
 			sub  a, $70
 			jp   .getMovePtr
 		.grp01:
+			call MixKOF_SwitchMoveTblBank
 			; Subtract the base index for this group
 			sub  a, $30
 			jp   .getMovePtr
@@ -9729,6 +9800,7 @@ Pl_CopyXFlipToOther:
 ; - BC: Ptr to wPlInfo
 ; - DE: Ptr to respective wOBJInfo
 Pl_SetNewMove:
+	call MixKOF_SaveMoveTblBank
 	push bc
 		push de
 			; Set that we started a new move
@@ -9783,7 +9855,7 @@ Pl_SetNewMove:
 				; [POI] Unsafe ROM bank switch, will break if VBLANK triggers here.
 				;
 				push af
-					ld   a, BANK(MoveAnimTbl_Marker) ; BANK $03
+					ldh  a, [hMoveTblBank]
 					ld   [MBC1RomBank], a
 				pop  af
 
@@ -10393,7 +10465,7 @@ MoveC_Base_Jump:
 			; [POI] Unsafe ROM bank switch, will break if VBLANK triggers here.
 			;
 			push af
-				ld   a, BANK(MoveAnimTbl_Marker) ; BANK $03
+				call MixKOF_GetMoveTblBank
 				ld   [MBC1RomBank], a
 			pop  af
 
@@ -11831,6 +11903,9 @@ Play_Pl_EndMove:
 	ld   hl, iPlInfo_IntroMoveId
 	add  hl, bc
 	ld   [hl], MOVE_SHARED_NONE
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	ld   [hl], $00
 	ret
 
 ; =============== OBJLstS_SyncXFlip ===============
@@ -11841,10 +11916,10 @@ OBJLstS_SyncXFlip:
 	ld   hl, iOBJInfo_OBJLstFlags
 	add  hl, de					; Seek to flags
 	bit  SPRXB_PLDIR_R, [hl]	; Is the sprite mapping internally flipped?
-	jp   z, .noFlip				; If not, jump
+	jr   z, .noFlip				; If not, jump
 .flip:
 	set  SPRB_XFLIP, [hl]		; Flip the sprite
-	jp   .ret
+	jr   .ret
 .noFlip:
 	res  SPRB_XFLIP, [hl]		; Visually unflip the sprite
 .ret:
@@ -11965,7 +12040,6 @@ Play_Pl_DoBasicMoveInput:
 		; This is new to 96, originally it went straight to BasicInput_ChkBaseInput.
 		;
 		BasicInput_ChkAirBlock:
-
 			; Check if we're moving backwards.
 			; Moving backwards uses different keys depending on the side we're in.
 
@@ -12080,6 +12154,11 @@ Play_Pl_DoBasicMoveInput:
 			jp   nz, .chkWalkR					; If so, jump
 
 			; Taunt
+			IF !REV_VER_2
+			ld   a, [wDipSwitch]
+			bit  DIPB_EASY_MOVES, a
+			jp   nz, BasicInput_StartIdle
+			ENDC
 			ld   hl, iPlInfo_JoyNewKeys
 			add  hl, bc
 			bit  KEYB_SELECT, [hl]				; Did we press SELECT?
@@ -12265,8 +12344,8 @@ Play_Pl_DoBasicMoveInput:
 		; Checks for moves triggered by pressing forwards.
 		;
 		BasicInput_ChkWalkForward:
-			; F+F -> Run forwards
-			mMvIn_ChkDirStrict MoveInput_FF, BasicInput_StartRun
+			; F+F -> SYSTEM 95 forward hop / SYSTEM 96 forward run
+			mMvIn_ChkDirStrict MoveInput_FF, BasicInput_StartForwardDash
 			; Fall-through
 
 		;
@@ -12473,16 +12552,23 @@ Play_Pl_DoBasicMoveInput:
 		BasicInput_ChkHeavyB:
 			call Play_Pl_AreBothBtnHeld				; Holding A+B?
 			jp   nc, BasicInput_StartHeavyPunch		; If not, skip
+			; Fall-through to shared A+B system action handling.
 
-			; PK -> Heavy Attack
+		BasicInput_ChkEvadeAction:
+			; SYSTEM 95: A+B always starts a stationary dodge. The forward
+			; roll slot is reused, with MoveC_Base_Roll selecting dodge logic.
+			ld   hl, iPlInfo_BattleSystem
+			add  hl, bc
+			bit  BATTLESYSB_95, [hl]
+			jp   nz, BasicInput_StartRollForward
+
+			; SYSTEM 96: neutral A+B is the heavy attack; a held horizontal
+			; direction selects the forward or backward roll.
 			call Play_Pl_GetDirKeys_ByXFlipR		; Holding any d-pad key?
 			jp   nc, BasicInput_StartHeavyAttack	; If not, jump
-			; These are relative to the 1P side, so...
-			; F+PK -> Roll forwards
 			bit  KEYB_RIGHT, a						; Holding forwards?
 			jp   nz, BasicInput_StartRollForward	; If so, jump
-			; B+PK -> Roll backwards
-			jp   BasicInput_StartRollBackward		; Otherwise, assume holding backwards
+			jp   BasicInput_StartRollBackward
 
 		;
 		; Starts a standing heavy punch.
@@ -12531,16 +12617,7 @@ Play_Pl_DoBasicMoveInput:
 		BasicInput_ChkHeavyA:
 			call Play_Pl_AreBothBtnHeld				; Holding A+B?
 			jp   nc, BasicInput_StartHeavyKick		; If not, skip
-
-			; PK -> Heavy Attack
-			call Play_Pl_GetDirKeys_ByXFlipR		; Holding any d-pad key?
-			jp   nc, BasicInput_StartHeavyAttack	; If not, jump
-			; These are relative to the 1P side, so...
-			; F+PK -> Roll forwards
-			bit  KEYB_RIGHT, a						; Holding forwards?
-			jp   nz, BasicInput_StartRollForward	; If so, jump
-			; B+PK -> Roll backwards
-			jp   BasicInput_StartRollBackward		; Otherwise, assume holding backwards
+			jp   BasicInput_ChkEvadeAction
 
 		;
 		; Starts a standing heavy kick.
@@ -12738,6 +12815,13 @@ Play_Pl_DoBasicMoveInput:
 		;
 		; Starts a forwards run (dash forwards).
 		;
+		BasicInput_StartForwardDash:
+			ld   hl, iPlInfo_BattleSystem
+			add  hl, bc
+			bit  BATTLESYSB_95, [hl]
+			jp   nz, BasicInput_StartHopBack
+			; Fall-through
+
 		BasicInput_StartRun:
 			; It's possible to cancel the run into a special move, so...
 
@@ -14002,6 +14086,10 @@ OBJLstS_ApplyGravityVAndMoveV:
 ; - C flag: If set, validation failed
 ; - Z flag: If set, we're on the ground (only if validation passed)
 MoveInputS_CanStartSpecialMove:
+	; A pending recovery cancel is valid only for this input-reader pass.
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	res  PSCB_CANCEL_PENDING, [hl]
 
 	;
 	; If we got hit by Chizuru's super, we can only use normals.
@@ -14018,9 +14106,11 @@ MoveInputS_CanStartSpecialMove:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc				; Seek to iPlInfo_Flags0
 	bit  PF0B_SPECMOVE, [hl]	; Is the bit set?
-	jp   nz, .retNoMove		; If so, return
+	jr   z, .chkPlayerState
+	call MoveInputS_TrySuperCancel
+	jp   c, .retNoMove
 
-
+.chkPlayerState:
 	ld   hl, iPlInfo_Flags1
 	add  hl, bc				; Seek to iPlInfo_Flags1
 
@@ -14058,7 +14148,11 @@ MoveInputS_CanStartSpecialMove:
 	bit  PF1B_ALLOWHITCANCEL, [hl]	; Can we cancel the current move into a special/super? (off the previous hit)
 	jp   nz, .moveOk				; If so, skip (ok)
 	bit  PF1B_NOSPECSTART, [hl]		; Are we explicitly disallowed to start a new special/super?
-	jp   nz, .retNoMove				; If so, return
+	jp   z, .moveOk
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	bit  PSCB_CANCEL_PENDING, [hl]
+	jp   z, .retNoMove
 
 .moveOk:
 
@@ -14353,6 +14447,16 @@ MoveInputS_SetSpecMove_StopSpeed:
 	; Force syncronize the player's direction before starting the move
 	call OBJLstS_SyncXFlip
 
+	; Promote this input pass's pending recovery cancel to active damage state.
+	push af
+		ld   hl, iPlInfo_SuperCancelFlags
+		add  hl, bc
+		ld   a, [hl]
+		and  1 << PSCB_CANCEL_PENDING
+		rrca
+		ld   [hl], a
+	pop  af
+
 	; HL = Ptr to status flag
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
@@ -14408,6 +14512,7 @@ ENDC
 	;
 	push hl
 		call Pl_SetMove_StopSpeed
+		call Play_Pl_ScaleSuperCancelPendingDamage
 	pop  hl
 
 	;
@@ -14583,6 +14688,7 @@ Play_Pl_SetMoveDamage:
 		; DE = HL
 		push hl
 		pop  de
+		call Play_Pl_ScaleSuperCancelDamageD
 		; BC = Ptr to start of current move damage info
 		ld   hl, iPlInfo_MoveDamageVal
 		add  hl, bc
@@ -14622,6 +14728,7 @@ Play_Pl_SetMoveDamageNext:
 		; DE = HL
 		push hl
 		pop  de
+		call Play_Pl_ScaleSuperCancelDamageD
 		; BC = Ptr to start of pending move damage info
 		ld   hl, iPlInfo_MoveDamageValNext
 		add  hl, bc
@@ -15445,7 +15552,7 @@ Play_Pl_ShakeFor:
 		; This didn't exist in 95, it always acted like .shakeR.
 		;
 		bit  SPRB_XFLIP, c	; Is the player visually facing right (1P side)?
-		jp   z, .shakeR		; If not, jump
+		jr   z, .shakeR		; If not, jump
 	.shakeL:
 		;
 		; If the player is facing left (2P side, no SPRB_XFLIP),
@@ -15456,8 +15563,8 @@ Play_Pl_ShakeFor:
 		inc  [hl]					; Move right 1px
 		call Task_PassControlFar	; Wait next frame
 		dec  b						; Are we done?
-		jp   nz, .shakeL			; If not, loop
-		jp   .end					; Otherwise, we're done
+		jr   nz, .shakeL			; If not, loop
+		jr   .end					; Otherwise, we're done
 	.shakeR:
 		;
 		; If the player is facing right (1P side, with SPRB_XFLIP),
@@ -15468,7 +15575,7 @@ Play_Pl_ShakeFor:
 		dec  [hl]					; Move left 1px
 		call Task_PassControlFar	; Wait next frame
 		dec  b						; Are we done?
-		jp   nz, .shakeR			; If not, loop
+		jr   nz, .shakeR			; If not, loop
 									; Otherwise, we're done
 	.end:
 	pop  bc
@@ -15490,10 +15597,10 @@ Play_Pl_GetShakeCount:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
 	bit  PF0B_PROJHIT, [hl]	; Did we get hit by a projectile?
-	jp   nz, .base08		; If so, jump
+	jr   nz, .base08		; If so, jump
 .base0A:
 	ld   a, $08+$02			; ShakeCnt = $0A
-	jp   .chkDamageFlags
+	jr   .chkDamageFlags
 .base08:
 	ld   a, $08				; ShakeCnt = $08
 
@@ -15508,14 +15615,14 @@ Play_Pl_GetShakeCount:
 
 	; Light attacks shake the player once
 	bit  PF3B_LIGHTHIT, [hl]	; Is this a light hit?
-	jp   nz, .shakeOnce			; If so, jump
+	jr   nz, .shakeOnce			; If so, jump
 
 	; Heavy ones *don't* halve the amount of shakes
 	bit  PF3B_HEAVYHIT, [hl]	; Is this an heavy hit?
-	jp   nz, .chkHealth			; If so, jump
+	jr   nz, .chkHealth			; If so, jump
 .shakeHalf:
 	srl  a						; ShakeCnt = ShakeCnt / 2
-	jp   .chkHealth
+	jr   .chkHealth
 .shakeOnce:
 	ld   a, $01					; ShakeCnt = 1
 
@@ -15535,16 +15642,16 @@ Play_Pl_GetShakeCount:
 	push af
 		ld   a, [hl]
 		or   a				; Health == 0?
-		jp   nz, .noChange	; If so, return
+		jr   nz, .noChange	; If so, return
 	pop  af
 
 	; Multiply shake count by 2, capping it at $0B
 	sla  a					; A *= 2
 	cp   $0B				; A < $0B?
-	jp   c, .ret			; If so, jump
+	jr   c, .ret			; If so, jump
 	ld   a, $0B				; Otherwise, cap at $0B
 	; We're done
-	jp   .ret
+	jr   .ret
 .noChange:
 	pop  af
 .ret:
@@ -15624,7 +15731,7 @@ Play_Pl_DoBlockstun:
 	ld   hl, iPlInfo_Flags0
 	add  hl, bc
 	bit  PF0B_PROJHIT, [hl]				; Did we get hit by a projectile?
-	jp   nz, .setFlags1					; If so, skip
+	jr   nz, .setFlags1					; If so, skip
 	; Enable (opponent) hitstop next frame
 	ld   a, $01
 	ld   [wPlayHitstopSet], a
@@ -15688,7 +15795,7 @@ Play_Pl_DoBlockstun:
 			pop  hl
 		pop  af
 		dec  a			; Done this all times?
-		jp   nz, .loop	; If not, loop
+		jr   nz, .loop	; If not, loop
 .endNorm:
 	; Restore flags
 	pop  af
@@ -15735,7 +15842,7 @@ Play_Pl_ChkGuardCancelRoll:
 	add  hl, de
 	ldi  a, [hl]		; A = iOBJInfo_Y, Seek to iOBJInfo_YSub
 	cp   PL_FLOOR_POS	; iOBJInfo_Y != $88?
-	jp   nz, .retClear	; If so, jump
+	jr   nz, .retClear	; If so, jump
 
 	; Must be exactly aligned to the ground, even at subpixel level
 	ld   a, [hl]
@@ -15798,18 +15905,18 @@ Play_Pl_ChkGuardCancelRoll:
 	; Not holding any key on the d-pad instead defaults it to a forward roll.
 	;
 	call Play_Pl_GetDirKeys_ByXFlipR	; Check d-pad keys
-	jp   nc, .setRollFront		; Were any keys held? If not, default to front
+	jr   nc, .setRollFront		; Were any keys held? If not, default to front
 
 	; [POI/BUG?] Holding *DOWN* activates the back roll
 	bit  KEYB_DOWN, a			; Holding down?
-	jp   nz, .setRollBack		; If so, back roll
-	jp   .setRollFront			; Otherwise, front roll
+	jr   nz, .setRollBack		; If so, back roll
+	jr   .setRollFront			; Otherwise, front roll
 .setRollBack:
 	ld   a, MOVE_SHARED_ROLL_B
-	jp   .retSet
+	jr   .retSet
 .setRollFront:
 	ld   a, MOVE_SHARED_ROLL_F
-	jp   .retSet
+	jr   .retSet
 .retSet:
 	; Switch to the new move
 	call Pl_SetMove_StopSpeed
@@ -16036,7 +16143,7 @@ MoveInputS_CheckGAType:
 
 .lk:
 	res  PF2B_HEAVY, [hl]	; Not an heavy
-	jp   .k
+	jr   .k
 .hk:
 	set  PF2B_HEAVY, [hl]	; Is heavy
 .k:
@@ -16047,7 +16154,7 @@ MoveInputS_CheckGAType:
 
 .lp:
 	res  PF2B_HEAVY, [hl]	; Not an heavy
-	jp   .p
+	jr   .p
 .hp:
 	set  PF2B_HEAVY, [hl]	; Is heavy
 .p:
@@ -16121,7 +16228,7 @@ MoveInputS_CheckEasyMoveKeys:
 	; Only if the cheat is enabled
 	ld   a, [wDipSwitch]
 	bit  DIPB_EASY_MOVES, a
-	jp   z, .none
+	jr   z, .none
 
 	; Determine which key combination are holding
 	ld   hl, iPlInfo_JoyKeys
@@ -16131,13 +16238,13 @@ MoveInputS_CheckEasyMoveKeys:
 	ld   a, [hl]				; A = Held player keys
 	and  a, KEY_SELECT|KEY_B	; Filter the required keys
 	cp   KEY_SELECT|KEY_B		; Are we holding exactly SELECT+B (and nothing else)?
-	jp   z, .selectB			; If so, jump
+	jr   z, .selectB			; If so, jump
 
 	; SELECT + A
 	ld   a, [hl]				; A = Held player keys
 	and  a, KEY_SELECT|KEY_A	; Filter the required keys
 	cp   KEY_SELECT|KEY_A		; Are we holding exactly SELECT+A (and nothing else)?
-	jp   z, .selectA			; If so, jump
+	jr   z, .selectA			; If so, jump
 .none:							; Otherwise, there's nothing here
 	xor  a	; C flag clear, Z flag clear
 	inc  a
@@ -16167,10 +16274,10 @@ Play_Pl_TempPauseOtherAnim:
 	add  hl, bc
 	ld   a, [hl]
 	or   a			; iPlInfo_PlId == PL1
-	jp   nz, .pl2	; If not, jump
+	jr   nz, .pl2	; If not, jump
 .pl1:
 	ld   hl, wOBJInfo_Pl2+iOBJInfo_FrameLeft
-	jp   .clear
+	jr   .clear
 .pl2:
 	ld   hl, wOBJInfo_Pl1+iOBJInfo_FrameLeft
 .clear:
@@ -16688,9 +16795,160 @@ MoveInput_DU:
 	db $FF         ; Max len
 ; =============== END OF BANK ===============
 ; Junk area below.
-; Contains broken duplicate of the code starting around BasicInput_StartLightKick.
+; The easy-move helper below replaces the start of the original junk bytes.
+; The unconsumed tail is included so both supported ROM layouts keep their size.
+OptionHack_Bank00_Start:
+
 IF !REV_VER_2
-	mIncJunk "L003EF4"
-ELSE
-	mIncJunk "L003F4E"
+; Banked implementation lives in the roomy Japanese bank $1D tail.
+MoveInputS_DispatchEasyMoveAir:
+	push de
+	ld   d, $00
+	jr   MoveInputS_DispatchEasyMoveDir.switch
+MoveInputS_DispatchEasyMoveDir:
+	push de
+	ld   d, $01
+.switch:
+	push hl
+	ldh  a, [hROMBank]
+	push af
+	ld   a, BANK(MoveInputS_CheckEasyMoveTapKeys_Banked)
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	call MoveInputS_CheckEasyMoveTapKeys_Banked
+	ld   e, a
+	pop  af
+	ld   [MBC1RomBank], a
+	ldh  [hROMBank], a
+	ld   a, e
+	pop  hl
+	or   a
+	jr   z, .none
+	dec  a
+	add  a
+	ld   e, a
+	ld   d, $00
+	add  hl, de
+	ldi  a, [hl]
+	ld   h, [hl]
+	ld   l, a
+	pop  de
+	pop  af ; Discard this dispatch call's return; the move returns to the reader caller.
+	jp   hl
+.none:
+	pop  de
+	ret
+ENDC
+
+; Validates the optional recovery-only special/super cancel window.
+; OUT: carry clear on success, with PSCB_CANCEL_PENDING set.
+MoveInputS_TrySuperCancel:
+	ld   a, [wDipSwitch]
+	bit  DIPB_SUPER_CANCEL, a
+	jr   z, .no
+
+	; Use the logical meter value. The check itself never consumes POW.
+	ld   hl, iPlInfo_Pow
+	add  hl, bc
+	ld   a, [hl]
+	cp   PLAY_POW_MAX
+	jr   nz, .no
+
+	; Recovery must have no regular or forced attack hitbox.
+	ld   hl, iOBJInfo_HitboxId
+	add  hl, de
+	ldi  a, [hl]
+	or   [hl]
+	jr   nz, .no
+
+	; The visible animation must be on this move's final frame.
+	ld   hl, iOBJInfo_OBJLstPtrTblOffsetView
+	add  hl, de
+	ld   a, [hl]
+	ld   hl, iPlInfo_OBJLstPtrTblOffsetMoveEnd
+	add  hl, bc
+	cp   [hl]
+	jr   nz, .no
+
+	ld   hl, iPlInfo_SuperCancelFlags
+	add  hl, bc
+	set  PSCB_CANCEL_PENDING, [hl]
+	xor  a
+	ret
+.no:
+	scf
+	ret
+
+; Scales the move-table damage loaded when the cancelled-into move starts.
+Play_Pl_ScaleSuperCancelPendingDamage:
+	push de
+		ld   hl, iPlInfo_MoveDamageValNext
+		add  hl, bc
+		ld   d, [hl]
+		push hl
+			call Play_Pl_ScaleSuperCancelDamageD
+		pop  hl
+		ld   [hl], d
+	pop  de
+	ret
+
+; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
+; A and E are preserved for the common current/pending damage setters.
+Play_Pl_ScaleSuperCancelDamageD:
+	push af
+	push bc
+	ld   b, BANK(Play_Pl_ScaleSuperCancelDamageD_Banked)
+	ld   hl, Play_Pl_ScaleSuperCancelDamageD_Banked
+	rst  $08
+	pop  bc
+	pop  af
+	ret
+
+; Clears stale per-player input before the pre-round tasks begin executing.
+IF !REV_VER_2
+Play_Pl_ClearRoundInput:
+	ld   b, BANK(Play_Pl_ClearRoundInput_Banked)
+	ld   hl, Play_Pl_ClearRoundInput_Banked
+	rst  $08
+	ret
+ENDC
+
+; In Easy Move mode, pressing A/B while holding either horizontal direction
+; immediately emits the corresponding heavy input.
+IF !REV_VER_2
+Play_EasyMove_ForceDirectionalHeavy:
+	ld   b, BANK(Play_EasyMove_ForceDirectionalHeavy_Banked)
+	ld   hl, Play_EasyMove_ForceDirectionalHeavy_Banked
+	rst  $08
+	ret
+
+; The BasicInput action labels expect Play_Pl_DoBasicMoveInput's saved BC/DE
+; beneath their return address. Easy Move dispatch enters from a special input
+; reader, so provide the missing stack frame before sharing those actions.
+MoveInputS_StartEasyTaunt:
+	ld   hl, MoveInputS_StartEasyBasicDone
+	push hl
+	push bc
+	push de
+	jp   BasicInput_ChkTaunt
+MoveInputS_StartEasyCharge:
+	ld   hl, MoveInputS_StartEasyBasicDone
+	push hl
+	push bc
+	push de
+	jp   BasicInput_StartChargeMeter
+MoveInputS_StartEasyBasicDone:
+	scf
+	ret
+ENDC
+
+OptionHack_Bank00_End:
+IF !SKIP_JUNK
+	IF !REV_VER_2
+		ASSERT OptionHack_Bank00_End <= $4000, "bank00 option hack exceeds Japanese padding"
+		INCBIN "padding/L003EF4.bin", OptionHack_Bank00_End-$3EF4
+	ELSE
+		ASSERT OptionHack_Bank00_End <= $4000, "bank00 option hack exceeds English padding"
+		INCBIN "padding_en/L003F4E.bin", OptionHack_Bank00_End-$3F4E
+	ENDC
 ENDC

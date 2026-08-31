@@ -217,3 +217,6 @@ INCLUDE "src/bank1E.asm"
 SECTION "bank1F", ROMX, BANK[$1F]
 INCLUDE "src/bank1F.asm"
 
+; BANKS $20-$3F - Expansion space for the mixed KOF95/KOF96 roster.
+; MBC5 makes every bank directly addressable through the existing $2000 writes.
+INCLUDE "src/banks_ext.asm"

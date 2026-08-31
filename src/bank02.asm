@@ -83,6 +83,16 @@ MoveC_Base_ChargeMeter:
 		and  a, KEY_A|KEY_B	; Holding A+B?
 		cp   KEY_A|KEY_B	
 		jp   z, .anim		; If not, jump
+		IF !REV_VER_2
+		; Easy Move charge is held with SELECT+A instead.
+		ld   a, [wDipSwitch]
+		bit  DIPB_EASY_MOVES, a
+		jr   z, .end
+		ld   a, [hl]
+		and  a, KEY_SELECT|KEY_A
+		cp   KEY_SELECT|KEY_A
+		jp   z, .anim
+		ENDC
 	.end:
 		; If we got here, the charge is over
 		call Play_Pl_EndMove
@@ -191,16 +201,26 @@ MoveC_Base_HopB:
 ; Gravity is always applied every time.
 ;
 ; --------------- frame #0 ---------------
-.initJump:
+	.initJump:
 	; Initialize the jump speed the first time we get here.
 	; From the next, only perform the check to switch to the next frame.
 	mMvC_ValFrameStartFast .waitUp	; If not, jump
 	
-		; 95 checked the jump direction here, going off the the move ID (MOVE_SHARED_HOP_F / MOVE_SHARED_HOP_B).
-		; The forwards hop is gone from this game, so the direction is hardcoded.
-	
-		; Set jump left 3px/frame
-		mMvC_SetSpeedH -$0300				
+		; SYSTEM 95 reuses this slot for both forward and backward hops.
+		; The held relative direction distinguishes F+F from B+B.
+		ld   hl, iPlInfo_BattleSystem
+		add  hl, bc
+		bit  BATTLESYSB_95, [hl]
+		jr   z, .initJumpB
+		call Play_Pl_GetDirKeys_ByXFlipR
+		bit  KEYB_RIGHT, a
+		jr   z, .initJumpB
+	.initJumpF:
+		mMvC_SetSpeedH +$0400
+		jr   .initJumpV
+	.initJumpB:
+		mMvC_SetSpeedH -$0300
+	.initJumpV:
 		; Set jump up 3px/frame 
 		mMvC_SetSpeedV -$0300
 		; Already start applying gravity, which will cause OBJLstS_ReqAnimOnGtYSpeed to immediately
@@ -447,6 +467,12 @@ MoveC_Base_NormH:
 ; =============== MoveC_Base_Roll ===============
 ; Custom code for rolling. (MOVE_SHARED_ROLL_F, MOVE_SHARED_ROLL_B)
 MoveC_Base_Roll:
+	; SYSTEM 95 uses the forward-roll animation slot as a stationary dodge.
+	ld   hl, iPlInfo_BattleSystem
+	add  hl, bc
+	bit  BATTLESYSB_95, [hl]
+	jp   nz, .dodge95
+
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
 	
@@ -457,6 +483,66 @@ MoveC_Base_Roll:
 		mMvC_ChkFrame $04, .obj4	; Recovery/end
 	; Just continue moving in frames #1 & #2
 	jp   .move
+
+.dodge95:
+	call Play_Pl_MoveByColiBoxOverlapX
+	mMvC_ValLoaded .ret
+
+	; Start the fixed timer on the first visible frame. This keeps bank00's
+	; size-sensitive input patch unchanged and works for both roll entry slots.
+	ld   hl, iOBJInfo_Status
+	add  hl, de
+	bit  OSTB_GFXNEWLOAD, [hl]
+	jr   z, .dodgeChkCounter
+	ld   hl, iPlInfo_Dodge95_TimeLeft
+	add  hl, bc
+	ld   [hl], $1E
+
+	; A new A/B press during the dodge starts its counterattack. KOF96 has no
+	; dedicated dodge-counter slot, so use the universal ground A+B attack.
+.dodgeChkCounter:
+	call Play_Pl_AddToJoyBufKeysLH
+	jr   c, .dodgeCounter
+
+	; KOF95 dodges are a single 30-frame pose. Do not use the imported sprite
+	; table's animation-end bit here: KOF96's double-buffer loader does not set
+	; it consistently for every converted one-frame table.
+	ld   hl, iPlInfo_Dodge95_TimeLeft
+	add  hl, bc
+	ld   a, [hl]
+	or   a
+	jr   z, .dodgeEnd
+	dec  [hl]
+	jp   nz, .anim
+.dodgeEnd:
+	call .clearDodgeFlags
+	call Play_Pl_EndMove
+	jp   .ret
+
+.dodgeCounter:
+	call .clearDodgeFlags
+	ld   a, MOVE_SHARED_ATTACK_G
+	call Pl_SetMove_StopSpeed
+	mMvC_PlaySound SFX_HEAVY
+	jp   .ret
+
+.clearDodgeFlags:
+	ld   hl, iPlInfo_Flags1
+	add  hl, bc
+	res  PF1B_INVULN, [hl]
+	inc  hl
+	res  PF2B_NOHURTBOX, [hl]
+	res  PF2B_NOCOLIBOX, [hl]
+	; A throw/push can leave velocity behind while the collision box is
+	; disabled. Never carry that displacement into idle.
+	ld   hl, iOBJInfo_SpeedX
+	add  hl, de
+	xor  a
+	ldi  [hl], a
+	ldi  [hl], a
+	ldi  [hl], a
+	ld   [hl], a
+	ret
 	
 ; --------------- frame #0 ---------------
 .obj0:
@@ -2384,76 +2470,29 @@ HitTypeC_Hit_MultiGS:
 ; - DE: Ptr to respective wOBJInfo
 HitTypeS_MovePlToOpFront:
 
-	;##
-	;
-	; [TCRF] Leftover from 95.
-	;
-	; This is supposed to vertically shift the player position on each of Ryo's Zanretsuken hits.
-	; Handled by subtracting a field (set by the move code) to the player's position.
-	;
-	; There's a problem however -- while Ryo is still in the game, that move was altered to not
-	; shift the player's position and was given to Mr. Karate instead.
-	;
-	; This means the move ID value checked here is essentially broken, and happened to map to 
-	; Hien Shippu Kyaku, which doesn't even use this hit type (making .unused_ryo unreachable).
-	;
-
-	; Perform the character check
+	; KOF96's old Ryo branch here was unreachable: its checked moves do not use
+	; this hit type. Reuse that space for KOF95 Heidern's required spacing.
 	ld   hl, iPlInfo_CharIdOther
 	add  hl, bc
 	ld   a, [hl]
-	cp   CHAR_ID_RYO					; Opponent is RYO?
-	jp   z, .chkRyoMove					; If so, jump
-	jp   .norm							; Otherwise, skip
-.chkRyoMove:
-
-	;
-	; RYO
-	;
-	
-	; Perform the move check
+	cp   CHAR_ID_HEIDERN
+	jr   nz, .norm
 	ld   hl, iPlInfo_MoveIdOther
 	add  hl, bc
 	ld   a, [hl]
-	cp   MOVE_RYO_HIEN_SHIPPUU_KYAKU_L	; Got hit by the light version of Hien Shippu Kyaku?
-	jp   z, .unused_ryo					; If so, jump
-	cp   MOVE_RYO_HIEN_SHIPPUU_KYAKU_H	; Got hit by the heavy version of Hien Shippu Kyaku?
-	jp   z, .unused_ryo					; If so, jump
-	jp   .norm							; Otherwise, skip
-.unused_ryo:
-
-	; Y Position -> Snap to the ground, but offset by the opponent's iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	; iOBJInfo_Y = PL_FLOOR_POS - (opponent's)iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	
-	; Determine which player we're playing as, and read to A the opponent's iPlInfo_Ryo_HienShippuKyaku_Unused_83
-	ld   hl, iPlInfo_PlId
-	add  hl, bc
-	bit  0, [hl]		; iPlInfo_PlId != PL1?
-	jp   nz, .ryo_pl2	; If so, jump
-.ryo_pl1:
-	ld   a, [wPlInfo_Pl2+iPlInfo_Ryo_HienShippuKyaku_Unused_83]	; Use 2P's value when we're 1P
-	jp   .ryo_setY
-.ryo_pl2:
-	ld   a, [wPlInfo_Pl1+iPlInfo_Ryo_HienShippuKyaku_Unused_83]	; Use 1P's value when we're 2P
-.ryo_setY:
-	; A = -A for subtraction
-	cpl  				
-	inc  a
-	; Add the base floor position
-	add  PL_FLOOR_POS
-	; Save the result to iOBJInfo_Y
-	ld   hl, iOBJInfo_Y
-	add  hl, de		; Seek to Y position
-	ld   [hl], a	; Save A here
-	
-	; X Position -> $18px in front of the opponent (like in .norm)
-	call HitTypeS_SyncPlXFromOtherX	; Sync to opponent X
-	ld   hl, -$1800 				; Move back $18px
+	cp   MOVE_HEIDERN_NECK_ROLLER_L
+	jr   z, .heidern
+	cp   MOVE_HEIDERN_NECK_ROLLER_H
+	jr   z, .heidern
+	cp   MOVE_HEIDERN_FINAL_BRINGER_S
+	jr   nz, .norm
+.heidern:
+	; Keep Y untouched and place the victim 3px in front, exactly as KOF95.
+	call HitTypeS_SyncPlXFromOtherX
+	ld   hl, -$0300
 	call Play_OBJLstS_MoveH_ByXDirR
-	jp   .ret
+	jr   .ret
 .norm:
-	;##
-
 	;
 	; DEFAULT
 	;
@@ -5487,7 +5526,7 @@ MoveInputReader_Ryo:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasy MoveInit_Ryo_RyuKoRanbu, MoveInit_Ryo_MouKoRaiJinGou
+	mMvIn_ChkEasyDir MoveInit_Ryo_KoOuKen, MoveInit_Ryo_KoHou, MoveInit_Ryo_KyokukenRyuRenbuKen, MoveInit_Ryo_HienShippuuKyaku, MoveInit_Ryo_MouKoRaiJinGou, MoveInputReader_Ryo_NoMove, MoveInit_Ryo_RyuKoRanbu
 	mMvIn_ChkGA Ryo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -6143,7 +6182,7 @@ MoveInputReader_Robert:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Robert_RyuKoRanbu, MoveInit_Robert_RyuuGa_Hidden
+	mMvIn_ChkEasyDir MoveInit_Robert_RyuuGekiKen, MoveInit_Robert_RyuuGa, MoveInit_Robert_KyokugenRyuRanbuKyaku, MoveInit_Robert_HienShippuKyaku, MoveInit_Robert_RyuuGa_Hidden, MoveInputReader_Robert_NoMove, MoveInit_Robert_RyuKoRanbu
 	mMvIn_ChkGA Robert, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -7115,7 +7154,7 @@ MoveInputReader_Leona:
 	
 .chkGround:
 	;             SELECT + B               SELECT + A
-	mMvIn_ChkEasy MoveInit_Leona_VSlasher, MoveInit_Leona_BalticLauncher
+	mMvIn_ChkEasyDir MoveInit_Leona_GrandSabre, MoveInit_Leona_XCalibur, MoveInit_Leona_BalticLauncher, MoveInit_Leona_XCalibur, MoveInit_Leona_MoonSlasher, MoveInputReader_Leona_NoMove, MoveInit_Leona_VSlasher
 	mMvIn_ChkGA Leona, .chkPunch, .chkKick
 .chkPunch:
 	; O.Leona only!
@@ -8045,7 +8084,7 @@ MoveInputReader_MrKarate:
 	
 .chkGround:
 	;             SELECT + B                    SELECT + A
-	mMvIn_ChkEasy MoveInit_MrKarate_RyukoRanbu, MoveInit_MrKarate_Zenretsuken
+	mMvIn_ChkEasyDir MoveInit_MrKarate_KoOuKen, MoveInit_MrKarate_Zenretsuken, MoveInit_MrKarate_KyokukenRyuRenbuKen, MoveInit_MrKarate_ShouranKyaku, MoveInit_MrKarate_HienShippuuKyaku, MoveInputReader_MrKarate_NoMove, MoveInit_MrKarate_RyukoRanbu
 	mMvIn_ChkGA MrKarate, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -9841,7 +9880,8 @@ ENDC
 ; Junk area below.
 ; Contains duplicate move code.
 IF !REV_VER_2
-	mIncJunk "L027EBF"
+	; SYSTEM 95 hop/dodge compatibility consumes $58 bytes of this junk tail.
+	mIncJunkFrom "L027EBF", $B7
 ELSE
-	mIncJunk "L027F70"
+	mIncJunkFrom "L027F70", $58
 ENDC

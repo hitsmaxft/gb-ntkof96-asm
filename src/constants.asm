@@ -86,7 +86,36 @@ DEF CHAR_ID_MRKARATE EQU $20
 DEF CHAR_ID_OIORI    EQU $22
 DEF CHAR_ID_OLEONA   EQU $24
 DEF CHAR_ID_KAGURA   EQU $26
+; First fully imported KOF95 character. Expansion IDs continue the even-ID
+; convention used by every engine table.
+DEF CHAR_ID_KIM      EQU $28
+DEF CHAR_ID_BENIMARU EQU $2A
+DEF CHAR_ID_YURI     EQU $2C
+DEF CHAR_ID_JOE      EQU $2E
+DEF CHAR_ID_HEIDERN  EQU $30
+DEF CHAR_ID_RALF     EQU $32
+DEF CHAR_ID_KENSOU   EQU $34
+DEF CHAR_ID_EIJI     EQU $36
+DEF CHAR_ID_BILLY    EQU $38
+DEF CHAR_ID_SAISYU   EQU $3A
+DEF CHAR_ID_RUGAL    EQU $3C
+DEF CHAR_ID_NAKORURU EQU $3E
+DEF CHAR_ID_KYO95    EQU $40
+DEF CHAR_ID_RYO95    EQU $42
+DEF CHAR_ID_TERRY95  EQU $44
+DEF CHAR_ID_ATHENA95 EQU $46
+DEF CHAR_ID_MAI95    EQU $48
+DEF CHAR_ID_IORI95   EQU $4A
 DEF CHAR_ID_NONE     EQU $FF
+
+; Nakoruru's independent Mamahaha helper state (ported from KOF95 bank16).
+DEF PBM_CHKCATCH             EQU $00
+DEF PBM_FLIGHT               EQU $01
+DEF PBM_FALL                 EQU $02
+DEF PLAY_BIRD_MODE_INIT      EQU $00
+DEF PLAY_BIRD_MODE_IDLE      EQU $01
+DEF PLAY_BIRD_MODE_OUTRO     EQU $02
+DEF PLAY_BIRD_MODE_FLIGHT    EQU $03
 
 DEF STAGE_ID_HERO             EQU $00
 DEF STAGE_ID_FATALFURY        EQU $01
@@ -139,12 +168,14 @@ DEF ANIMSPEED_INSTANT   EQU $00 ; Close enough
 DEF ANIMSPEED_NONE      EQU $FF ; Slowest possible animation speed, set when we want manual control over the animation since it will always be done quicker than 255 frames.
 
 ; FLAGS
-DEF DIPB_EASY_MOVES       EQU 2 ; SELECT + A/B for easy super moves
+DEF DIPB_SUPER_CANCEL     EQU 0 ; Allow specials/supers during non-attacking special recovery
+DEF DIPB_EASY_MOVES       EQU 2 ; Timed SELECT shortcuts for easy moves
 DEF DIPB_POWERUP          EQU 3 ; DIPB_POWERUP Powerup mode. POW Meter grows on its own + Unlimited super moves + move changes
 DEF DIPB_SGB_SOUND_TEST   EQU 4 ; Adds SGB S.E TEST to the options menu
 DEF DIPB_TEAM_DUPL        EQU 5 ; Allow duplicate characters in a team
 DEF DIPB_UNLOCK_BOSS      EQU 6 ; Unlock Goenitz
 DEF DIPB_UNLOCK_OTHER     EQU 7 ; Unlock everyone else (Mr Karate, Boss Kagura, Orochi Iori and Orochi Leona)
+DEF DIP_POWERUP_OPTION_MASK EQU (1 << DIPB_POWERUP) | (1 << DIPB_TEAM_DUPL)
 
 ; $C025
 DEF MISCB_SERIAL_LAG      EQU 3 ; If set, it freezes the game. Essentially a version of MISCB_LAG_FRAME for the other GB.
@@ -243,6 +274,12 @@ DEF TASK_EXEC_NEW  EQU $08 ; Never executed before. Likely init code which will 
 
 DEF PLINFO_SIZE EQU $100
 
+; Selectable universal battle systems. Character version and battle system are
+; intentionally independent: either version of a fighter may use either system.
+DEF BATTLESYS_96  EQU $00
+DEF BATTLESYS_95  EQU $01
+DEF BATTLESYSB_95 EQU 0
+
 ; Note that there isn't a single flag marking if we got hit and damaged.
 ; A combination of at least one of these is checked:
 ; PCFB_HIT -> opponent collided with our hitbox (the move can still whiff)
@@ -296,6 +333,11 @@ DEF PF2B_AUTOGUARDMID   EQU 4 ; If set, the move automatically blocks lows
 DEF PF2B_AUTOGUARDLOW   EQU 5 ; If set, the move automatically blocks mids
 DEF PF2B_NOHURTBOX      EQU 6 ; If set, the player has no hurtbox (this separate from the collision box only here)
 DEF PF2B_NOCOLIBOX      EQU 7 ; If set, the player has no collision box
+
+; iPlInfo_SuperCancelFlags
+DEF PSCB_DAMAGE_ACTIVE  EQU 0 ; Current special was started by Super Cancel and deals reduced damage
+DEF PSCB_CANCEL_PENDING EQU 1 ; Recovery validation passed; consumed only if a new special starts
+
 ; iPlInfo_Flags3, related to the move we got attacked with
 DEF PF3B_HEAVYHIT       EQU 0 ; Used by "heavy" hits (not to be confused with heavy moves). Getting attacked shakes the player longer (doesn't cut the shake count in half).
 DEF PF3B_FIRE           EQU 1 ; Used by firey hits. Getting hit causes the player to flash slowly.
@@ -554,6 +596,7 @@ DEF MODESELECT_ACT_SINGLE1P EQU MODE_SINGLE1P+1
 DEF MODESELECT_ACT_TEAM1P   EQU MODE_TEAM1P+1
 DEF MODESELECT_ACT_SINGLEVS EQU MODE_SINGLEVS+1
 DEF MODESELECT_ACT_TEAMVS   EQU MODE_TEAMVS+1
+DEF MODESELECT_ACT_TRAINING EQU $05
 
 ; Mode IDs sent out through the serial
 DEF MODESELECT_SBCMD_IDLE     EQU $02
@@ -569,10 +612,15 @@ DEF SERIAL_PL1_ID             EQU MODESELECT_SBCMD_IDLE
 ; Main options
 DEF OPTION_ITEM_TIME        EQU $00
 DEF OPTION_ITEM_LEVEL       EQU $01
-DEF OPTION_ITEM_BGMTEST     EQU $02
-DEF OPTION_ITEM_SFXTEST     EQU $03
-DEF OPTION_ITEM_SGBSNDTEST  EQU $04
-DEF OPTION_ITEM_EXIT        EQU $05
+DEF OPTION_ITEM_POWERUP     EQU $02
+DEF OPTION_ITEM_EASY_MOVES  EQU $03
+DEF OPTION_ITEM_SUPER_CANCEL EQU $04
+DEF OPTION_ITEM_TEAM_DUPL   EQU $05
+DEF OPTION_ITEM_HIDDEN_CHARS EQU $06
+DEF OPTION_ITEM_BGMTEST     EQU $07
+DEF OPTION_ITEM_SFXTEST     EQU $08
+DEF OPTION_ITEM_SGBSNDTEST  EQU $09
+DEF OPTION_ITEM_EXIT        EQU $0A
 
 ; SGB sound test options
 DEF OPTION_SITEM_ID_A       EQU $00
@@ -619,15 +667,26 @@ DEF CHARSEL_ID_MRBIG     EQU $09
 DEF CHARSEL_ID_KRAUSER   EQU $0A
 DEF CHARSEL_ID_MATURE    EQU $0B
 DEF CHARSEL_ID_ATHENA    EQU $0C
-DEF CHARSEL_ID_CHIZURU   EQU $0D
-DEF CHARSEL_ID_MRKARATE0 EQU $0E ; 2 slots
-DEF CHARSEL_ID_MRKARATE1 EQU $0F
-DEF CHARSEL_ID_GOENITZ   EQU $10
-DEF CHARSEL_ID_LEONA     EQU $11
-; Extra entries not part of the slots
-DEF CHARSEL_ID_SPEC_OIORI  EQU $12
-DEF CHARSEL_ID_SPEC_OLEONA EQU $13
-DEF CHARSEL_ID_SPEC_KAGURA EQU $14
+DEF CHARSEL_ID_LEONA     EQU $0D
+DEF CHARSEL_ID_BENIMARU  EQU $0E
+DEF CHARSEL_ID_YURI      EQU $0F
+DEF CHARSEL_ID_JOE       EQU $10
+DEF CHARSEL_ID_HEIDERN   EQU $11
+DEF CHARSEL_ID_RALF      EQU $12
+DEF CHARSEL_ID_KENSOU    EQU $13
+DEF CHARSEL_ID_KIM       EQU $14
+DEF CHARSEL_ID_EIJI      EQU $15
+DEF CHARSEL_ID_BILLY     EQU $16
+DEF CHARSEL_ID_NAKORURU  EQU $17
+; Keep the KOF96 bosses and the two reserved KOF95 bosses together on the
+; bottom row. Mr. Karate uses a derived center crop of his original wide art.
+DEF CHARSEL_ID_CHIZURU   EQU $18
+DEF CHARSEL_ID_GOENITZ   EQU $19
+DEF CHARSEL_ID_MRKARATE  EQU $1A
+DEF CHARSEL_ID_MRKARATE0 EQU CHARSEL_ID_MRKARATE ; Compatibility alias.
+DEF CHARSEL_ID_SAISYU    EQU $1B
+DEF CHARSEL_ID_RUGAL     EQU $1C
+DEF CHARSEL_ID_RESERVED0 EQU $1D
 
 DEF CHARSEL_POSFB_DEFEATED EQU 7
 DEF CHARSEL_POSF_DEFEATED EQU 1 << CHARSEL_POSFB_DEFEATED
@@ -642,9 +701,17 @@ DEF CHARSEL_2P EQU $01
 DEF CHARSEL_TEAM_REMAIN EQU $00
 DEF CHARSEL_TEAM_FILLED EQU $FF
 
+; CharSel_PortraitVariantTbl requirement flags
+DEF CHARSEL_VARIANTF_UNLOCK_OTHER EQU $01
+
 DEF CHARSEL_GRID_W    EQU $06
-DEF CHARSEL_GRID_H    EQU $03
+DEF CHARSEL_GRID_H    EQU $05
 DEF CHARSEL_GRID_SIZE EQU CHARSEL_GRID_W * CHARSEL_GRID_H
+
+; Two custom BG tiles loaded at $8E00 for the version list in each portrait's
+; otherwise unused right-hand column.
+DEF TILE_CHARSEL_VARIANT_AVAILABLE EQU $E0
+DEF TILE_CHARSEL_VARIANT_CURRENT   EQU $E1
 
 DEF CHARSEL_OBJ_CURSOR1P        EQU $00
 DEF CHARSEL_OBJ_CURSOR1PWIDE    EQU $04
@@ -662,8 +729,10 @@ DEF BG_CHARSEL_P2ICON0 EQU $99F1
 DEF BG_CHARSEL_P2ICON1 EQU $99EF
 DEF BG_CHARSEL_P2ICON2 EQU $99ED
 
-DEF BG_CHARSEL_P1NAME  EQU $99A1 ; Left side
-DEF BG_CHARSEL_P2NAME  EQU $99B2 ; Right side
+; The 6x5 portrait grid occupies rows 0-14. Selected icons stay on rows
+; 15-16, while the final visible row is shared by the two cursor names.
+DEF BG_CHARSEL_P1NAME  EQU $9A21 ; Row 17, columns 1-8
+DEF BG_CHARSEL_P2NAME  EQU $9A32 ; Row 17, right edge at column 18
 
 ; Blank boxes with numbers
 DEF TILE_CHARSEL_ICONEMPTY1 EQU $EC
@@ -784,6 +853,182 @@ DEF MOVE_SHARED_GRAB_ROTL       EQU $94 ; Throw seq #1 - Rotation frame
 DEF MOVE_SHARED_GRAB_ROTD       EQU $96 ; Throw seq #1 - Rotation frame
 DEF MOVE_SHARED_GRAB_ROTR       EQU $98 ; Throw seq #1 - Rotation frame
 DEF MOVE_TASK_REMOVE            EQU $FF ; Magic value - Kill current task
+
+; KOF95 Kim mapped into KOF96's special/super slots.
+DEF MOVE_KIM_HAN_GETSU_ZAN_L    EQU $48
+DEF MOVE_KIM_HAN_GETSU_ZAN_H    EQU $4A
+DEF MOVE_KIM_HIEN_ZAN_L         EQU $4C
+DEF MOVE_KIM_HIEN_ZAN_H         EQU $4E
+DEF MOVE_KIM_HISHOU_KYAKU_L     EQU $50
+DEF MOVE_KIM_HISHOU_KYAKU_H     EQU $52
+DEF MOVE_KIM_RYUUSEI_RANKU_L    EQU $54
+DEF MOVE_KIM_RYUUSEI_RANKU_H    EQU $56
+DEF MOVE_KIM_HOU_OU_KYAKU_S     EQU $64
+DEF MOVE_KIM_HOU_OU_KYAKU_D     EQU $66
+
+DEF MOVE_BENIMARU_RAIJINKEN_L              EQU $48
+DEF MOVE_BENIMARU_RAIJINKEN_H              EQU $4A
+DEF MOVE_BENIMARU_SHINKUU_KATATE_GOMA_L    EQU $4C
+DEF MOVE_BENIMARU_SHINKUU_KATATE_GOMA_H    EQU $4E
+DEF MOVE_BENIMARU_IAI_GERI_L                EQU $50
+DEF MOVE_BENIMARU_IAI_GERI_H                EQU $52
+DEF MOVE_BENIMARU_SUPER_INAZUMA_KICK_L      EQU $54
+DEF MOVE_BENIMARU_SUPER_INAZUMA_KICK_H      EQU $56
+DEF MOVE_BENIMARU_RAIKOUKEN_S               EQU $64
+
+DEF MOVE_YURI_KO_OU_KEN_L                   EQU $48
+DEF MOVE_YURI_KO_OU_KEN_H                   EQU $4A
+DEF MOVE_YURI_SAI_HA_L                      EQU $4C
+DEF MOVE_YURI_SAI_HA_H                      EQU $4E
+DEF MOVE_YURI_HYAKU_RETSU_BINTA_L           EQU $50
+DEF MOVE_YURI_HYAKU_RETSU_BINTA_H           EQU $52
+DEF MOVE_YURI_KUU_GA_L                      EQU $54
+DEF MOVE_YURI_KUU_GA_H                      EQU $56
+DEF MOVE_YURI_RAI_OH_KEN_L                  EQU $58
+DEF MOVE_YURI_RAI_OH_KEN_H                  EQU $5A
+DEF MOVE_YURI_HAOH_SHOUKOU_KEN_L            EQU $5C
+DEF MOVE_YURI_HAOH_SHOUKOU_KEN_H            EQU $5E
+DEF MOVE_YURI_HIEN_HOU_OU_KYA_KU_S          EQU $64
+
+DEF MOVE_JOE_HURRICANE_UPPER_L               EQU $48
+DEF MOVE_JOE_HURRICANE_UPPER_H               EQU $4A
+DEF MOVE_JOE_SLASH_KICK_L                    EQU $4C
+DEF MOVE_JOE_SLASH_KICK_H                    EQU $4E
+DEF MOVE_JOE_BAKURETSUKEN_L                  EQU $50
+DEF MOVE_JOE_BAKURETSUKEN_H                  EQU $52
+DEF MOVE_JOE_TIGER_KICK_L                    EQU $54
+DEF MOVE_JOE_TIGER_KICK_H                    EQU $56
+DEF MOVE_JOE_OUGON_NO_KAKATO_L               EQU $58
+DEF MOVE_JOE_OUGON_NO_KAKATO_H               EQU $5A
+DEF MOVE_JOE_SCREW_UPPER_S                   EQU $64
+
+DEF MOVE_HEIDERN_CROSS_CUTTER_L              EQU $48
+DEF MOVE_HEIDERN_CROSS_CUTTER_H              EQU $4A
+DEF MOVE_HEIDERN_NECK_ROLLER_L               EQU $4C
+DEF MOVE_HEIDERN_NECK_ROLLER_H               EQU $4E
+DEF MOVE_HEIDERN_STORM_BRINGER_L             EQU $50
+DEF MOVE_HEIDERN_STORM_BRINGER_H             EQU $52
+DEF MOVE_HEIDERN_MOON_SLASHER_L              EQU $54
+DEF MOVE_HEIDERN_MOON_SLASHER_H              EQU $56
+DEF MOVE_HEIDERN_FINAL_BRINGER_S             EQU $64
+
+DEF MOVE_RALF_VULCAN_PUNCH_L                 EQU $48
+DEF MOVE_RALF_VULCAN_PUNCH_H                 EQU $4A
+DEF MOVE_RALF_GATLING_ATTACK_L               EQU $4C
+DEF MOVE_RALF_GATLING_ATTACK_H               EQU $4E
+DEF MOVE_RALF_BACK_BREAKER_L                 EQU $50
+DEF MOVE_RALF_BACK_BREAKER_H                 EQU $52
+DEF MOVE_RALF_BAKUDAN_PUNCH_L                EQU $54
+DEF MOVE_RALF_BAKUDAN_PUNCH_H                EQU $56
+DEF MOVE_RALF_BARIBARI_VULCAN_PUNCH_S        EQU $64
+
+DEF MOVE_KENSOU_CHOU_KYUU_DAN_L               EQU $48
+DEF MOVE_KENSOU_CHOU_KYUU_DAN_H               EQU $4A
+DEF MOVE_KENSOU_RYUU_GAKU_SAI_L               EQU $4C
+DEF MOVE_KENSOU_RYUU_GAKU_SAI_H               EQU $4E
+DEF MOVE_KENSOU_RYUU_REN_GA_L                  EQU $50
+DEF MOVE_KENSOU_RYUU_REN_GA_H                  EQU $52
+DEF MOVE_KENSOU_RYUU_SOU_GEKI_L                EQU $54
+DEF MOVE_KENSOU_RYUU_SOU_GEKI_H                EQU $56
+DEF MOVE_KENSOU_SHINRYUU_TENBU_KYAKU_S         EQU $64
+
+DEF MOVE_EIJI_KIKOUHOU_L                        EQU $48
+DEF MOVE_EIJI_KIKOUHOU_H                        EQU $4A
+DEF MOVE_EIJI_KOTSU_HAZAKI_KIRI_L               EQU $4C
+DEF MOVE_EIJI_KOTSU_HAZAKI_KIRI_H               EQU $4E
+DEF MOVE_EIJI_RYUU_EIJIN_L                       EQU $50
+DEF MOVE_EIJI_RYUU_EIJIN_H                       EQU $52
+DEF MOVE_EIJI_KASUMI_GERI_L                      EQU $54
+DEF MOVE_EIJI_KASUMI_GERI_H                      EQU $56
+DEF MOVE_EIJI_ZANTETSUHA_L                       EQU $58
+DEF MOVE_EIJI_ZANTETSUHA_H                       EQU $5A
+DEF MOVE_EIJI_KAGE_UTSUSHI_L                     EQU $5C
+DEF MOVE_EIJI_KAGE_UTSUSHI_H                     EQU $5E
+DEF MOVE_EIJI_TENBAKYAKU_L                       EQU $60
+DEF MOVE_EIJI_TENBAKYAKU_H                       EQU $62
+DEF MOVE_EIJI_ZANTETSU_TOUROUKEN_S               EQU $64
+
+DEF MOVE_BILLY_SANSETSU_KON_CHUUDAN_UCHI_L        EQU $48
+DEF MOVE_BILLY_SANSETSU_KON_CHUUDAN_UCHI_H        EQU $4A
+DEF MOVE_BILLY_SENPUU_KON_L                       EQU $4C
+DEF MOVE_BILLY_SENPUU_KON_H                       EQU $4E
+DEF MOVE_BILLY_SUZUME_OTOSHI_L                    EQU $50
+DEF MOVE_BILLY_SUZUME_OTOSHI_H                    EQU $52
+DEF MOVE_BILLY_KYOUSHUU_HISHOU_KON_L              EQU $54
+DEF MOVE_BILLY_KYOUSHUU_HISHOU_KON_H              EQU $56
+DEF MOVE_BILLY_CHOU_KAEN_SENPUU_KON_S             EQU $64
+
+DEF MOVE_SAISYU_YAMI_BARAI_L                       EQU $48
+DEF MOVE_SAISYU_YAMI_BARAI_H                       EQU $4A
+DEF MOVE_SAISYU_ONI_YAKI_L                         EQU $4C
+DEF MOVE_SAISYU_ONI_YAKI_H                         EQU $4E
+DEF MOVE_SAISYU_EN_JOU_L                            EQU $50
+DEF MOVE_SAISYU_EN_JOU_H                            EQU $52
+DEF MOVE_SAISYU_URA_OROCHI_NAGI_S                  EQU $64
+
+DEF MOVE_RUGAL_REPPU_KEN_L                         EQU $48
+DEF MOVE_RUGAL_REPPU_KEN_H                         EQU $4A
+DEF MOVE_RUGAL_GOD_PRESS_L                         EQU $4C
+DEF MOVE_RUGAL_GOD_PRESS_H                         EQU $4E
+DEF MOVE_RUGAL_DARK_BARRIER_L                      EQU $50
+DEF MOVE_RUGAL_DARK_BARRIER_H                      EQU $52
+DEF MOVE_RUGAL_GENOCIDE_CUTTER_L                   EQU $54
+DEF MOVE_RUGAL_GENOCIDE_CUTTER_H                   EQU $56
+DEF MOVE_RUGAL_KAISER_WAVE_L                       EQU $58
+DEF MOVE_RUGAL_KAISER_WAVE_H                       EQU $5A
+DEF MOVE_RUGAL_GIGANTIC_PRESSURE_S                 EQU $64
+
+DEF MOVE_NAKORURU_AMUBE_YATORO_L                   EQU $48
+DEF MOVE_NAKORURU_AMUBE_YATORO_H                   EQU $4A
+DEF MOVE_NAKORURU_ANNU_MUTSUBE_L                   EQU $4C
+DEF MOVE_NAKORURU_ANNU_MUTSUBE_H                   EQU $4E
+DEF MOVE_NAKORURU_KAMUI_RIMSE_L                    EQU $50
+DEF MOVE_NAKORURU_KAMUI_RIMSE_H                    EQU $52
+DEF MOVE_NAKORURU_LELA_MUTSUBE_L                   EQU $54
+DEF MOVE_NAKORURU_LELA_MUTSUBE_H                   EQU $56
+DEF MOVE_NAKORURU_MAMAHAHA_FLIGHT_L                EQU $58
+DEF MOVE_NAKORURU_MAMAHAHA_FLIGHT_H                EQU $5A
+DEF MOVE_NAKORURU_YATORO_POKKU_L                   EQU $5C
+DEF MOVE_NAKORURU_YATORO_POKKU_H                   EQU $5E
+DEF MOVE_NAKORURU_KAMUI_MUTSUBE_L                  EQU $60
+DEF MOVE_NAKORURU_KAMUI_MUTSUBE_H                  EQU $62
+DEF MOVE_NAKORURU_ELERUSH_KAMUI_RIMSE_S            EQU $64
+
+DEF MOVE_KYO_YAMI_BARAI_L                           EQU $48
+DEF MOVE_KYO_YAMI_BARAI_H                           EQU $4A
+DEF MOVE_KYO_OBORO_GURUMA_L                         EQU $50
+DEF MOVE_KYO_OBORO_GURUMA_H                         EQU $52
+
+DEF MOVE_RYO95_KO_OU_KEN_GL                           EQU $48
+DEF MOVE_RYO95_KO_OU_KEN_GH                           EQU $4A
+DEF MOVE_RYO95_HIEN_SHIPPUU_KYAKU_L                   EQU $4C
+DEF MOVE_RYO95_HIEN_SHIPPUU_KYAKU_H                   EQU $4E
+DEF MOVE_RYO95_ZENRETSUKEN_L                          EQU $50
+DEF MOVE_RYO95_ZENRETSUKEN_H                          EQU $52
+DEF MOVE_RYO95_KO_HOU_L                               EQU $54
+DEF MOVE_RYO95_KO_HOU_H                               EQU $56
+DEF MOVE_RYO95_KO_OU_KEN_AL                           EQU $58
+DEF MOVE_RYO95_KO_OU_KEN_AH                           EQU $5A
+DEF MOVE_RYO95_HAOH_SHOKOU_KEN_L                      EQU $5C
+DEF MOVE_RYO95_HAOH_SHOKOU_KEN_H                      EQU $5E
+DEF MOVE_RYO95_KYOKUKEN_RYU_RENBU_KEN_L               EQU $60
+DEF MOVE_RYO95_KYOKUKEN_RYU_RENBU_KEN_H               EQU $62
+DEF MOVE_RYO95_RYU_KO_RANBU_S                         EQU $64
+
+
+DEF MOVE_ATHENA95_PSYCHO_BALL_L                       EQU $48
+DEF MOVE_ATHENA95_PSYCHO_BALL_H                       EQU $4A
+DEF MOVE_ATHENA95_PSYCHO_REFLECTOR_L                  EQU $4C
+DEF MOVE_ATHENA95_PSYCHO_REFLECTOR_H                  EQU $4E
+DEF MOVE_ATHENA95_PSYCHO_SWORD_L                      EQU $50
+DEF MOVE_ATHENA95_PSYCHO_SWORD_H                      EQU $52
+DEF MOVE_ATHENA95_PHOENIX_ARROW_L                     EQU $54
+DEF MOVE_ATHENA95_PHOENIX_ARROW_H                     EQU $56
+DEF MOVE_ATHENA95_74                                  EQU $58
+DEF MOVE_ATHENA95_PHOENIX_ARROW_KICK_H                EQU $5A
+DEF MOVE_ATHENA95_SHINING_CRYSTAL_BIT_GS              EQU $64
+
+
 
 ; Character-specific
 DEF MOVE_KYO_ARA_KAMI_L                    EQU $48
@@ -1160,8 +1405,12 @@ DEF COLIBOX_02 EQU $02
 DEF COLIBOX_03 EQU $03
 DEF COLIBOX_04 EQU $04 ; Throw range
 DEF COLIBOX_05 EQU $05
+; Present in the KOF96 collision-box table but unused by the original roster.
+; KOF95 character/projectile data still references these two entries.
+DEF COLIBOX_06 EQU $06
 DEF COLIBOX_07 EQU $07
 DEF COLIBOX_08 EQU $08
+DEF COLIBOX_09 EQU $09
 DEF COLIBOX_0A EQU $0A
 DEF COLIBOX_0B EQU $0B
 DEF COLIBOX_0C EQU $0C
@@ -1285,11 +1534,6 @@ DEF PLAY_THROWOP_UNUSED_BOTH EQU $02 ; [TCRF] Unused, works on both.
 ; wPlayPlThrowDir
 DEF PLAY_THROWDIR_F EQU $00
 DEF PLAY_THROWDIR_B EQU $01
-
-; iPlInfo_Kyo_AraKami_SubInputMask for MOVE_KYO_ARA_KAMI_H
-DEF MSIB_K0S0_P    EQU 0 ; 401 Shiki Tumi Yomi - Light punch pressed
-DEF MSIB_K0S0_DB   EQU 1 ; 401 Shiki Tumi Yomi - DB input performed
-DEF MSIB_K0S1_P    EQU 2 ; 402 Shiki Batu Yomi - Light punch pressed
 
 ; iPlInfo_Chizuru_ShinsokuNoroti_ChainedMove
 DEF PCMB_CHIZURU_TEN_ZUI_L EQU 0

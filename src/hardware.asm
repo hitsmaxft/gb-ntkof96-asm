@@ -23,7 +23,8 @@ DEF OAM_End   EQU $fea0
 DEF HRAM_Begin  EQU $ff80
 DEF HRAM_End    EQU $ffff
 
-; MBC1
+; Legacy bank-register names. The mixed-roster build uses MBC5; its low ROM
+; bank register remains at $2000, so all existing 8-bit bank writes stay valid.
 DEF MBC1SRamEnable      EQU $0000
 DEF MBC1RomBank         EQU $2000
 DEF MBC1SRamBank        EQU $4000

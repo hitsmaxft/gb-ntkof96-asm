@@ -60,7 +60,7 @@ MoveInputReader_Kyo:
 ; GROUND SPECIALS
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Kyo_UraOrochiNagi, MoveInit_Kyo_NueTumi
+	mMvIn_ChkEasyDir MoveInit_Kyo_AraKami, MoveInit_Kyo_OniYaki, MoveInit_Kyo_KototsukiYou, MoveInit_Kyo_RedKick, MoveInit_Kyo_NueTumi, MoveInit_Kyo_UraOrochiNagi, MoveInputReader_Kyo_NoMove
 	mMvIn_ChkGA Kyo, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -189,6 +189,7 @@ MoveInputReader_Kyo_NoMove:
 ; - Ge Shiki Migiri Ugachi
 MoveC_Kyo_AraKami:
 	call Play_Pl_AddToJoyBufKeysLH
+	call MoveC_Kyo_LatchChainButtons
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
 	
@@ -230,6 +231,7 @@ MoveC_Kyo_AraKami:
 	; Move forward 7px the first time we get here
 	mMvC_ValFrameStart .araKami_obj0_chkEnd
 		mMvC_SetMoveH $0700
+		call MoveC_Kyo_ClearChainButtons
 .araKami_obj0_chkEnd:
 	; Play SFX when switching to #2
 	mMvC_ValFrameEnd .anim
@@ -249,17 +251,15 @@ MoveC_Kyo_AraKami:
 		jp   .anim
 ; --------------- 114 Shiki Ara Kami - input check macro ---------------	
 MACRO mAraKami_ChkInpt
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
 	ld   a, [hl]
-	bit  KEPB_B_LIGHT, a		; Pressed LP?
-	jr   nz, ._chkInput\@		; If so, jump
-	jr   ._anim\@
-._chkInput\@:
-	; FDB+P (light) -> 127 Shiki Yano Sabi
-	mMvIn_ChkDir MoveInput_FDB, .startYanoSabi
-	; DF+P (light) -> 128 Shiki Kono Kizu 
-	mMvIn_ChkDir MoveInput_DF, .startKonoKizu 
+	; A -> 127 Shiki Yano Sabi; B -> 128 Shiki Kono Kizu.
+	; Use the physical press edge so no direction or button release is required.
+	bit  KEYB_A, a
+	jp   nz, .startYanoSabi
+	bit  KEYB_B, a
+	jp   nz, .startKonoKizu
 ._anim\@:
 ENDM
 ; --------------- 114 Shiki Ara Kami - frame #2 ---------------
@@ -305,14 +305,14 @@ MACRO mKonoKizu_ChkInput
 	jp   ._startYanoSabi\@		; Otherwise, start 
 ._human\@:
 	; Human players need to press a single button to continue the move.
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
 	ld   a, [hl]
 	; A -> 125 Shiki Nana Se
-	bit  KEPB_A_LIGHT, a		; Pressed light kick?
+	bit  KEYB_A, a				; Pressed kick?
 	jr   nz, ._startNanaSe\@	; If so, jump
 	; B -> 127 Shiki Yano Sabi 
-	bit  KEPB_B_LIGHT, a		; Pressed light punch?
+	bit  KEYB_B, a				; Pressed punch?
 	jr   nz, ._startYanoSabi\@	; If so, jump
 	jr   ._anim\@
 ._startYanoSabi\@:
@@ -357,14 +357,14 @@ MACRO mYanoSabi_ChkInpt
 	jp   ._startMigiriUgachi\@
 ._human\@:
 	; Human players need to press a single button to continue the move.
-	ld   hl, iPlInfo_JoyNewKeysLH
+	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
 	ld   a, [hl]
 	; A -> 125 Shiki Nana Se
-	bit  KEPB_A_LIGHT, a			; Pressed light kick?
+	bit  KEYB_A, a					; Pressed kick?
 	jr   nz, ._startNanaSe\@		; If so, jump
 	; B -> Ge Shiki Migiri Ugachi
-	bit  KEPB_B_LIGHT, a			; Pressed light punch?
+	bit  KEYB_B, a					; Pressed punch?
 	jr   nz, ._startMigiriUgachi\@	; If so, jump
 	jr   ._anim\@
 ._startMigiriUgachi\@:
@@ -448,6 +448,7 @@ ENDM
 
 ; Starts 128 Shiki Kono Kizu
 .startKonoKizu:
+	call MoveC_Kyo_ClearChainButtons
 	mMvC_SetDamageNext $08, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT|PF3_FIRE|PF3_CONTHIT
 	mMvC_SetFrame $04, $00
 	mMvC_PlaySound SFX_FIREHIT_A
@@ -455,6 +456,7 @@ ENDM
 	
 ; Starts 127 Shiki Yano Sabi
 .startYanoSabi:
+	call MoveC_Kyo_ClearChainButtons
 	mMvC_SetDamageNext $08, HITTYPE_LAUNCH_FAST_DB, PF3_HEAVYHIT|PF3_FIRE|PF3_OVERHEAD|PF3_CONTHIT
 	mMvC_SetFrame $08, $00
 	mMvC_PlaySound SFX_FIREHIT_A
@@ -504,6 +506,7 @@ ENDM
 ; - 402 Shiki Batu Yomi 
 MoveC_Kyo_DokuKami:
 	call Play_Pl_AddToJoyBufKeysLH
+	call MoveC_Kyo_LatchChainButtons
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
 	
@@ -537,16 +540,12 @@ MoveC_Kyo_DokuKami:
 		add  hl, bc
 		ld   [hl], $00
 .dokuKami_obj0_chkInput:
-	; Check input for next submove
-	call MoveC_Kyo_DokuKami_ChkTumiYomiInput
 	; When switching to #1, play SFX
 	mMvC_ValFrameEnd .anim
 		mMvC_PlaySound SFX_FIREHIT_A
 		jp   .anim
 ; --------------- 115 Shiki Doku Kami - frame #1 ---------------
 .dokuKami_obj1:
-	; Check input for next submove
-	call MoveC_Kyo_DokuKami_ChkTumiYomiInput
 	; The first time we get here, move 7px forward and disable reduced damage
 	mMvC_ValFrameStart .dokuKami_obj1_anim
 		mMvC_SetMoveH $0700
@@ -569,19 +568,14 @@ MACRO mDokuKami_ChkInput
 	jp   z, ._anim\@			; If so, jump
 	jp   .startTumiYomi	; Otherwise, start the move
 ._human\@:
-	; Check input for next submove
-	call MoveC_Kyo_DokuKami_ChkTumiYomiInput
-	
-	; If we pressed all required inputs (order doesn't matter), start the next submove, so:
-	; DB+P or P+DB -> 401 Shiki Tumi Yomi
+	; A -> 401 Shiki Tumi Yomi; B -> 402 Shiki Batu Yomi directly.
 	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
 	ld   a, [hl]
-	bit  MSIB_K0S0_P, a		; Pressed P?
-	jp   z, ._anim\@		; If not, skip
-	bit  MSIB_K0S0_DB, a	; Pressed DB?
-	jp   z, ._anim\@		; If not, skip
-	jp   .startTumiYomi		; DB+P Ok
+	bit  KEYB_A, a
+	jp   nz, .startTumiYomi
+	bit  KEYB_B, a
+	jp   nz, .startBatuYomi
 ._anim\@:
 ENDM
 ; --------------- 115 Shiki Doku Kami - frame #2 ---------------
@@ -597,8 +591,6 @@ ENDM
 	
 ; --------------- 401 Shiki Tumi Yomi - frame #0 ---------------	
 .tumiYomi_obj0:
-	; Check input for next submove
-	call MoveC_Kyo_DokuKami_ChkBatuYomiInput
 	; The first time we get here, move 7px forward
 	mMvC_ValFrameStart .tumiYomi_obj0_anim
 		mMvC_SetMoveH $0700
@@ -619,15 +611,11 @@ MACRO mTumiYomi_ChkInput
 	jp   z, ._anim\@			; If so, jump
 	jp   .startBatuYomi	; Otherwise, start the move  
 ._human\@:
-	; Check input for next submove
-	call MoveC_Kyo_DokuKami_ChkBatuYomiInput
-	
-	; If we pressed the required input, start the next submove, so:
-	; P or (previous DB+P) -> 402 Shiki Batu Yomi
+	; Either button continues into 402 Shiki Batu Yomi.
 	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
 	ld   a, [hl]
-	bit  MSIB_K0S1_P, a
+	and  KEY_A|KEY_B
 	jp   nz, .startBatuYomi
 ._anim\@:
 ENDM	
@@ -708,6 +696,7 @@ ENDM
 ; --------------- submoves ---------------
 ; 401 Shiki Tumi Yomi
 .startTumiYomi:
+	call MoveC_Kyo_ClearChainButtons
 	mMvC_SetFrame $04, $00	; Was the frame set already?
 	jp   z, .ret								; If so, return
 	mMvC_SetDamageNext $08, HITTYPE_HIT_MID0, PF3_HEAVYHIT|PF3_FIRE|PF3_CONTHIT
@@ -743,100 +732,26 @@ ENDM
 	jp   OBJLstS_DoAnimTiming_Loop_by_DE
 .ret:
 	ret
-; =============== MoveC_Kyo_DokuKami_ChkTumiYomiInput ===============
-; Handles the input for the submove 401 Shiki Tumi Yomi.
-; This requires pressing the inputs DB+P.
-; If pressed in that order, the next submove 402 Shiki Batu Yomi is also confirmed.
-MoveC_Kyo_DokuKami_ChkTumiYomiInput:
-	; If we've already pressed P and DB, return.
-	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
-	add  hl, bc
-	bit  MSIB_K0S0_P, [hl]	; Pressed LP yet?
-	jp   z, .chkBtn			; If not, jump
-	bit  MSIB_K0S0_DB, [hl]	; Pressed DB yet?
-	jp   z, .chkBtn			; If not, jump
-	jp   .ret				; Otherwise, return as we've done it already
-.chkBtn:
-	; Mark if we've pressed light punch.
-	ld   hl, iPlInfo_JoyBufKeysLH
+
+; =============== MoveC_Kyo_LatchChainButtons ===============
+; Keeps physical A/B press edges across graphics-loading frames.
+MoveC_Kyo_LatchChainButtons:
+	ld   hl, iPlInfo_JoyNewKeys
 	add  hl, bc
 	ld   a, [hl]
-	bit  KEPB_B_LIGHT, a	; Did we press LP?
-	jp   z, .chkInput		; If not, skip
+	and  KEY_A|KEY_B
+	ret  z
 	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
 	add  hl, bc
-	set  MSIB_K0S0_P, [hl]	; Sets its bit
-.chkInput:
-	; Mark if we've performed the DB input.
-	mMvIn_ChkDirNot MoveInput_DB_Copy, .chkShortcut	; Did we press DB? If not, jump
-	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
-	add  hl, bc
-	set  MSIB_K0S0_DB, [hl]	; Sets its bit
-	; Reset the LH status for the next keypress
-	ld   hl, iPlInfo_JoyBufKeysLH
-	add  hl, bc
-	ld   [hl], $00
-	jp   .ret
-.chkShortcut:
-	;
-	; Weird shortcut for confirming immediately both submoves when performing the DB+P input
-	; by pressing P when the DB motion isn't detected as inputted.
-	;
-	; The window for doing this is very tight, as MoveInput checks keep a buffer of the last
-	; few keypresses, so you'd have to perform the DB motion, quickly press other d-pad keys to
-	; push it out of the buffer, and only then press P. 
-	; 
-	; This works due to a combination of:
-	; - Only getting here when *not* pressing the DB move input.
-	; - The current subroutine locking itself out when DB and P are pressed.
-	; - The called subroutine not diing anything until DB and P are pressed.
-	; 
-	; If we were to input DB after P, we wouldn't be getting here, and further calls
-	; to this subroutine would return immediately.
-	; 
-	; Pressing only P would get us here, but the called subroutine validates that both inputs were pressed.
-	;
-	call MoveC_Kyo_DokuKami_ChkBatuYomiInput
-.ret:
+	or   [hl]
+	ld   [hl], a
 	ret
-; =============== MoveC_Kyo_DokuKami_ChkBatuYomiInput ===============
-; Handles the input for the submove 402 Shiki Batu Yomi.
-; This requires pressing P.
-MoveC_Kyo_DokuKami_ChkBatuYomiInput:
-	
+
+; Clears the consumed button so it cannot auto-chain into the next stage.
+MoveC_Kyo_ClearChainButtons:
 	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
-	add  hl, bc
-	
-	; If we didn't already perform the inputs for 401 Shiki Tumi Yomi, return.
-	; This is because of the shortcut (see call above), as otherwise if we got to
-	; 401 Shiki Tumi Yomi this validation always passes.
-	bit  MSIB_K0S0_P, [hl]	; Pressed LP yet?
-	jp   z, .ret			; If not, return
-	bit  MSIB_K0S0_DB, [hl]	; Pressed DB yet?
-	jp   z, .ret			; If not, return
-	
-	; If we pressed LP already, return
-	bit  MSIB_K0S1_P, [hl]	; Pressed LP yet?
-	jp   nz, .ret			; If so, return
-	
-	; If we're pressing LP, set its bit
-	ld   hl, iPlInfo_JoyBufKeysLH
-	add  hl, bc
-	ld   a, [hl]
-	bit  KEPB_B_LIGHT, a	; Pressed LP *now*?
-	jp   nz, .orderOk		; If so, jump
-	; Otherwise, return
-	jp   .ret
-.orderOk:
-	; Set the bit
-	ld   hl, iPlInfo_Kyo_AraKami_SubInputMask
-	add  hl, bc
-	set  MSIB_K0S1_P, [hl]
-	; Reset the LH status for the next keypress
-	ld   hl, iPlInfo_JoyBufKeysLH
 	add  hl, bc
 	ld   [hl], $00
-.ret:
 	ret
 	
 ; =============== MoveC_Kyo_OniYaki ===============
@@ -1577,7 +1492,7 @@ MoveInputReader_Terry:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Terry_PowerGeyser, MoveInit_Terry_RisingTackle
+	mMvIn_ChkEasyDir MoveInit_Terry_PowerWave, MoveInit_Terry_RisingTackle, MoveInit_Terry_PowerDunk, MoveInit_Terry_CrackShot, MoveInit_Terry_BurnKnuckle, MoveInit_Terry_PowerGeyser, MoveInputReader_Terry_NoMove
 	mMvIn_ChkGA Terry, .chkPunch, .chkKick
 	
 .chkPunch:
@@ -2332,7 +2247,7 @@ MoveInputReader_Mai:
 	
 .chkGround:
 	;             SELECT + B                            SELECT + A
-	mMvIn_ChkEasy MoveInit_Mai_ChoHissatsuShinobibachi, MoveInit_Mai_HishoRyuEnJin
+	mMvIn_ChkEasyDir MoveInit_Mai_KaChoSen, MoveInit_Mai_HishoRyuEnJin, MoveInit_Mai_ChijouMusasabiMai, MoveInit_Mai_HissatsuShinobibachi, MoveInit_Mai_RyuEnBu, MoveInit_Mai_ChoHissatsuShinobibachi, MoveInputReader_Mai_NoMove
 	mMvIn_ChkGA Mai, .chkPunch, .chkKick
 .chkPunch:
 	; FDB+P -> Chijou Musasabi no Mai 
@@ -3230,7 +3145,7 @@ MoveInputReader_Athena:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasy MoveInit_Athena_ShCrystGround, MoveInit_Athena_PsychoReflector
+	mMvIn_ChkEasyDir MoveInit_Athena_PsychoTeleport, MoveInit_Athena_PsychoSword, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoReflector, MoveInit_Athena_PsychoBall, MoveInputReader_Athena_NoMove, MoveInit_Athena_ShCrystGround
 	mMvIn_ChkGA Athena, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -5899,7 +5814,7 @@ MoveInputReader_Andy:
 	
 .chkGround:
 	;             SELECT + B                 SELECT + A
-	mMvIn_ChkEasy MoveInit_Andy_ChoReppaDan, MoveInit_Andy_HiShoKen
+	mMvIn_ChkEasyDir MoveInit_Andy_ZanEiKen, MoveInit_Andy_ShoRyuDan, MoveInit_Andy_KuHaDan, MoveInit_Andy_GekiHekiHaiSuiSho, MoveInit_Andy_HiShoKen, MoveInit_Andy_ChoReppaDan, MoveInputReader_Andy_NoMove
 	mMvIn_ChkGA Andy, .chkPunch, .chkKick
 
 .chkPunch:
@@ -6653,7 +6568,7 @@ MoveInputReader_MrBig:
 	
 .chkGround:
 	;             SELECT + B                               SELECT + A
-	mMvIn_ChkEasy MoveInit_MrBig_BlasterWave, MoveInit_MrBig_DrumShot
+	mMvIn_ChkEasyDir MoveInit_MrBig_GroundBlaster, MoveInit_MrBig_CaliforniaRomance, MoveInit_MrBig_CrossDiving, MoveInit_MrBig_SpinningLancer, MoveInit_MrBig_DrumShot, MoveInit_MrBig_BlasterWave, MoveInputReader_MrBig_NoMove
 	mMvIn_ChkGA MrBig, .chkPunch, .chkKick
 .chkPunch:
 	; DFDF+P -> Blaster Wave
@@ -7301,7 +7216,7 @@ MoveInputReader_Geese:
 	
 .chkGround:
 	;             SELECT + B                  SELECT + A
-	mMvIn_ChkEasy MoveInit_Geese_RagingStorm, MoveInit_Geese_AtemiNage
+	mMvIn_ChkEasyDir MoveInit_Geese_Reppuken, MoveInit_Geese_HishouNichirinZan, MoveInit_Geese_JaEiKen, MoveInit_Geese_AtemiNage, MoveInit_Geese_AtemiNage, MoveInit_Geese_RagingStorm, MoveInputReader_Geese_NoMove
 	mMvIn_ChkGA Geese, .chkPunch, .chkKick
 .chkPunch:
 	mMvIn_ValSuper .chkPunchNoSuper
@@ -8159,7 +8074,7 @@ ENDC
 ; =============== END OF BANK ===============
 ; Junk area with broken copies of the above subroutines.
 IF !REV_VER_2
-	mIncJunk "L067E72"
+	mIncJunkFrom "L067E72", $62
 ELSE
 	mIncJunk "L067FEA"
 ENDC

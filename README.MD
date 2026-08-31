@@ -13,6 +13,102 @@ To assemble, run one of the included batch scripts:
 - **build-en.cmd** for the English version. To verify this, provide a ROM named "*King of Fighters, The - Heat of Battle (Europe) (SGB Enhanced).gb*" as "*original_en.gb*". `sha1: 1B5AC034B1333B3340FBDC5C128BC12ABD310043`
 - **build-nojunk.cmd** for a version of the game without padding areas. Currently, it builds a Japanese-language version running on the English version's engine.
 
+On Unix-like systems, enter the pinned RGBDS 0.7.0 environment and use the
+Makefile. `make` defaults to the Japanese mixed-roster build:
+
+```sh
+nix-shell
+make             # same as make jp
+make en
+make all
+make clean
+```
+
+`make jp` and `make en` place all generated files under
+`build/<variant>/`. Every build creates the ROM, object file, map, symbols,
+`README.txt`, `SHA256SUMS`, and a ZIP containing the ROM and its two metadata
+files. The portable script remains available as `./build.sh jp|en` and
+also packages a ZIP by default.
+
+GitHub Actions also builds the modified ROM on every push and pull request.
+Run **Build modified ROM** manually from the Actions page when needed, then
+download the `kof96-mixkof-jp` artifact. It contains the `.gb` file,
+`SHA256SUMS`, and the ready-to-use ZIP package.
+
+## Modified Japanese build
+
+The mixed-roster development branch uses an MBC5 cartridge header and a 1 MiB
+ROM image. Banks `$20-$3F` are reserved for imported character code, animation
+tables, sprite mappings, graphics, portraits, and expanded selection-screen
+assets.
+
+The KOF95 source reference is pinned to Kak2X/kof95 commit
+`d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08`. With that repository checked out
+next to this one, regenerate the compact 16x24 mixed-roster portraits with:
+
+```sh
+python3 tools/build_mixkof_portraits.py
+```
+
+The first KOF95 gameplay import (Kim) is regenerated from the pinned sibling
+checkout without editing its source assets:
+
+```sh
+python3 tools/import_kof95_kim.py
+```
+
+Benimaru, Yuri, Joe, Heidern, and Ralf are imported as playable fighters by
+the batch converter, which also converts their 95 icon tile order and emits
+96-compatible move tables while leaving the vendor artwork untouched. Ralf's
+larger graphics set is split across two dedicated graphics banks:
+
+```sh
+python3 tools/import_kof95_batch.py
+```
+
+The Japanese configuration builds a gameplay-options edition with all hidden
+fighters unlocked by default. The OPTION screen exposes POWER UP, EASY MOVE,
+SUP CANCEL, TEAM DUPL, HIDDEN CHR, and SGB TEST toggles alongside the original
+time, difficulty, BGM, and SFX settings. HIDDEN CHR controls both the boss and
+extra character unlock flags. Punch and kick strength uses the original
+tap/hold logic, including for CPU-controlled fighters.
+
+POWER UP matches the original logo cheat by enabling both meter power-up and
+duplicate-team DIP flags when switched on; TEAM DUPL may then be adjusted
+independently. Directional EASY MOVE shortcuts request heavy moves, so moves
+with hidden-heavy variants select them at maximum POW.
+
+SGB TEST can be toggled on any system. On Super Game Boy hardware, enable it
+with Right and press A to enter the original SGB sound editor.
+
+SUP CANCEL defaults to `N`. When enabled, a special or super may cancel into
+another legal special or super only while the logical POW meter is full, after
+its visible attack animation has finished, and once both attack hitboxes are
+gone. The full-POW check itself does not consume meter; the target move keeps
+its ordinary meter behavior. Every non-zero damage component of the
+cancelled-into move, including later hits and projectiles, becomes
+`max(1, floor(original / 3))`. Each chained Super Cancel requires full POW
+again and scales the new move from its own original damage.
+
+With EASY MOVE enabled, neutral ground `SELECT` is reserved and does nothing.
+Ground `SELECT+A` charges POW and `SELECT+B` taunts. Forward, down-forward,
+down, down-back, or back plus `SELECT` chooses one of five character-specific
+specials whose placement follows the original motion where possible. Release
+`SELECT` before 6 frames for the light version, or hold it for 6 frames for the
+heavy version. Completing a down-forward or down-back motion and then pressing
+`SELECT` takes priority over those five shortcuts and starts the fighter's
+super whose original command ends in that direction; the same 6-frame hold
+selects its light or heavy version. Existing airborne `SELECT+A/B` shortcuts
+remain available with the same tap/hold strength selection. Forward or back
+plus a newly pressed A/B also emits the corresponding heavy normal immediately.
+
+Kyo's Ara Kami and Doku Kami follow-ups use buffered physical A/B presses, with
+no directional input required. After Ara Kami, A starts Yano Sabi and B starts
+Kono Kizu; their following stages continue to use A/B for the distinct routes.
+After Doku Kami, A starts Tumi Yomi while B goes directly to Batu Yomi, and
+either button can continue from Tumi Yomi into Batu Yomi. A consumed press is
+cleared between stages so holding a button cannot automatically run the chain.
+
 ## 
 Once again, thanks to lazigamer for the debug emulator used to generate the initial CDL.
 ## 

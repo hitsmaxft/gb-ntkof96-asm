@@ -24,9 +24,172 @@ BGXDef_Play_HUD_CharName_MrKarate: mBinDef "data/bg/play_hud_charname_mrkarate.b
 BGXDef_Play_HUD_CharName_OIori: mBinDef "data/bg/play_hud_charname_oiori.bin"
 BGXDef_Play_HUD_CharName_OLeona: mBinDef "data/bg/play_hud_charname_oleona.bin"
 BGXDef_Play_HUD_CharName_Kagura: mBinDef "data/bg/play_hud_charname_kagura.bin"
+; Reuse resident glyphs: K from KRAUSER, I from IORI, M from MAI.
+BGXDef_Play_HUD_CharName_Kim:
+	db $03, $33, $25, $23
+; Recompose resident HUD glyphs. The HUD has room for six tiles, so BENIMARU is
+; shown as BENIMA there; the selector keeps the full name.
+BGXDef_Play_HUD_CharName_Benimaru:
+	db $06, $16, $17, $0D, $27, $23, $24
+BGXDef_Play_HUD_CharName_Yuri:
+	db $04, $02, $37, $13, $27
+; The shared HUD sheet has no J/F glyph; selector names remain exact.
+BGXDef_Play_HUD_CharName_Joe:
+	db $03, $25, $15, $17 ; "IOE"
+BGXDef_Play_HUD_CharName_Heidern:
+	db $06, $20, $21, $06, $03, $21, $13 ; "HEIDER"
+BGXDef_Play_HUD_CharName_Ralf:
+	db $03, $13, $24, $1A ; "RAL"
+; Recompose KENSOU from resident glyphs (KRAUSER/GEESE/ANDY/ROBERT).
+BGXDef_Play_HUD_CharName_Kensou:
+	db $06, $33, $2B, $0D, $2F, $15, $37
+; The resident HUD sheet has no J glyph; the selector still prints EIJI.
+BGXDef_Play_HUD_CharName_Eiji:
+	db $04, $17, $25, $25, $25 ; "EIII"
+; Recompose BILLY from resident BENIMARU/IORI/RALF/YURI glyphs.
+BGXDef_Play_HUD_CharName_Billy:
+	db $05, $16, $25, $1A, $1A, $02
+; Recompose SAISYU from resident KRAUSER/IORI/KYO glyphs.
+BGXDef_Play_HUD_CharName_Saisyu:
+	db $06, $3A, $36, $25, $3A, $02, $37
+BGXDef_Play_HUD_CharName_Rugal:
+	db $05, $13, $37, $3F, $24, $1A
+; The HUD is six tiles wide; the selector keeps the full NAKORURU spelling.
+BGXDef_Play_HUD_CharName_Nakoruru:
+	db $06, $1F, $24, $33, $15, $13, $37
 
-GFX_Char_Icons: INCBIN "data/gfx/char_icons.bin"
+; Indexed by (CHAR_ID-CHAR_ID_KIM). Keep imported HUD descriptors here so
+; ROM0 does not grow two bytes for every migrated fighter.
+MixKOF_HUDImportedNamePtrTable:
+	dw BGXDef_Play_HUD_CharName_Kim
+	dw BGXDef_Play_HUD_CharName_Benimaru
+	dw BGXDef_Play_HUD_CharName_Yuri
+	dw BGXDef_Play_HUD_CharName_Joe
+	dw BGXDef_Play_HUD_CharName_Heidern
+	dw BGXDef_Play_HUD_CharName_Ralf
+	dw BGXDef_Play_HUD_CharName_Kensou
+	dw BGXDef_Play_HUD_CharName_Eiji
+	dw BGXDef_Play_HUD_CharName_Billy
+	dw BGXDef_Play_HUD_CharName_Saisyu
+	dw BGXDef_Play_HUD_CharName_Rugal
+	dw BGXDef_Play_HUD_CharName_Nakoruru
+	dw BGXDef_Play_HUD_CharName_Kyo
+	dw BGXDef_Play_HUD_CharName_Ryo
+	dw BGXDef_Play_HUD_CharName_Terry
+	dw BGXDef_Play_HUD_CharName_Athena
+	dw BGXDef_Play_HUD_CharName_Mai
+	dw BGXDef_Play_HUD_CharName_Iori
+
+; Compact 4x5, two characters per tile: "AB MENU". It is placed directly
+; below the original per-player PAUSE label, never on the bottom POW/MAX row.
+GFX_Play_PauseABMenu:
+	db $00,$00, $4C,$4C, $AA,$AA, $EC,$EC, $AA,$AA, $AC,$AC, $00,$00, $00,$00 ; AB
+	db $00,$00, $0A,$0A, $0E,$0E, $0E,$0E, $0A,$0A, $0A,$0A, $00,$00, $00,$00 ; _M
+	db $00,$00, $EA,$EA, $8E,$8E, $CE,$CE, $8E,$8E, $EA,$EA, $00,$00, $00,$00 ; EN
+	db $00,$00, $A0,$A0, $A0,$A0, $A0,$A0, $A0,$A0, $E0,$E0, $00,$00, $00,$00 ; U_
+GFX_Play_PauseABMenu.end:
+	ASSERT GFX_Play_PauseABMenu.end-GFX_Play_PauseABMenu == $40
+
+; Keep the original per-player PAUSE placement without consuming bank01's
+; exhausted ROM space. Tile IDs $F9-$FB are the resident PAUSE graphics;
+; $FC-$FF hold the compact A+B menu hint while paused.
+MixKOF_DrawPauseOriginal:
+	ld   hl, GFX_Play_PauseABMenu
+	ld   de, $8FC0
+	ld   b, $04
+	call CopyTiles
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .bg2P
+	ld   hl, vBGPause1P
+	jr   .draw
+.bg2P:
+	ld   hl, vBGPause2P
+.draw:
+	ld   b, $03
+	ld   a, $F9
+.loop:
+	push af
+	di
+	mWaitForVBlankOrHBlank
+	pop  af
+	ldi  [hl], a
+	ei
+	inc  a
+	dec  b
+	jr   nz, .loop
+	; Draw "AB MENU" one tile row below PAUSE, preserving the stage BG.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .hint2P
+	ld   hl, vBGPause1P+$20
+	jr   .hintPosReady
+.hint2P:
+	ld   hl, vBGPause2P+$20
+.hintPosReady:
+	ld   de, .hintTileIds
+	ld   bc, wPlayPauseHintBGBackup
+.hintLoop:
+	di
+	mWaitForVBlankOrHBlank
+	ld   a, [hl]
+	ld   [bc], a
+	inc  bc
+	ld   a, [de]
+	inc  de
+	ldi  [hl], a
+	ei
+	ld   a, c
+	cp   LOW(wPlayPauseHintBGBackup)+$04
+	jr   c, .hintLoop
+	ret
+.hintTileIds:
+	db $FC,$FD,$FE,$FF
+
+MixKOF_ClearPauseOriginal:
+	; Restore the four stage tiles hidden by the hint.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .hint2P
+	ld   hl, vBGPause1P+$20
+	jr   .hintPosReady
+.hint2P:
+	ld   hl, vBGPause2P+$20
+.hintPosReady:
+	ld   bc, wPlayPauseHintBGBackup
+.hintLoop:
+	di
+	mWaitForVBlankOrHBlank
+	ld   a, [bc]
+	inc  bc
+	ldi  [hl], a
+	ei
+	ld   a, c
+	cp   LOW(wPlayPauseHintBGBackup)+$04
+	jr   c, .hintLoop
+	; Clear the original PAUSE label.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .bg2P
+	ld   hl, vBGPause1P
+	jr   .clear
+.bg2P:
+	ld   hl, vBGPause2P
+.clear:
+	ld   b, $03
+.loop:
+	di
+	mWaitForVBlankOrHBlank
+	xor  a
+	ldi  [hl], a
+	ei
+	dec  b
+	jr   nz, .loop
+	ret
+
+; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"
+
 BG_Play_HUD_Time: INCBIN "data/bg/play_hud_time.bin"
 BG_Play_HUD_HealthBarL: INCBIN "data/bg/play_hud_healthbarl.bin"
 BG_Play_HUD_HealthBarR: INCBIN "data/bg/play_hud_healthbarr.bin"
@@ -5126,7 +5289,228 @@ ENDC
 IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
-	mIncJunk "L1D7D66"
+OptionHack_Bank1D_Start:
+Play_Pl_ClearRoundInput_Banked:
+	ld   bc, wPlInfo_Pl1
+	call .one
+	ld   bc, wPlInfo_Pl2
+.one:
+	call Play_Pl_ClearJoyDirBuffer
+	call Play_Pl_ClearJoyBtnBuffer
+	xor  a
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   [hl], a
+	ld   hl, iPlInfo_JoyKeysLH
+	add  hl, bc
+	ld   b, iPlInfo_JoyBtnBufferOffset-iPlInfo_JoyKeysLH+1
+.loop:
+	ldi  [hl], a
+	dec  b
+	jr   nz, .loop
+	ret
+
+Play_EasyMove_ForceDirectionalHeavy_Banked:
+	ld   a, [wDipSwitch]
+	bit  DIPB_EASY_MOVES, a
+	ret  z
+	ld   bc, wPlInfo_Pl1
+	call .one
+	ld   bc, wPlInfo_Pl2
+.one:
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	ld   a, [hl]
+	and  KEY_RIGHT|KEY_LEFT|KEY_UP|KEY_DOWN
+	cp   KEY_LEFT
+	jr   z, .horizontal
+	cp   KEY_RIGHT
+	ret  nz
+.horizontal:
+	dec  hl
+	ld   d, [hl]
+	inc  hl
+	inc  hl
+	bit  KEYB_A, d
+	jr   z, .b
+	set  KEPB_A_HEAVY, [hl]
+	push hl
+		ld   hl, iPlInfo_JoyHeavyCountA
+		add  hl, bc
+		ld   [hl], $00
+	pop  hl
+.b:
+	bit  KEYB_B, d
+	ret  z
+	set  KEPB_B_HEAVY, [hl]
+	ld   hl, iPlInfo_JoyHeavyCountB
+	add  hl, bc
+	ld   [hl], $00
+	ret
+
+; OUT: A = 0 none, 1 SELECT+B, 2 SELECT+A, 3 F, 4 DF, 5 D,
+;          6 DB, 7 B, 8 completed DF+SELECT, 9 completed DB+SELECT.
+MoveInputS_CheckEasyMoveTapKeys_Banked:
+	ld   a, [wDipSwitch]
+	bit  DIPB_EASY_MOVES, a
+	jp   z, .none
+
+	ld   hl, iPlInfo_JoyKeys
+	add  hl, bc
+	bit  KEYB_SELECT, [hl]
+	jp   z, .released
+
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	inc  a
+	jp   z, .none
+	dec  a
+	jp   nz, .held
+
+	; Explicit neutral chords are actions, not strength-selecting specials.
+	push hl
+		ld   hl, iPlInfo_JoyKeys
+		add  hl, bc
+		bit  KEYB_B, [hl]
+		jr   nz, .selectB
+		bit  KEYB_A, [hl]
+		jr   nz, .selectA
+		bit  0, d
+		jr   z, .noRoute
+
+		; A completed simplified motion takes priority over the held direction.
+		ld   hl, MoveInput_DF
+		call MoveInputS_ChkInputDir
+		jr   c, .superDF
+		ld   hl, MoveInput_DB
+		call MoveInputS_ChkInputDir
+		jr   c, .superDB
+
+		; MoveInputS_DispatchEasyMoveDir uses D as its ground/air flag, so DE no
+		; longer points at this player's OBJInfo here. Read the held direction
+		; directly and normalize it with the player's internal facing flag.
+		; This also avoids a one-frame dependency on the visible sprite flip.
+		ld   hl, iPlInfo_JoyKeys
+		add  hl, bc
+		ld   a, [hl]
+		and  KEY_RIGHT|KEY_LEFT|KEY_UP|KEY_DOWN
+		push af
+			ld   hl, iPlInfo_PlId
+			add  hl, bc
+			bit  0, [hl]
+			ld   hl, wOBJInfo_Pl1+iOBJInfo_OBJLstFlags
+			jr   z, .gotFacingPtr
+			ld   hl, wOBJInfo_Pl2+iOBJInfo_OBJLstFlags
+		.gotFacingPtr:
+			bit  SPRXB_PLDIR_R, [hl]
+			jr   z, .facingLeft
+		pop  af
+		jr   .gotRelativeDir
+	.facingLeft:
+		pop  af
+		xor  KEY_RIGHT|KEY_LEFT
+	.gotRelativeDir:
+		ld   d, a
+		and  KEY_DOWN|KEY_RIGHT
+		cp   KEY_DOWN|KEY_RIGHT
+		jr   z, .downForward
+		ld   a, d
+		and  KEY_DOWN|KEY_LEFT
+		cp   KEY_DOWN|KEY_LEFT
+		jr   z, .downBack
+		bit  KEYB_DOWN, d
+		jr   nz, .down
+		bit  KEYB_RIGHT, d
+		jr   nz, .forward
+		bit  KEYB_LEFT, d
+		jr   nz, .back
+.noRoute:
+	pop  hl
+	jr   .none
+
+.selectB:
+	bit  0, d
+	jr   z, .selectBTimed
+	pop  hl
+	ld   [hl], $FF
+	ld   a, $01
+	ret
+.selectBTimed:
+	ld   a, $16
+	jr   .storeRoute
+.selectA:
+	bit  0, d
+	jr   z, .selectATimed
+	pop  hl
+	ld   [hl], $FF
+	ld   a, $02
+	ret
+.selectATimed:
+	ld   a, $26
+	jr   .storeRoute
+.forward:
+	ld   a, $36
+	jr   .storeRoute
+.downForward:
+	ld   a, $46
+	jr   .storeRoute
+.down:
+	ld   a, $56
+	jr   .storeRoute
+.downBack:
+	ld   a, $66
+	jr   .storeRoute
+.back:
+	ld   a, $76
+	jr   .storeRoute
+.superDF:
+	ld   a, $86
+	jr   .storeRoute
+.superDB:
+	ld   a, $96
+.storeRoute:
+	pop  hl
+	ld   [hl], a
+
+.held:
+	dec  [hl]
+	ld   a, [hl]
+	and  $0F
+	jr   nz, .none
+	ld   a, [hl]
+	ld   [hl], $FF
+	push af
+		ld   hl, iPlInfo_Flags2
+		add  hl, bc
+		set  PF2B_HEAVY, [hl]
+	pop  af
+	jr   .route
+
+.released:
+	ld   hl, iPlInfo_EasyMoveSelectState
+	add  hl, bc
+	ld   a, [hl]
+	ld   [hl], $00
+	or   a
+	jr   z, .none
+	cp   $FF
+	jr   z, .none
+	push af
+		ld   hl, iPlInfo_Flags2
+		add  hl, bc
+		res  PF2B_HEAVY, [hl]
+	pop  af
+.route:
+	swap a
+	and  $0F
+	ret
+.none:
+	xor  a
+	ret
+OptionHack_Bank1D_End:
+	ASSERT OptionHack_Bank1D_End <= $8000, "bank1D option hack exceeds Japanese padding"
+	mIncJunkFrom "L1D7D66", OptionHack_Bank1D_End-OptionHack_Bank1D_Start
 ELSE
 	mIncJunk "L1D7FD8"
 ENDC

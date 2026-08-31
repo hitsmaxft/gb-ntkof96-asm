@@ -117,39 +117,32 @@ ENDC
 	call TextPrinter_Instant
 	ld   hl, TextDef_Menu_TeamVS
 	call TextPrinter_Instant
+	ld   b, BANK(Title_DrawTrainingText)
+	ld   hl, Title_DrawTrainingText
+	rst  $08
 	ld   hl, TextDef_Options_Title
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_Time
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_Level
 	call TextPrinter_Instant
+	ld   hl, TextDef_Options_Powerup
+	call TextPrinter_Instant
+	ld   hl, TextDef_Options_EasyMoves
+	call TextPrinter_Instant
+	ld   hl, TextDef_Options_SuperCancel
+	call TextPrinter_Instant
+	ld   hl, TextDef_Options_TeamDupl
+	call TextPrinter_Instant
+	ld   hl, TextDef_Options_HiddenChars
+	call TextPrinter_Instant
 	ld   hl, TextDef_Options_BGMTest
 	call TextPrinter_Instant
 	ld   hl, TextDef_Options_SFXTest
 	call TextPrinter_Instant
-	ld   hl, TextDef_Options_Exit
-	call TextPrinter_Instant
-	
-	; If dip switches are set, display the dip value and any extra options
-	ld   a, [wDipSwitch]
-	or   a						; Any dip switch set?
-	jp   z, .noDip				; If not, skip
-	ld   hl, TextDef_Options_Dip
-	call TextPrinter_Instant
-.noDip:
-	; Print text for SGB sound test
-	ld   a, [wMisc_C025]
-	bit  MISCB_IS_SGB, a		; Running on a SGB?
-	jp   z, .initOBJ			; If not, skip
-	ld   a, [wDipSwitch]
-	bit  DIPB_SGB_SOUND_TEST, a	; SGB sound test enabled?
-	jp   z, .initOBJ			; If not, skip
-	
 	ld   hl, TextDef_Options_SGBSndTest
 	call TextPrinter_Instant
-	ld   hl, TextDef_Options_SGBSndTypes
-	call TextPrinter_Instant
-	ld   hl, TextDef_Options_SGBSndPlaceholders
+	ld   hl, TextDef_Options_Exit
 	call TextPrinter_Instant
 .initOBJ:
 	;
@@ -418,6 +411,7 @@ Title_Mode_TitleMenu:
 	; Start over SINGLE PLAY
 	ld   a, $00
 	ld   [wTitleSubMenuOptId], a
+	ld   [wTrainingMode], a
 	
 	; Next mode
 	ld   a, GM_TITLE_MODESELECT
@@ -485,10 +479,9 @@ Title_Mode_TitleMenu:
 	; Print the current option values
 	call Options_PrintMatchTime
 	call Options_PrintDifficulty
+	call Options_PrintDIPs
 	call Options_PrintBGMId
 	call Options_PrintSFXId
-	call Options_PrintSGBSndTestVals
-	call Options_PrintDipSwitch
 .initMenu:
 
 	;
@@ -633,6 +626,8 @@ Title_Mode_ModeSelect:
 	jp   z, .singleVS
 	cp   MODESELECT_ACT_TEAMVS
 	jp   z, .teamVS
+	cp   MODESELECT_ACT_TRAINING
+	jp   z, .training
 	ret ; We never get here
 .checkOtherPl:
 	; Check if the other player (over serial only) sent us a mode id value.
@@ -651,6 +646,13 @@ Title_Mode_ModeSelect:
 	jp   ModeSelect_PrepSingle
 .team1P:
 	ld   a, MODE_TEAM1P
+	ld   [wPlayMode], a
+	jp   ModeSelect_PrepSingle
+
+.training:
+	ld   hl, wTrainingMode
+	inc  [hl]
+	xor  a ; MODE_SINGLE1P
 	ld   [wPlayMode], a
 	jp   ModeSelect_PrepSingle
 	
@@ -767,7 +769,9 @@ ModeSelect_Unused_PrepVSCPU:
 ENDC
 	
 ModeSelect_SwitchToCharSelect:
-	call ModeSelect_CheckCPUvsCPU
+	ld   b, BANK(ModeSelect_CheckCPUvsCPU)
+	ld   hl, ModeSelect_CheckCPUvsCPU
+	rst  $08
 	
 	; Initialize character select vars
 	ld   a, $00
@@ -840,16 +844,20 @@ ModeSelect_DoCtrl:
 .moveU:
 	; Move cursor up, and wrap around
 	ld   a, [wTitleSubMenuOptId]
-	dec  a
-	and  a, $03
+	sub  a, $01
+	jr   nc, .savePos
+	ld   a, $04
+.savePos:
 	ld   [wTitleSubMenuOptId], a
 	jp   .setYPos
 .moveD:
 	; Move cursor down, and wrap around
 	ld   a, [wTitleSubMenuOptId]
 	inc  a
-	and  a, $03
-	ld   [wTitleSubMenuOptId], a
+	cp   $05
+	jr   c, .savePos
+	xor  a
+	jr   .savePos
 .setYPos:
 	; Set the cursor's Y position (Y = wTitleSubMenuOptId * 10) and show it, even if for a single frame
 	; See also: SetCursorYPos on Options_DoCtrl
@@ -894,6 +902,11 @@ Title_Mode_Options:
 .targetPtrs:
 	dw Options_Item_Time
 	dw Options_Item_Level
+	dw Options_Item_DIP
+	dw Options_Item_DIP
+	dw Options_Item_DIP
+	dw Options_Item_DIP
+	dw Options_Item_DIP
 	dw Options_Item_BGMTest
 	dw Options_Item_SFXTest
 	dw Options_Item_SGBSndTest
@@ -1031,16 +1044,121 @@ Options_PrintDifficulty:
 	jp   z, .hard
 .easy:
 	ld   hl, TextDef_Options_Easy
-	call TextPrinter_Instant
-	ret
+	jp   TextPrinter_Instant
 .normal:
 	ld   hl, TextDef_Options_Normal
-	call TextPrinter_Instant
-	ret
+	jp   TextPrinter_Instant
 .hard:
 	ld   hl, TextDef_Options_Hard
-	call TextPrinter_Instant
+	jp   TextPrinter_Instant
+
+; =============== Selectable DIP options ===============
+; POWER UP, EASY MOVE, SUP CANCEL, TEAM DUPL and HIDDEN CHR share this handler.
+Options_Item_DIP:
+	call Title_BlinkCursorR
+	call Options_DoCtrl
+	ret  nc
+	cp   OPTIONS_ACT_EXIT
+	jp   z, TitleSubMenu_Exit
+	push af
+		call Options_GetDIPInfo
+	pop  af
+	cp   OPTIONS_ACT_L
+	jr   z, .clear
+	cp   OPTIONS_ACT_R
+	jr   z, .set
+	cp   OPTIONS_ACT_A
+	jr   z, .toggle
 	ret
+.toggle:
+	ld   a, [wDipSwitch]
+	and  c
+	cp   c
+	jr   z, .clear
+.set:
+	ld   a, [wDipSwitch]
+	or   c
+	ld   b, a
+	ld   a, c
+	cp   1 << DIPB_POWERUP
+	ld   a, b
+	jr   nz, .save
+	; The original POWER UP logo cheat also enables duplicate teams.
+	or   1 << DIPB_TEAM_DUPL
+	jr   .save
+.clear:
+	ld   a, c
+	cpl
+	ld   b, a
+	ld   a, [wDipSwitch]
+	and  b
+.save:
+	ld   [wDipSwitch], a
+	jp   Options_PrintDIPs
+
+; OUT: C = DIP mask, DE = value's tilemap destination.
+Options_GetDIPInfo:
+	ld   a, [wTitleSubMenuOptId]
+	sub  OPTION_ITEM_POWERUP
+	ld   e, a
+	add  a
+	add  e
+	ld   e, a
+	ld   d, $00
+	ld   hl, Options_DIPInfo
+	add  hl, de
+	ld   c, [hl]
+	inc  hl
+	ld   e, [hl]
+	inc  hl
+	ld   d, [hl]
+	ret
+
+Options_PrintDIPs:
+	ld   hl, Options_DIPInfo
+	ld   b, (Options_DIPInfo.end-Options_DIPInfo)/$03
+.loop:
+	ld   c, [hl]
+	inc  hl
+	ld   e, [hl]
+	inc  hl
+	ld   d, [hl]
+	inc  hl
+	push bc
+		push hl
+			call Options_PrintDIP
+		pop  hl
+	pop  bc
+	dec  b
+	jr   nz, .loop
+	ret
+
+; IN: C = DIP mask, DE = value's tilemap destination.
+Options_PrintDIP:
+	ld   hl, Text_Options_DIPOff
+	ld   a, [wDipSwitch]
+	and  c
+	cp   c
+	jr   nz, .print
+	inc  hl
+	inc  hl
+.print:
+	jp   TextPrinter_Instant_CustomPos
+
+Options_DIPInfo:
+	db 1 << DIPB_POWERUP
+	dw $993F
+	db 1 << DIPB_EASY_MOVES
+	dw $995F
+	db 1 << DIPB_SUPER_CANCEL
+	dw $997F
+	db 1 << DIPB_TEAM_DUPL
+	dw $999F
+	db (1 << DIPB_UNLOCK_BOSS) | (1 << DIPB_UNLOCK_OTHER)
+	dw $99BF
+	db 1 << DIPB_SGB_SOUND_TEST
+	dw $9A1F
+.end:
 	
 ; =============== Options_Item_BGMTest ===============	
 Options_Item_BGMTest:
@@ -1107,7 +1225,7 @@ Options_BGMIdMapTbl:
 Options_PrintBGMId:
 	ld   a, [wOptionsBGMId]		; A = wOptionsBGMId+1
 	inc  a
-	ld   de, $997E				; DE = Location
+	ld   de, $99DE				; DE = Location
 	ld   c, $00					; C = Tile ID base
 	call NumberPrinter_Instant
 	ret
@@ -1188,7 +1306,7 @@ Options_SFXIdMapTbl:
 Options_PrintSFXId:
 	ld   a, [wOptionsSFXId]		; A = wOptionsSFXId+1
 	inc  a
-	ld   de, $99BE
+	ld   de, $99FE
 	ld   c, $00
 	call NumberPrinter_Instant
 	ret
@@ -1223,11 +1341,36 @@ SGBSndTest_Hover:
 	ret  nc
 	cp   a, OPTIONS_ACT_EXIT
 	jp   z, TitleSubMenu_Exit
+	cp   a, OPTIONS_ACT_L
+	jr   z, .disable
 	cp   a, OPTIONS_ACT_R
-	jp   z, .enterSubMenu
+	jr   z, .enable
+	cp   a, OPTIONS_ACT_A
+	jr   z, .enterSubMenu
 	ret 
+
+.disable:
+	ld   hl, wDipSwitch
+	res  DIPB_SGB_SOUND_TEST, [hl]
+	jp   Options_PrintDIPs
+.enable:
+	ld   hl, wDipSwitch
+	set  DIPB_SGB_SOUND_TEST, [hl]
+	jp   Options_PrintDIPs
 	
 .enterSubMenu:
+	; The SGB sound editor itself is meaningful only on real SGB hardware.
+	ld   a, [wMisc_C025]
+	bit  MISCB_IS_SGB, a
+	ret  z
+	ld   a, [wDipSwitch]
+	bit  DIPB_SGB_SOUND_TEST, a
+	ret  z
+	ld   hl, TextDef_Options_SGBSndTypes
+	call TextPrinter_Instant
+	ld   hl, TextDef_Options_SGBSndPlaceholders
+	call TextPrinter_Instant
+	call Options_PrintSGBSndTestVals
 	; Start on leftmost option
 	ld   a, $00
 	ld   [wOptionsSGBSndOptId], a
@@ -1429,20 +1572,6 @@ Options_PrintSGBSndTestVals:
 .ret:
 	ret 
 	
-; =============== Options_PrintDipSwitch ===============
-; Prints the current dip switch value.
-Options_PrintDipSwitch:
-	; Don't reveal the feature if no dipswitches are enabled.
-	ld   a, [wDipSwitch]
-	or   a					; wDipSwitch == 0?
-	jp   z, .ret			; If so, return
-.ok:
-	ld   de, $9ABE
-	ld   c, $00
-	call NumberPrinter_Instant
-.ret:
-	ret
-	
 ; =============== Options_DoCtrl ===============
 ; Checks for player input in the options menu.
 ; OUT
@@ -1481,25 +1610,9 @@ Options_DoCtrl_MoveU:
 	;
 	ld   a, [wTitleSubMenuOptId]
 	or   a							; Are we over the highest option? (OPTION_ITEM_TIME)
-	jp   nz, .chkOpen				; If not, jump
+	jr   nz, .moveUp				; If not, jump
 	ld   a, OPTION_ITEM_EXIT		; Otherwise, wrap around
-	jp   .end
-.chkOpen:
-	;
-	; Skip the SGB sound test option if it's disabled
-	;
-	ld   hl, wMisc_C025
-	bit  MISCB_IS_SGB, [hl]			; Are we in SGB mode?
-	jp   z, .noSGBTest				; If not, jump
-	ld   hl, wDipSwitch
-	bit  DIPB_SGB_SOUND_TEST, [hl]	; Is the SGB sound test enabled?
-	jp   nz, .moveUp				; If so, we can always move up
-.noSGBTest:
-	; If we got here there's no SGB sound test, so skip it
-	cp   OPTION_ITEM_EXIT			; Are we over the EXIT option?
-	jp   nz, .moveUp				; If not, move up
-	ld   a, OPTION_ITEM_SFXTEST		; Otherwise, skip directly to SFX Test
-	jp   .end
+	jr   .end
 .moveUp:
 	dec  a							; Move selected option up		
 .end:
@@ -1513,23 +1626,9 @@ Options_DoCtrl_MoveD:
 	;
 	ld   a, [wTitleSubMenuOptId]
 	cp   OPTION_ITEM_EXIT			; Are we over the lowest option?
-	jp   nz, .chkOpen				; If not, jump
+	jr   nz, .moveDown				; If not, jump
 	ld   a, OPTION_ITEM_TIME		; Otherwise, wrap around
-	jp   .end
-.chkOpen:
-	ld   hl, wMisc_C025
-	bit  MISCB_IS_SGB, [hl]			; Are we in SGB mode?
-	jp   z, .noSGBTest				; If not, jump
-	ld   hl, wDipSwitch
-	bit  DIPB_SGB_SOUND_TEST, [hl]	; Is the SGB sound test enabled?
-	jp   nz, .moveDown				; If so, we can always move down
-.noSGBTest:
-	; If we got here there's no SGB sound test, so skip it
-	cp   OPTION_ITEM_SFXTEST		; Are we over the SFX Test option?
-	jp   nz, .moveDown				; If not, move down
-	ld   a, OPTION_ITEM_EXIT		; Otherwise, skip directly to EXIT
-	jp   Options_DoCtrl_MoveU.end	; (Does the same thing as the line below)
-	jp   .end						; [TCRF] Unreachable duplicate jump
+	jr   .end
 .moveDown:
 	inc  a							; Move selected option down
 .end:
@@ -1544,13 +1643,13 @@ Options_DoCtrl_SetCursorYPos:
 	cp   OPTION_ITEM_EXIT			; Are we now over the EXIT option?
 	jp   nz, .otherY				; If not, jump
 .exitY:
-	ld   a, $68						; Otherwise, Y pos = $68
+	ld   a, $60						; Otherwise, Y pos = $60
 	jp   .setY
 .otherY:
-	; ID trickery.
-	; The menu options (outside of EXIT) are positioned in a way so that:
-	; CursorY = wTitleSubMenuOptId * 4
-	swap a
+	; The compact list uses one tile (8px) per option.
+	add  a
+	add  a
+	add  a
 .setY:
 	ld   [wOBJInfo_CursorR+iOBJInfo_Y], a		; Set the Y cursor
 	ld   hl, wOBJInfo_CursorR+iOBJInfo_Status
@@ -1807,32 +1906,6 @@ TitleScreen_IsStartPressed:
 	ld   a, PL2				; Player 2 pressed it
 	ld   [wJoyActivePl], a
 	scf						; C = 1, pressed
-	ret
-	
-; =============== ModeSelect_CheckCPUvsCPU ===============
-; [POI] Handles the secret where holding B when selecting a mode activates a CPU vs CPU battle.
-ModeSelect_CheckCPUvsCPU:
-
-	; CPU opponents disallowed in VS modes if done through serial.
-	; It's perfectly fine if done through the SGB though.
-	ld   a, [wMisc_C025]
-	bit  MISCB_SERIAL_MODE, a		; Setting up a VS battle?
-	ret  nz							; If so, return
-	
-	; Check both controllers
-.chkPl1:
-	ldh  a, [hJoyKeys]
-	bit  KEYB_B, a					; Holding B on controller 1?
-	jp   z, .chkPl2					; If not, jump
-	ld   hl, wPlInfo_Pl1+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]				; Otherwise, set P1 as CPU
-.chkPl2:
-	ldh  a, [hJoyKeys2]
-	bit  KEYB_B, a					; Holding B on controller 2?
-	jp   z, .ret					; If not, jump
-	ld   hl, wPlInfo_Pl2+iPlInfo_Flags0
-	set  PF0B_CPU, [hl]				; Otherwise, set P2 as CPU
-.ret:
 	ret
 	
 IF REV_VER_2
@@ -2107,44 +2180,12 @@ ModeSelect_MakeStageSeq:
 	dec  b
 	jr   nz, .fillLoop
 	
-	;
-	; Randomize the first 14 opponents (all of the normal ones).
-	; This *does* mean you will always fight both normal and boss Chizuru.
-	;
-	
-	; This is done by going through character *select* portrait IDs from highest allowed to lowest,
-	; and placing that character in a randomly generated slot in wCharSeqTbl.
-	ld   b, $0E				; B = Current CHARSEL_ID_* / Remaining chars
-.getRand:
-	call RandLY				; A = Random opponent slot
-	and  a, $0F				; Filter valid IDs only
-	cp   $0F				; Did we get Kagura's slot? ($0F's character in the sequence)
-	jr   z, .getRand		; If so, reroll again
-	
-	; HL = Ptr to generated slot
-	ld   d, $00				; DE = Current index
-	ld   e, a
-	ld   hl, wCharSeqTbl	; HL = wCharSeqTbl
-	add  hl, de				; Index it
-	
-	; Avoid overwriting already filled slots, which don't have the $FF placeholder anymore
-	ld   a, [hl]			; A = SlotVal
-	cp   $FF				; SlotVal != $FF?
-	jr   nz, .getRand		; If so, reroll
-	
-	; Replace Mr Karate ($0E) with Leona ($11)
-	; The CHARSEL_ID_* values are in the same order as the character select screen from left to right, top to bottom.
-	; Leona is the only character after the hidden ones, as the last one in the lower right corner.
-	ld   a, b					; B = CHARSEL_ID_* value
-	cp   CHARSEL_ID_MRKARATE0	; B == $0E?
-	jr   nz, .setCharId			; If so, skip
-	ld   a, CHARSEL_ID_LEONA
-.setCharId:
-	ld   [hl], a			; Write value
-	dec  b					; CharsLeft--
-	ld   a, b				
-	cp   $FF				; CharsLeft < 0?
-	jp   nz, .getRand		; If not, generate the next one
+	; Fill the 15 normal rounds without repetition from every battle-ready
+	; KOF96/KOF95 portrait. The expanded-bank routine deliberately excludes
+	; bosses and the three portrait-only KOF95 placeholders.
+	ld   b, BANK(MixKOF_MakeStageSeqNormal)
+	ld   hl, MixKOF_MakeStageSeqNormal
+	rst  $08
 	
 	;
 	; Add the 2 bosses and the secret at the end.
@@ -2237,40 +2278,64 @@ TextDef_Options_Time:
 	db "TIME      XX"
 .end:
 TextDef_Options_Level:
-	dw $9934
+	dw $9914
 	db .end-.start
 .start:
 	db "LEVEL NORMAL"
 .end:
-TextDef_Options_BGMTest:
+TextDef_Options_Powerup:
+	dw $9934
+	db .end-.start
+.start:
+	db "POWER UP   N"
+.end:
+TextDef_Options_EasyMoves:
+	dw $9954
+	db .end-.start
+.start:
+	db "EASY MOVE  N"
+.end:
+TextDef_Options_SuperCancel:
 	dw $9974
+	db .end-.start
+.start:
+	db "SUP CANCEL N"
+.end:
+TextDef_Options_TeamDupl:
+	dw $9994
+	db .end-.start
+.start:
+	db "TEAM DUPL  N"
+.end:
+TextDef_Options_HiddenChars:
+	dw $99B4
+	db .end-.start
+.start:
+	db "HIDDEN CHR N"
+.end:
+TextDef_Options_BGMTest:
+	dw $99D4
 	db .end-.start
 .start:
 	db "BGM TEST  XX"
 .end:
 TextDef_Options_SFXTest:
-	dw $99B4
+	dw $99F4
 	db .end-.start
 .start:
 	db "S.E.TEST  XX"
 .end:
 TextDef_Options_SGBSndTest:
-	dw $99F4
+	dw $9A14
 	db .end-.start
 .start:
-	db "SGB S.E.TEST"
+	db "SGB TEST   N"
 .end:
 TextDef_Options_Exit:
-	dw $9A94
+	dw $9A74
 	db .end-.start
 .start:
 	db "EXIT"
-.end:
-TextDef_Options_Dip:
-	dw $9AB8
-	db .end-.start
-.start:
-	db "DIPSW-00"
 .end:
 TextDef_Options_Off:
 	dw $98FD
@@ -2286,23 +2351,27 @@ TextDef_Options_ClrOff:
 	db " "
 .end:
 TextDef_Options_Easy:
-	dw $993A
+	dw $991A
 	db .end-.start
 .start:
 	db "  EASY"
 .end:
 TextDef_Options_Normal:
-	dw $993A
+	dw $991A
 	db .end-.start
 .start:
 	db "NORMAL"
 .end:
 TextDef_Options_Hard:
-	dw $993A
+	dw $991A
 	db .end-.start
 .start:
 	db "  HARD"
 .end:
+Text_Options_DIPOff:
+	db $01, "N"
+Text_Options_DIPOn:
+	db $01, "Y"
 TextDef_Options_SGBSndTypes:
 	dw $9A36
 	db .end-.start
@@ -4457,7 +4526,7 @@ BGLZ_Intro_IoriCutout: INCBIN "data/bg/intro_ioricutout.lzs"
 BGLZ_Intro_KyoCutout: INCBIN "data/bg/intro_kyocutout.lzs"
 BGLZ_Intro_Sun: INCBIN "data/bg/intro_sun.lzs"
 GFXLZ_Intro_IoriRiseOBJ: INCBIN "data/gfx/intro_ioririse_obj.lzc"
-	mIncJunk "L1C6672"
+	; The original single unused padding byte is reclaimed for the expanded menu.
 	
 TextC_Win_Marker:
 IF !REV_LANG_EN
@@ -5602,7 +5671,8 @@ IF !REV_VER_2
 ; =============== END OF BANK ===============
 ; Junk area below.
 ; [TCRF] Contains win screen text from the English version of KOF95.
-	mIncJunk "L1C7F4D"
+	; The expanded options menu reuses $36 bytes of this junk area.
+	mIncJunkFrom "L1C7F4D", $B3
 ELSE
-	mIncJunk "L1C7DCA"
+	mIncJunkFrom "L1C7DCA", $B3
 ENDC
