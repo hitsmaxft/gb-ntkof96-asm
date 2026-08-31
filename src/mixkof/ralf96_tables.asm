@@ -53,8 +53,8 @@ MoveAnimTbl_Ralf96:
 	mMvAnDef OBJLstPtrTable_Ralf_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Ralf_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Ralf_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Ralf_BaribariVulcanPunchS, $30, $01, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
-	mMvAnDef OBJLstPtrTable_Ralf_BaribariVulcanPunchS, $30, $01, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Ralf_BaribariVulcanPunchS, $30, $00, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Ralf_BaribariVulcanPunchS, $30, $00, $0A, HITTYPE_HIT_MID1, PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Ralf_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Ralf_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Ralf_ThrowG, $14, $0A, $00, $00, $00

@@ -1,6 +1,17 @@
 ; KOF96-layout registration tables for the imported KOF95 Kim resources.
 ; The KOF95 engine used different move IDs, so every entry is remapped here.
 
+; Native inputs retain KOF95's 30-frame charge duration. Easy Move routes are
+; dispatched separately and remain immediate.
+MoveInput_Kim95_DU_Charge:
+	db $02
+	db KEY_UP,   KEY_UP,   $01, $14
+	db KEY_DOWN, KEY_DOWN, $1E, $FF
+MoveInput_Kim95_BF_Charge:
+	db $02
+	db KEY_LEFT,  KEY_LEFT,  $01, $14
+	db KEY_RIGHT, KEY_RIGHT, $1E, $FF
+
 MoveAnimTbl_Kim96:
 	db $4C,$00,$00,$00,$00,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Kim_Idle, $0C,$06,$00,$00,$00
@@ -49,8 +60,8 @@ MoveAnimTbl_Kim96:
 	REPT 6
 		mMvAnDef OBJLstPtrTable_Kim_Idle, $00,$01,$00,$00,$00
 	ENDR
-	mMvAnDef OBJLstPtrTable_Kim_HouOuKyaku, $3C,$02,$09,HITTYPE_HIT_MULTI0,PF3_HEAVYHIT|PF3_CONTHIT
-	mMvAnDef OBJLstPtrTable_Kim_HouOuKyaku, $3C,$02,$09,HITTYPE_HIT_MULTI0,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Kim_HouOuKyaku, $3C,$00,$09,HITTYPE_HIT_MULTI0,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Kim_HouOuKyaku, $3C,$00,$09,HITTYPE_HIT_MULTI0,PF3_HEAVYHIT|PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Kim_Idle, $00,$01,$14,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Kim_Idle, $00,$01,$14,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Kim_ThrowG, $08,$0A,$00,$00,$00
@@ -120,16 +131,17 @@ MoveInputReader_Kim96:
 .chkGround:
 	; Hishou Kyaku is an air-only move and must not be dispatched from a ground
 	; shortcut. Keep the five ground directions on legal ground specials:
-	; F/B use the travelling Ryuusei Ranku, DF uses the rising Hien Zan, and
-	; D/DB use Han Getsu Zan. In particular, F and D now select distinct moves.
-	mMvIn_ChkEasyDir MoveInit_Kim_RyuuseiRanku, MoveInit_Kim_HienZan, MoveInit_Kim_HanGetsuZan, MoveInit_Kim_HanGetsuZan, MoveInit_Kim_RyuuseiRanku, MoveInit_Kim_HouOuKyaku, MoveInputReader_Kim96_NoMove
+	; F uses the travelling Ryuusei Ranku, DF uses the rising Hien Zan, and
+	; D/DB/B use the original DB Han Getsu Zan. Kim only has three legal ground
+	; specials, but forward and back must still select different actions.
+	mMvIn_ChkEasyDir MoveInit_Kim_RyuuseiRanku, MoveInit_Kim_HienZan, MoveInit_Kim_HanGetsuZan, MoveInit_Kim_HanGetsuZan, MoveInit_Kim_HanGetsuZan, MoveInit_Kim_HouOuKyaku, MoveInputReader_Kim96_NoMove
 	mMvIn_ChkGA Kim96, MoveInputReader_Kim96_NoMove, .chkKick
 .chkKick:
 	mMvIn_ValSuper .chkGroundNoSuper
 	mMvIn_ChkDir MoveInput_DBDF, MoveInit_Kim_HouOuKyaku
 .chkGroundNoSuper:
-	mMvIn_ChkDir MoveInput_DU_Charge, MoveInit_Kim_HienZan
-	mMvIn_ChkDir MoveInput_BF_Charge, MoveInit_Kim_RyuuseiRanku
+	mMvIn_ChkDir MoveInput_Kim95_DU_Charge, MoveInit_Kim_HienZan
+	mMvIn_ChkDir MoveInput_Kim95_BF_Charge, MoveInit_Kim_RyuuseiRanku
 	mMvIn_ChkDir MoveInput_DB, MoveInit_Kim_HanGetsuZan
 	jp   MoveInputReader_Kim96_NoMove
 

@@ -19,6 +19,7 @@ EXPECTED_KOF95_COMMIT = "d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08"
 TILE_BYTES = 16
 PORTRAIT_24_TILES = 9
 PORTRAIT_16X24_TILES = 6
+ICON_BYTES = 4 * TILE_BYTES
 
 # Visible KOF96 slots followed by the twelve characters unique to KOF95.
 KOF95_UNIQUE_INDICES = (1, 3, 5, 6, 7, 9, 10, 13, 14, 15, 16, 17)
@@ -27,10 +28,29 @@ KOF95_UNIQUE_INDICES = (1, 3, 5, 6, 7, 9, 10, 13, 14, 15, 16, 17)
 # their KOF96 portrait slots when START changes the character version.
 KOF95_SHARED_INDICES = (0, 2, 4, 8, 11, 12)
 
-# Mr. Karate occupies two adjacent 24x24 source blocks in KOF96. The new
-# single-page selector uses only the right block (index 15), so he behaves like
-# every other one-cell portrait without modifying the original 48x24 artwork.
-KOF96_SINGLEPAGE_INDICES = (*range(14), 15, 16, 17)
+# Mr. Karate occupies two adjacent 24x24 source blocks in KOF96. The mixed
+# selector derives a centered face crop from the complete 48x24 artwork without
+# modifying either source block. The last row groups the three KOF96 bosses
+# with the reserved Saisyu and Rugal portraits; slot 29 remains empty.
+SINGLEPAGE_LAYOUT = (
+    *(('kof96', index) for index in range(13)),
+    ('kof96', 17),       # Leona
+    ('kof95', 1),        # Benimaru
+    ('kof95', 3),        # Yuri
+    ('kof95', 5),        # Joe
+    ('kof95', 6),        # Heidern
+    ('kof95', 7),        # Ralf
+    ('kof95', 9),        # Kensou
+    ('kof95', 10),       # Kim
+    ('kof95', 13),       # Eiji
+    ('kof95', 14),       # Billy
+    ('kof95', 17),       # Nakoruru (reserved)
+    ('kof96', 13),       # Chizuru
+    ('kof96', 16),       # Goenitz
+    ('mrkarate', 0),     # Mr. Karate, centered crop from both source blocks
+    ('kof95', 15),       # Saisyu (reserved)
+    ('kof95', 16),       # Rugal (reserved)
+)
 
 
 def decompress_lzss(source: bytes, output_size: int) -> bytes:
@@ -105,6 +125,11 @@ def encode_tile(pixels: list[list[int]]) -> bytes:
 def compact_portrait(source: bytes, portrait_index: int) -> bytes:
     portrait = decode_portrait(source, portrait_index)
     cropped = [row[4:20] for row in portrait]
+    return encode_compact_portrait(cropped)
+
+
+def encode_compact_portrait(cropped: list[list[int]]) -> bytes:
+    """Encode an already cropped 16x24 portrait as six 2bpp tiles."""
     result = bytearray()
     for tile_y in range(3):
         for tile_x in range(2):
@@ -112,6 +137,36 @@ def compact_portrait(source: bytes, portrait_index: int) -> bytes:
             result.extend(encode_tile(tile))
     assert len(result) == PORTRAIT_16X24_TILES * TILE_BYTES
     return bytes(result)
+
+
+def compact_mrkarate(source: bytes) -> bytes:
+    """Keep Mr. Karate's full face when reducing his wide portrait to 16px."""
+    left = decode_portrait(source, 14)
+    right = decode_portrait(source, 15)
+    wide = [left_row + right_row for left_row, right_row in zip(left, right)]
+    return encode_compact_portrait([row[18:34] for row in wide])
+
+
+def variant_marker_tiles() -> bytes:
+    """Create hollow/filled 4x4 version markers centered in an 8x8 tile."""
+    result = bytearray()
+    for filled in (False, True):
+        pixels = [[0] * 8 for _ in range(8)]
+        for y in range(2, 6):
+            for x in range(2, 6):
+                if filled or x in (2, 5) or y in (2, 5):
+                    pixels[y][x] = 3
+        result.extend(encode_tile(pixels))
+    return bytes(result)
+
+
+def reorder_kof95_icon(source: bytes, icon_index: int) -> bytes:
+    """Convert KOF95's TL,TR,BL,BR storage to KOF96's TL,BL,TR,BR."""
+    raw = source[icon_index * ICON_BYTES : (icon_index + 1) * ICON_BYTES]
+    return b"".join(
+        raw[tile * TILE_BYTES : (tile + 1) * TILE_BYTES]
+        for tile in (0, 2, 1, 3)
+    )
 
 
 def git_head(repository: Path) -> str:
@@ -161,10 +216,12 @@ def main() -> None:
         variants.extend(compact_portrait(special_portraits, index))
 
     singlepage = bytearray()
-    for index in KOF96_SINGLEPAGE_INDICES:
-        singlepage.extend(compact_portrait(kof96_portraits, index))
-    for index in KOF95_UNIQUE_INDICES:
-        singlepage.extend(compact_portrait(kof95_portraits, index))
+    portrait_sources = {'kof96': kof96_portraits, 'kof95': kof95_portraits}
+    for source_name, index in SINGLEPAGE_LAYOUT:
+        if source_name == 'mrkarate':
+            singlepage.extend(compact_mrkarate(kof96_portraits))
+        else:
+            singlepage.extend(compact_portrait(portrait_sources[source_name], index))
     assert len(singlepage) == 29 * PORTRAIT_16X24_TILES * TILE_BYTES
 
     compact_cross = compact_portrait(
@@ -178,17 +235,31 @@ def main() -> None:
     base_path = output_dir / "charsel_mix_base.bin"
     variants_path = output_dir / "charsel_mix_variants.bin"
     singlepage_path = output_dir / "charsel_mix_singlepage.bin"
+    markers_path = output_dir / "charsel_mix_markers.bin"
+    icons_path = output_dir / "char_icons_mix.bin"
     cross_path = output_dir / "charsel_mix_cross.bin"
     cross_mask_path = output_dir / "charsel_mix_cross_mask.bin"
     base_path.write_bytes(base)
     variants_path.write_bytes(variants)
     singlepage_path.write_bytes(singlepage)
+    markers_path.write_bytes(variant_marker_tiles())
+    # Entries 0-31 already contain the twenty KOF96 icons and twelve
+    # individually corrected KOF95-only icons. Append the six shared-name
+    # KOF95 versions at logical IDs 32-37 so selected-team and battle HUD
+    # lookups cannot run beyond the icon table into black data.
+    icons95 = (kof95 / "data/gfx/char_icons.bin").read_bytes()
+    icons = bytearray(icons_path.read_bytes()[: 32 * ICON_BYTES])
+    for index in KOF95_SHARED_INDICES:
+        icons.extend(reorder_kof95_icon(icons95, index))
+    icons_path.write_bytes(icons)
     cross_path.write_bytes(compact_cross)
     cross_mask_path.write_bytes(compact_cross_mask)
     print(f"vendor={revision}")
     print(f"{base_path.relative_to(project)}: {len(base)} bytes, 30 portraits")
     print(f"{variants_path.relative_to(project)}: {len(variants)} bytes, 9 portraits")
     print(f"{singlepage_path.relative_to(project)}: {len(singlepage)} bytes, 29 portraits")
+    print(f"{markers_path.relative_to(project)}: 32 bytes, hollow/filled version markers")
+    print(f"{icons_path.relative_to(project)}: {len(icons)} bytes, 38 icons")
     print(f"{cross_path.relative_to(project)}: {len(compact_cross)} bytes, 16x24 cross")
     print(f"{cross_mask_path.relative_to(project)}: {len(compact_cross_mask)} bytes, 16x24 mask")
 

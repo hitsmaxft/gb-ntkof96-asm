@@ -2180,44 +2180,12 @@ ModeSelect_MakeStageSeq:
 	dec  b
 	jr   nz, .fillLoop
 	
-	;
-	; Randomize the first 14 opponents (all of the normal ones).
-	; This *does* mean you will always fight both normal and boss Chizuru.
-	;
-	
-	; This is done by going through character *select* portrait IDs from highest allowed to lowest,
-	; and placing that character in a randomly generated slot in wCharSeqTbl.
-	ld   b, $0E				; B = Current CHARSEL_ID_* / Remaining chars
-.getRand:
-	call RandLY				; A = Random opponent slot
-	and  a, $0F				; Filter valid IDs only
-	cp   $0F				; Did we get Kagura's slot? ($0F's character in the sequence)
-	jr   z, .getRand		; If so, reroll again
-	
-	; HL = Ptr to generated slot
-	ld   d, $00				; DE = Current index
-	ld   e, a
-	ld   hl, wCharSeqTbl	; HL = wCharSeqTbl
-	add  hl, de				; Index it
-	
-	; Avoid overwriting already filled slots, which don't have the $FF placeholder anymore
-	ld   a, [hl]			; A = SlotVal
-	cp   $FF				; SlotVal != $FF?
-	jr   nz, .getRand		; If so, reroll
-	
-	; Replace Mr Karate ($0E) with Leona ($11)
-	; The CHARSEL_ID_* values are in the same order as the character select screen from left to right, top to bottom.
-	; Leona is the only character after the hidden ones, as the last one in the lower right corner.
-	ld   a, b					; B = CHARSEL_ID_* value
-	cp   CHARSEL_ID_MRKARATE0	; B == $0E?
-	jr   nz, .setCharId			; If so, skip
-	ld   a, CHARSEL_ID_LEONA
-.setCharId:
-	ld   [hl], a			; Write value
-	dec  b					; CharsLeft--
-	ld   a, b				
-	cp   $FF				; CharsLeft < 0?
-	jp   nz, .getRand		; If not, generate the next one
+	; Fill the 15 normal rounds without repetition from every battle-ready
+	; KOF96/KOF95 portrait. The expanded-bank routine deliberately excludes
+	; bosses and the three portrait-only KOF95 placeholders.
+	ld   b, BANK(MixKOF_MakeStageSeqNormal)
+	ld   hl, MixKOF_MakeStageSeqNormal
+	rst  $08
 	
 	;
 	; Add the 2 bosses and the secret at the end.

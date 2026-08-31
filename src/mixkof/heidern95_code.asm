@@ -329,10 +329,10 @@ MoveC_Heidern_NeckRoller:
 	mMvC_ValFrameEnd .anim
 		; Prepare for manual jump control
 		mMvC_SetAnimSpeed ANIMSPEED_NONE
-		; Loop the attack frames 7 times
+		; KOF96-paced duration: reduce the KOF95 seven attack loops to two.
 		ld   hl, iPlInfo_Heidern_NeckRoller_LoopCount
 		add  hl, bc
-		ld   [hl], $07
+		ld   [hl], $02
 		jp   .anim
 ; --------------- frame #1 ---------------
 .obj1:

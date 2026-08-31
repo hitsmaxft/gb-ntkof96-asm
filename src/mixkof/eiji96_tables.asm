@@ -52,8 +52,8 @@ MoveAnimTbl_Eiji96:
 	mMvAnDef OBJLstPtrTable_Eiji_KageUtsushi, $10,$01,$0A,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Eiji_KotsuHazakiKiri, $14,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Eiji_KotsuHazakiKiri, $14,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Eiji_ZantetsuTourouken, $54,$02,$01,HITTYPE_HIT_MULTI1,PF3_HEAVYHIT|PF3_CONTHIT
-	mMvAnDef OBJLstPtrTable_Eiji_ZantetsuTourouken, $54,$02,$01,HITTYPE_HIT_MULTI1,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Eiji_ZantetsuTourouken, $54,$00,$01,HITTYPE_HIT_MULTI1,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Eiji_ZantetsuTourouken, $54,$00,$01,HITTYPE_HIT_MULTI1,PF3_HEAVYHIT|PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Eiji_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Eiji_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Eiji_ThrowG, $0C,$0A,$00,$00,$00

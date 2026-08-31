@@ -3271,7 +3271,14 @@ Play_CPU_ApplyCharInput:
 		; A = CharId
 		ld   hl, iPlInfo_CharId
 		add  hl, bc
-		ld   a, [hl]		
+		ld   a, [hl]
+		; Imported characters do not yet have individually tuned CPU command
+		; scripts. Clamp them to the structurally compatible Ryo list instead
+		; of extending this ROM bank's resident table for every new fighter.
+		cp   CHAR_ID_KIM
+		jr   c, .charIdReady
+		ld   a, CHAR_ID_RYO
+	.charIdReady:
 		; HL = Base char table
 		ld   hl, CPU_MoveListPtrTable
 		; Index the table (HL += A)
@@ -3533,15 +3540,6 @@ CPU_MoveListPtrTable:
 	dw CPU_MoveInputList_Chizuru ; CHAR_ID_KAGURA
 	; Compatibility fallback until Kim receives a tuned CPU command list. Ryo's
 	; list is structurally valid and prevents a Kim CPU slot indexing junk data.
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_KIM
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_BENIMARU
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_YURI
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_JOE
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_HEIDERN
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_RALF
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_KENSOU
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_EIJI
-	dw CPU_MoveInputList_Ryo ; CHAR_ID_BILLY
 
 ; =============== CPU_MoveInputList_* ===============
 ; List of character-specific move inputs.

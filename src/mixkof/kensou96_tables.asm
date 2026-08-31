@@ -48,8 +48,8 @@ MoveAnimTbl_Kensou96:
 REPT 6
 	mMvAnDef OBJLstPtrTable_Kensou_Idle, $00,$01,$00,$00,$00
 ENDR
-	mMvAnDef OBJLstPtrTable_Kensou_ShinryuuTenbuKyaku, $18,$01,$04,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_CONTHIT
-	mMvAnDef OBJLstPtrTable_Kensou_ShinryuuTenbuKyaku, $18,$01,$04,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Kensou_ShinryuuTenbuKyaku, $18,$00,$04,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Kensou_ShinryuuTenbuKyaku, $18,$00,$04,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Kensou_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Kensou_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Kensou_ThrowG, $08,$0A,$00,$00,$00

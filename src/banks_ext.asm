@@ -7,6 +7,8 @@ MixKOF_CharSelPortraitSinglePage:
 	INCBIN "data/gfx/charsel_mix_singlepage.bin"
 MixKOF_CharSelPortraitVariants:
 	INCBIN "data/gfx/charsel_mix_variants.bin"
+MixKOF_CharSelVariantMarkerGFX:
+	INCBIN "data/gfx/charsel_mix_markers.bin"
 
 ; The original order-selection sheet contains only KOF96 fighters. Keep the
 ; source art intact and use the first KOF95 standing frame as a 3x6-tile
@@ -64,7 +66,270 @@ MixKOF_LoadCharSelSinglePageGFX:
 	ld   de, $8800
 	ld   b, 16*$06
 	call CopyTiles
+	; $8E00-$8E1F are unused by the character-select tilemap. Install one
+	; hollow and one filled square for the per-portrait START version list.
+	ld   hl, MixKOF_CharSelVariantMarkerGFX
+	ld   de, $8E00
+	ld   b, $02
+	call CopyTiles
 	ret
+
+; Draw a compact version list in the unused 8x24 gutter on the right side of
+; every START-switchable portrait. Each descriptor reserves three vertical
+; marker cells: a hollow square is available and a filled square is current.
+; This supports up to three versions without using scarce OBJ slots.
+MixKOF_DrawAllVariantMarkers:
+	ld   hl, MixKOF_CharSelVariantDescriptorTbl
+.next:
+	ldi  a, [hl]
+	cp   $FF
+	ret  z
+	call MixKOF_DrawVariantMarker_Descriptor
+	jr   .next
+
+; Redraw only the marker list associated with wCharSelVariantCursorPos.
+MixKOF_DrawVariantMarker:
+	ld   a, [wCharSelVariantCursorPos]
+	ld   c, a
+	ld   hl, MixKOF_CharSelVariantDescriptorTbl
+.find:
+	ldi  a, [hl]
+	cp   $FF
+	ret  z
+	cp   c
+	jr   z, MixKOF_DrawVariantMarker_Descriptor
+	ld   de, $0006
+	add  hl, de
+	jr   .find
+
+; Descriptor after slot byte: gutter tilemap pointer, version count, then
+; three character IDs (unused entries are CHAR_ID_NONE).
+; IN: A = portrait slot, HL = descriptor payload
+MixKOF_DrawVariantMarker_Descriptor:
+	push hl
+		ld   e, a
+		ld   d, $00
+		ld   hl, wCharSelIdMapTbl
+		add  hl, de
+		ld   c, [hl]
+	pop  hl
+	ldi  a, [hl]
+	ld   e, a
+	ldi  a, [hl]
+	ld   d, a
+	ldi  a, [hl]
+	ld   b, a
+	ld   a, $03
+.markerLoop:
+	push af
+		ld   a, b
+		or   a
+		jr   z, .blank
+		dec  b
+		ldi  a, [hl]
+		cp   c
+		ld   a, TILE_CHARSEL_VARIANT_AVAILABLE
+		jr   nz, .write
+		inc  a ; TILE_CHARSEL_VARIANT_CURRENT
+		jr   .write
+.blank:
+		inc  hl
+		xor  a
+.write:
+		push af
+			mWaitForVBlankOrHBlank
+		pop  af
+		ld   [de], a
+		ld   a, e
+		add  a, $20
+		ld   e, a
+		jr   nc, .nextRow
+		inc  d
+.nextRow:
+	pop  af
+	dec  a
+	jr   nz, .markerLoop
+	ret
+
+; Position the currently assigned tile-flip OBJ at the selected portrait.
+; The table mirrors CharSel_CursorPosTable in bank1E and keeps all START
+; variants compatible with the five-row single-page selector.
+MixKOF_PositionVariantFlipOBJ:
+	ld   a, [wCharSelVariantCursorPos]
+	add  a
+	ld   e, a
+	ld   d, $00
+	ld   hl, .posTbl
+	add  hl, de
+	push hl
+		ld   a, [wCharSelVariantFlipOffset]
+		ld   e, a
+		ld   d, HIGH(wOBJInfo_IoriFlip)
+		ld   hl, iOBJInfo_X
+		add  hl, de
+	pop  bc
+	ld   a, [bc]
+	ld   [hl], a
+	inc  bc
+	ld   hl, iOBJInfo_Y
+	add  hl, de
+	ld   a, [bc]
+	ld   [hl], a
+	ret
+.posTbl:
+	db $00,$E8, $18,$E8, $30,$E8, $48,$E8, $60,$E8, $78,$E8
+	db $00,$00, $18,$00, $30,$00, $48,$00, $60,$00, $78,$00
+	db $00,$18, $18,$18, $30,$18, $48,$18, $60,$18, $78,$18
+	db $00,$30, $18,$30, $30,$30, $48,$30, $60,$30, $78,$30
+	db $00,$48, $18,$48, $30,$48, $48,$48, $60,$48, $78,$48
+
+; Slot, top gutter BG address, count, then up to three selectable IDs.
+MixKOF_CharSelVariantDescriptorTbl:
+	db CHARSEL_ID_KYO
+	dw $9803
+	db $02, CHAR_ID_KYO/2, CHAR_ID_KYO95/2, CHAR_ID_NONE
+	db CHARSEL_ID_TERRY
+	dw $9809
+	db $02, CHAR_ID_TERRY/2, CHAR_ID_TERRY95/2, CHAR_ID_NONE
+	db CHARSEL_ID_RYO
+	dw $980C
+	db $02, CHAR_ID_RYO/2, CHAR_ID_RYO95/2, CHAR_ID_NONE
+	db CHARSEL_ID_IORI
+	dw $9812
+	db $03, CHAR_ID_IORI/2, CHAR_ID_OIORI/2, CHAR_ID_IORI95/2
+	db CHARSEL_ID_MAI
+	dw $9866
+	db $02, CHAR_ID_MAI/2, CHAR_ID_MAI95/2, CHAR_ID_NONE
+	db CHARSEL_ID_ATHENA
+	dw $98C3
+	db $02, CHAR_ID_ATHENA/2, CHAR_ID_ATHENA95/2, CHAR_ID_NONE
+	db CHARSEL_ID_LEONA
+	dw $98C6
+	db $02, CHAR_ID_LEONA/2, CHAR_ID_OLEONA/2, CHAR_ID_NONE
+	db CHARSEL_ID_CHIZURU
+	dw $9983
+	db $02, CHAR_ID_CHIZURU/2, CHAR_ID_KAGURA/2, CHAR_ID_NONE
+	db $FF
+
+; Fill wCharSeqTbl[0..14] with unique normal opponents selected from all
+; battle-ready mixed-roster characters. The fixed boss entries at $0F and
+; above remain owned by ModeSelect_MakeStageSeq in bank $1C.
+MixKOF_MakeStageSeqNormal:
+	ld   b, $0F
+	ld   hl, wCharSeqTbl
+.nextSlot:
+	push bc
+	push hl
+.generate:
+		call RandLY
+		and  a, $3F
+		cp   .normalPoolEnd-.normalPool
+		jr   nc, .generate
+		ld   e, a
+		ld   d, $00
+		ld   hl, .normalPool
+		add  hl, de
+		ld   c, [hl]
+		; Reject a portrait already used in any of the 15 normal slots. Empty
+		; entries are $FF, so scanning the full range is safe while filling.
+		ld   hl, wCharSeqTbl
+		ld   b, $0F
+.checkDuplicate:
+		ldi  a, [hl]
+		cp   c
+		jr   z, .duplicate
+		dec  b
+		jr   nz, .checkDuplicate
+	pop  hl
+	ld   [hl], c
+	inc  hl
+	pop  bc
+	dec  b
+	jr   nz, .nextSlot
+	ret
+.duplicate:
+	pop  hl
+	pop  bc
+	jr   .nextSlot
+
+.normalPool:
+	db CHARSEL_ID_KYO, CHARSEL_ID_ANDY, CHARSEL_ID_TERRY
+	db CHARSEL_ID_RYO, CHARSEL_ID_ROBERT, CHARSEL_ID_IORI
+	db CHARSEL_ID_DAIMON, CHARSEL_ID_MAI, CHARSEL_ID_GEESE
+	db CHARSEL_ID_MRBIG, CHARSEL_ID_KRAUSER, CHARSEL_ID_MATURE
+	db CHARSEL_ID_ATHENA, CHARSEL_ID_LEONA, CHARSEL_ID_CHIZURU
+	db CHARSEL_ID_BENIMARU, CHARSEL_ID_YURI, CHARSEL_ID_JOE
+	db CHARSEL_ID_HEIDERN, CHARSEL_ID_RALF, CHARSEL_ID_KENSOU
+	db CHARSEL_ID_KIM, CHARSEL_ID_EIJI, CHARSEL_ID_BILLY
+	db CHARSEL_ID_NAKORURU, CHARSEL_ID_SAISYU, CHARSEL_ID_RUGAL
+	; Shared portrait slots need explicit sequence tokens so their KOF95
+	; versions can be selected independently of the default KOF96 mapping.
+	db $40, $41, $42, $43, $44, $45
+.normalPoolEnd:
+
+; Resolve a shared KOF95 CPU token in wCharSelVariantWork to its portrait and
+; update that portrait's active character mapping. Ordinary portrait IDs pass
+; through unchanged. The caller also replaces the sequence token with the
+; resolved portrait so defeated-character cross drawing remains in range.
+MixKOF_ResolveCPUVariantToken:
+	ld   a, [wCharSelVariantWork]
+	cp   $40
+	jr   nc, .variant
+	; A shared portrait may follow its KOF95 token later in the generated
+	; sequence. Restore that slot's normal KOF96 mapping explicitly, otherwise
+	; the earlier token leaves a stale KOF95 character ID behind.
+	ld   c, a
+	ld   hl, .baseTbl
+.findBase:
+	ldi  a, [hl]
+	cp   $FF
+	ret  z
+	cp   c
+	jr   z, .setBase
+	inc  hl
+	jr   .findBase
+.setBase:
+	ld   e, c
+	ld   d, $00
+	ld   a, [hl]
+	ld   hl, wCharSelIdMapTbl
+	add  hl, de
+	ld   [hl], a
+	ret
+.variant:
+	ld   a, [wCharSelVariantWork]
+	sub  $40
+	add  a
+	ld   e, a
+	ld   d, $00
+	ld   hl, .variantTbl
+	add  hl, de
+	ldi  a, [hl]
+	ld   c, a
+	ld   e, a
+	ld   d, $00
+	ld   a, [hl]
+	ld   hl, wCharSelIdMapTbl
+	add  hl, de
+	ld   [hl], a
+	ld   a, c
+	ld   [wCharSelVariantWork], a
+	ret
+.baseTbl:
+	db CHARSEL_ID_KYO,    CHAR_ID_KYO/2
+	db CHARSEL_ID_RYO,    CHAR_ID_RYO/2
+	db CHARSEL_ID_TERRY,  CHAR_ID_TERRY/2
+	db CHARSEL_ID_ATHENA, CHAR_ID_ATHENA/2
+	db CHARSEL_ID_MAI,    CHAR_ID_MAI/2
+	db CHARSEL_ID_IORI,   CHAR_ID_IORI/2
+	db $FF
+.variantTbl:
+	db CHARSEL_ID_KYO,    CHAR_ID_KYO95/2
+	db CHARSEL_ID_RYO,    CHAR_ID_RYO95/2
+	db CHARSEL_ID_TERRY,  CHAR_ID_TERRY95/2
+	db CHARSEL_ID_ATHENA, CHAR_ID_ATHENA95/2
+	db CHARSEL_ID_MAI,    CHAR_ID_MAI95/2
+	db CHARSEL_ID_IORI,   CHAR_ID_IORI95/2
 
 ; Copy a four-byte win-animation descriptor into resident WRAM so bank $1E can
 ; consume mappings that point at imported OBJ lists in independent banks.
@@ -104,6 +369,24 @@ MixKOF_WinAnimEntryTbl:
 	dp OBJLstPtrTable_Eiji_Win
 	db $08
 	dp OBJLstPtrTable_Billy_Win
+	db $08
+	dp OBJLstPtrTable_Saisyu_Taunt
+	db $08
+	dp OBJLstPtrTable_Rugal_Win
+	db $08
+	dp OBJLstPtrTable_Nakoruru_Win
+	db $08
+	dp OBJLstPtrTable_Kyo95_Win
+	db $08
+	dp OBJLstPtrTable_Ryo95_Win
+	db $08
+	dp OBJLstPtrTable_Terry95_Win
+	db $08
+	dp OBJLstPtrTable_Athena95_Win
+	db $08
+	dp OBJLstPtrTable_Mai95_Win
+	db $08
+	dp OBJLstPtrTable_Iori95_Win
 	db $08
 
 Title_DrawTrainingText:
@@ -294,12 +577,12 @@ MixKOF_CharSelNamePtrTbl:
 	dw MixKOF_CharSelName_Ryo, MixKOF_CharSelName_Robert, MixKOF_CharSelName_Iori
 	dw MixKOF_CharSelName_Daimon, MixKOF_CharSelName_Mai, MixKOF_CharSelName_Geese
 	dw MixKOF_CharSelName_MrBig, MixKOF_CharSelName_Krauser, MixKOF_CharSelName_Mature
-	dw MixKOF_CharSelName_Athena, MixKOF_CharSelName_Chizuru, MixKOF_CharSelName_MrKarate
-	dw MixKOF_CharSelName_Goenitz, MixKOF_CharSelName_Leona, MixKOF_CharSelName_Benimaru
+	dw MixKOF_CharSelName_Athena, MixKOF_CharSelName_Leona, MixKOF_CharSelName_Benimaru
 	dw MixKOF_CharSelName_Yuri, MixKOF_CharSelName_Joe, MixKOF_CharSelName_Heidern
 	dw MixKOF_CharSelName_Ralf, MixKOF_CharSelName_Kensou, MixKOF_CharSelName_Kim
-	dw MixKOF_CharSelName_Eiji, MixKOF_CharSelName_Billy, MixKOF_CharSelName_Saisyu
-	dw MixKOF_CharSelName_Rugal, MixKOF_CharSelName_Nakoruru, MixKOF_CharSelName_None
+	dw MixKOF_CharSelName_Eiji, MixKOF_CharSelName_Billy, MixKOF_CharSelName_Nakoruru
+	dw MixKOF_CharSelName_Chizuru, MixKOF_CharSelName_Goenitz, MixKOF_CharSelName_MrKarate
+	dw MixKOF_CharSelName_Saisyu, MixKOF_CharSelName_Rugal, MixKOF_CharSelName_None
 MixKOF_CharSelName_Kyo:      mTxtDef "KYO"
 MixKOF_CharSelName_Andy:     mTxtDef "ANDY"
 MixKOF_CharSelName_Terry:    mTxtDef "TERRY"
@@ -354,10 +637,35 @@ ModeSelect_CheckCPUvsCPU:
 	set  PF0B_CPU, [hl]
 	ret
 
-; IN/OUT: D = damage. Active Super Cancel damage is floor(D/3), minimum 1.
+; IN/OUT: D = damage.
+; - Imported KOF95 supers use half damage so their full combos land in the
+;   same range as the KOF96 roster instead of removing roughly half a life bar.
+; - Active Super Cancel damage is then floor(D/3), minimum 1.
 ; A and E are preserved for the common current/pending damage setters.
 Play_Pl_ScaleSuperCancelDamageD_Banked:
 	push af
+		; All imported fighters are KOF95 implementations and use the standard
+		; KOF96 super slot range $64-$6A. Scale both move-table and later
+		; mMvC_SetDamage packets through this shared path.
+		ld   hl, iPlInfo_CharId
+		add  hl, bc
+		ld   a, [hl]
+		cp   CHAR_ID_KIM
+		jr   c, .chkSuperCancel
+		ld   hl, iPlInfo_MoveId
+		add  hl, bc
+		ld   a, [hl]
+		cp   MOVE_SUPER_START
+		jr   c, .chkSuperCancel
+		cp   MOVE_SHARED_THROW_G
+		jr   nc, .chkSuperCancel
+		ld   a, d
+		or   a
+		jr   z, .chkSuperCancel
+		srl  d
+		jr   nz, .chkSuperCancel
+		inc  d
+	.chkSuperCancel:
 		ld   hl, iPlInfo_SuperCancelFlags
 		add  hl, bc
 		bit  PSCB_DAMAGE_ACTIVE, [hl]
@@ -386,6 +694,13 @@ SECTION "bank21", ROMX, BANK[$21]
 INCLUDE "src/mixkof/kim95_gfx.asm"
 SECTION "bank22", ROMX, BANK[$22]
 INCLUDE "src/mixkof/kim95_objlst.asm"
+	INCLUDE "src/mixkof/saisyu95_objlst.asm"
+	INCLUDE "src/mixkof/saisyu96_tables.asm"
+	INCLUDE "src/mixkof/saisyu95_code.asm"
+	INCLUDE "src/mixkof/athena95_gfx_1.asm"
+	INCLUDE "src/mixkof/mai96_tables.asm"
+	INCLUDE "src/mixkof/mai95_code.asm"
+	INCLUDE "src/mixkof/mai95_projectiles.asm"
 SECTION "bank23", ROMX, BANK[$23]
 INCLUDE "src/mixkof/kim96_tables.asm"
 	INCLUDE "src/mixkof/billy95_gfx.asm"
@@ -394,25 +709,39 @@ INCLUDE "src/mixkof/kim95_code.asm"
 	INCLUDE "src/mixkof/billy95_objlst.asm"
 	INCLUDE "src/mixkof/billy96_tables.asm"
 	INCLUDE "src/mixkof/billy95_code.asm"
+	INCLUDE "src/mixkof/terry95_objlst.asm"
 SECTION "bank25", ROMX, BANK[$25]
 GFX_Char_Icons: INCBIN "data/gfx/char_icons_mix.bin"
 SECTION "bank26", ROMX, BANK[$26]
 	INCLUDE "src/mixkof/benimaru95_gfx.asm"
 SECTION "bank27", ROMX, BANK[$27]
 	INCLUDE "src/mixkof/benimaru95_objlst.asm"
+	INCLUDE "src/mixkof/terry95_gfx.asm"
 SECTION "bank28", ROMX, BANK[$28]
 	INCLUDE "src/mixkof/benimaru96_tables.asm"
+	INCLUDE "src/mixkof/rugal95_gfx.asm"
 SECTION "bank29", ROMX, BANK[$29]
 	INCLUDE "src/mixkof/benimaru95_code.asm"
+	INCLUDE "src/mixkof/kyo95_gfx_0.asm"
 SECTION "bank2A", ROMX, BANK[$2A]
 	INCLUDE "src/mixkof/yuri95_gfx.asm"
 SECTION "bank2B", ROMX, BANK[$2B]
 	INCLUDE "src/mixkof/yuri95_objlst.asm"
+	INCLUDE "src/mixkof/kyo95_objlst.asm"
+	INCLUDE "src/mixkof/kyo96_tables.asm"
+	INCLUDE "src/mixkof/kyo95_code.asm"
+	INCLUDE "src/mixkof/kyo95_projectiles.asm"
 SECTION "bank2C", ROMX, BANK[$2C]
 	INCLUDE "src/mixkof/yuri96_tables.asm"
+	INCLUDE "src/mixkof/nakoruru95_gfx.asm"
 SECTION "bank2D", ROMX, BANK[$2D]
 	INCLUDE "src/mixkof/yuri95_code.asm"
+	INCLUDE "src/mixkof/ryo96_tables.asm"
+	INCLUDE "src/mixkof/ryo95_code.asm"
+	INCLUDE "src/mixkof/ryo95_projectiles.asm"
 SECTION "bank2E", ROMX, BANK[$2E]
+	INCLUDE "src/mixkof/saisyu95_gfx.asm"
+SECTION "bank3C loaders", ROMX, BANK[$3C]
 ; Imported fighters keep their headers out of the full ROM0 table. DE carries
 ; the original player-info base because B is occupied by FarCall's bank number.
 MixKOF_Play_LoadImportedChar:
@@ -449,6 +778,14 @@ ENDR
 	ld   hl, iPlInfo_JumpSpeed_Sub
 	call .copyWord
 	ld   hl, iPlInfo_Gravity_Sub
+	call .copyWord
+	; Imported move/OBJ tables come from KOF95. Select the matching system so
+	; their one-frame stationary dodge is not interpreted as KOF96's five-frame
+	; forward/back roll (which would otherwise never reach its recovery frame).
+	ld   hl, iPlInfo_BattleSystem
+	add  hl, de
+	ld   [hl], BATTLESYS_95
+	ret
 .copyWord:
 	add  hl, de
 	ld   a, [bc]
@@ -497,6 +834,42 @@ MixKOF_ImportedCharHeaderTbl:
 	dpr MoveInputReader_Billy
 	db $00
 	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Saisyu96, MoveCodePtrTbl_Saisyu96
+	dpr MoveInputReader_Saisyu
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Rugal96, MoveCodePtrTbl_Rugal96
+	dpr MoveInputReader_Rugal
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Nakoruru96, MoveCodePtrTbl_Nakoruru96
+	dpr MoveInputReader_Nakoruru
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Kyo96, MoveCodePtrTbl_Kyo96
+	dpr MoveInputReader_Kyo95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Ryo96, MoveCodePtrTbl_Ryo96
+	dpr MoveInputReader_Ryo95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Terry96, MoveCodePtrTbl_Terry96
+	dpr MoveInputReader_Terry95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Athena96, MoveCodePtrTbl_Athena96
+	dpr MoveInputReader_Athena95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Mai96, MoveCodePtrTbl_Mai96
+	dpr MoveInputReader_Mai95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
+	dw MoveAnimTbl_Iori96, MoveCodePtrTbl_Iori96
+	dpr MoveInputReader_Iori95
+	db $00
+	dw +$0180, -$0100, -$0700, +$0060
 
 MixKOF_GetMoveTblBank_Banked:
 	ld   hl, iPlInfo_CharId
@@ -520,6 +893,24 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   z, .eiji
 	cp   CHAR_ID_BILLY
 	jr   z, .billy
+	cp   CHAR_ID_SAISYU
+	jr   z, .saisyu
+	cp   CHAR_ID_RUGAL
+	jr   z, .rugal
+	cp   CHAR_ID_NAKORURU
+	jr   z, .nakoruru
+	cp   CHAR_ID_KYO95
+	jr   z, .kyo95
+	cp   CHAR_ID_RYO95
+	jr   z, .ryo95
+	cp   CHAR_ID_TERRY95
+	jr   z, .terry95
+	cp   CHAR_ID_ATHENA95
+	jr   z, .athena95
+	cp   CHAR_ID_MAI95
+	jr   z, .mai95
+	cp   CHAR_ID_IORI95
+	jr   z, .iori95
 	ld   a, BANK(MoveAnimTbl_Marker)
 	jr   .save
 .kim:
@@ -548,6 +939,33 @@ MixKOF_GetMoveTblBank_Banked:
 	jr   .save
 .billy:
 	ld   a, BANK(MoveAnimTbl_Billy96)
+	jr   .save
+.saisyu:
+	ld   a, BANK(MoveAnimTbl_Saisyu96)
+	jr   .save
+.rugal:
+	ld   a, BANK(MoveAnimTbl_Rugal96)
+	jr   .save
+.nakoruru:
+	ld   a, BANK(MoveAnimTbl_Nakoruru96)
+	jr   .save
+.kyo95:
+	ld   a, BANK(MoveAnimTbl_Kyo96)
+	jr   .save
+.ryo95:
+	ld   a, BANK(MoveAnimTbl_Ryo96)
+	jr   .save
+.terry95:
+	ld   a, BANK(MoveAnimTbl_Terry96)
+	jr   .save
+.athena95:
+	ld   a, BANK(MoveAnimTbl_Athena96)
+	jr   .save
+.mai95:
+	ld   a, BANK(MoveAnimTbl_Mai96)
+	jr   .save
+.iori95:
+	ld   a, BANK(MoveAnimTbl_Iori96)
 
 .save:
 	ldh  [hMoveTblBank], a
@@ -556,29 +974,54 @@ SECTION "bank2F", ROMX, BANK[$2F]
 	INCLUDE "src/mixkof/joe95_gfx.asm"
 SECTION "bank30", ROMX, BANK[$30]
 	INCLUDE "src/mixkof/joe95_objlst.asm"
+	INCLUDE "src/mixkof/ryo95_objlst.asm"
 SECTION "bank31", ROMX, BANK[$31]
 	INCLUDE "src/mixkof/joe96_tables.asm"
+	INCLUDE "src/mixkof/rugal95_objlst.asm"
+	INCLUDE "src/mixkof/rugal96_tables.asm"
+	INCLUDE "src/mixkof/rugal95_code.asm"
+	INCLUDE "src/mixkof/rugal95_projectiles.asm"
 SECTION "bank32", ROMX, BANK[$32]
 	INCLUDE "src/mixkof/joe95_code.asm"
+	INCLUDE "src/mixkof/kyo95_gfx_1.asm"
+	INCLUDE "src/mixkof/terry96_tables.asm"
+	INCLUDE "src/mixkof/terry95_code.asm"
+	INCLUDE "src/mixkof/terry95_projectiles.asm"
 SECTION "bank33", ROMX, BANK[$33]
 	INCLUDE "src/mixkof/heidern95_gfx.asm"
 SECTION "bank34", ROMX, BANK[$34]
 	INCLUDE "src/mixkof/heidern95_objlst.asm"
+	INCLUDE "src/mixkof/mai95_gfx.asm"
 SECTION "bank35", ROMX, BANK[$35]
 	INCLUDE "src/mixkof/heidern96_tables.asm"
+	INCLUDE "src/mixkof/nakoruru95_objlst.asm"
+	INCLUDE "src/mixkof/nakoruru96_tables.asm"
+	INCLUDE "src/mixkof/nakoruru95_code.asm"
+	INCLUDE "src/mixkof/nakoruru95_projectiles.asm"
+	INCLUDE "src/mixkof/iori95_objlst.asm"
 SECTION "bank36", ROMX, BANK[$36]
 	INCLUDE "src/mixkof/heidern95_code.asm"
+	INCLUDE "src/mixkof/iori95_gfx_0.asm"
 SECTION "bank37", ROMX, BANK[$37]
 	INCLUDE "src/mixkof/ralf95_gfx_0.asm"
 SECTION "bank38", ROMX, BANK[$38]
 	INCLUDE "src/mixkof/ralf95_gfx_1.asm"
+	INCLUDE "src/mixkof/iori95_gfx_1.asm"
+	INCLUDE "src/mixkof/iori96_tables.asm"
+	INCLUDE "src/mixkof/iori95_code.asm"
 SECTION "bank39", ROMX, BANK[$39]
 	INCLUDE "src/mixkof/ralf95_objlst.asm"
+	INCLUDE "src/mixkof/athena95_objlst.asm"
 SECTION "bank3A", ROMX, BANK[$3A]
 	INCLUDE "src/mixkof/ralf96_tables.asm"
+	INCLUDE "src/mixkof/ryo95_gfx.asm"
 SECTION "bank3B", ROMX, BANK[$3B]
 	INCLUDE "src/mixkof/ralf95_code.asm"
+	INCLUDE "src/mixkof/athena95_gfx_0.asm"
 SECTION "bank3C", ROMX, BANK[$3C]
+	INCLUDE "src/mixkof/athena96_tables.asm"
+	INCLUDE "src/mixkof/athena95_code.asm"
+	INCLUDE "src/mixkof/athena95_projectiles.asm"
 
 ; Load the self-contained KOF95 projectile sheet directly into KOF96's
 ; per-player projectile VRAM region. Play_LoadProjectileGFXFromDef enters this
@@ -639,6 +1082,15 @@ MixKOF_ProjectileGFXPtrTbl:
 	dw MixKOF_ProjectileGFX_Kensou
 	dw MixKOF_ProjectileGFX_Eiji
 	dw MixKOF_ProjectileGFX_Billy
+	dw MixKOF_ProjectileGFX_Saisyu
+	dw MixKOF_ProjectileGFX_Rugal
+	dw MixKOF_ProjectileGFX_Nakoruru
+	dw MixKOF_ProjectileGFX_Kyo95
+	dw MixKOF_ProjectileGFX_Ryo95
+	dw MixKOF_ProjectileGFX_Terry95
+	dw MixKOF_ProjectileGFX_Athena95
+	dw MixKOF_ProjectileGFX_Mai95
+	dw MixKOF_ProjectileGFX_Iori95
 
 MixKOF_ProjectileGFX_Benimaru:
 	db $14
@@ -661,6 +1113,33 @@ MixKOF_ProjectileGFX_Eiji:
 MixKOF_ProjectileGFX_Billy:
 	db $1C
 	INCBIN "data/gfx/proj/kof95/billy.bin"
+MixKOF_ProjectileGFX_Saisyu:
+	db $0C
+	INCBIN "data/gfx/proj/kof95/saisyu.bin"
+MixKOF_ProjectileGFX_Rugal:
+	db $12
+	INCBIN "data/gfx/proj/kof95/rugal.bin"
+MixKOF_ProjectileGFX_Nakoruru:
+	db $0E
+	INCBIN "data/gfx/proj/kof95/nakoruru.bin"
+MixKOF_ProjectileGFX_Kyo95:
+	db $0C
+	INCBIN "data/gfx/proj/kof95/kyo.bin"
+MixKOF_ProjectileGFX_Ryo95:
+	db $18
+	INCBIN "data/gfx/proj/kof95/ryo.bin"
+MixKOF_ProjectileGFX_Terry95:
+	db $18
+	INCBIN "data/gfx/proj/kof95/terry.bin"
+MixKOF_ProjectileGFX_Athena95:
+	db $1E
+	INCBIN "data/gfx/proj/kof95/athena.bin"
+MixKOF_ProjectileGFX_Mai95:
+	db $10
+	INCBIN "data/gfx/proj/kof95/mai.bin"
+MixKOF_ProjectileGFX_Iori95:
+	db $0C
+	INCBIN "data/gfx/proj/kof95/iori.bin"
 
 	INCLUDE "src/mixkof/kof95_projectiles.asm"
 SECTION "bank3D", ROMX, BANK[$3D]
@@ -674,3 +1153,4 @@ SECTION "bank3F", ROMX, BANK[$3F]
 	INCLUDE "src/mixkof/eiji95_objlst.asm"
 	INCLUDE "src/mixkof/eiji96_tables.asm"
 	INCLUDE "src/mixkof/eiji95_code.asm"
+	INCLUDE "src/mixkof/mai95_objlst.asm"

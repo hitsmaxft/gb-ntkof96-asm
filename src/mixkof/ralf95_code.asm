@@ -68,9 +68,11 @@ MoveInputReader_Ralf:
 	; - Original SELECT+A is Vulcan Punch; keep it on D+SELECT.
 	; - Original SELECT+B is Baribari Vulcan Punch; keep it on DF+SELECT's
 	;   super rotation instead of inventing another super on DB+SELECT.
-	; - Remaining directions follow the actual KOF95 command shapes:
-	;   F/B=BF Gatling, DF=BDF Back Breaker, DB=DU Bakudan.
-	mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BaribariVulcanPunch, MoveInputReader_Ralf_NoMove
+	; - Remaining directions use only actual KOF95 moves: F=BF Gatling,
+	;   DF=BDF Back Breaker, D=PPP Vulcan and DB/B=DU Bakudan.
+	;   Back Breaker is a proximity throw and therefore cannot be the general
+	;   back shortcut; Bakudan remains usable at ordinary fighting distance.
+	mMvIn_ChkEasyDir MoveInit_Ralf_GatlingAttack, MoveInit_Ralf_BackBreaker, MoveInit_Ralf_VulcanPunch, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_BakudanPunch, MoveInit_Ralf_BaribariVulcanPunch, MoveInputReader_Ralf_NoMove
 	mMvIn_ChkGA Ralf, .chkPunch, .chkKick
 
 .chkPunch:
@@ -200,9 +202,10 @@ MoveC_Ralf_VulcanPunch:
 .init:
 	; Initialize the loop count.
 	; At Max Power, the move lasts twice as long.
-	; Audited against the KOF95 bank19 code and original ROM runtime:
-	; normal=$08 loops (~161 whiff frames), MAX=$10 loops (~305 frames).
-	; Those loop counts now apply only while the move whiffs or is blocked;
+	; KOF95's original $08/$10 loop counts feel roughly three times too long
+	; in the KOF96 battle cadence. Keep the relative MAX-power extension while
+	; reducing the sustained section to about one third: $03/$05 loops.
+	; These loop counts apply only while the move whiffs or is blocked;
 	; a confirmed hit takes the recovery path above after its first contact.
 	mMvC_ValFrameEnd .anim
 		mMvC_SetAnimSpeed ANIMSPEED_INSTANT
@@ -210,12 +213,12 @@ MoveC_Ralf_VulcanPunch:
 	.initNorm:
 		ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
 		add  hl, bc
-		ld   [hl], $08
+		ld   [hl], $03
 		jp   .setInitialDamage
 	.initMaxPower:
 		ld   hl, iPlInfo_Ralf_VulcanPunch_LoopCount
 		add  hl, bc
-		ld   [hl], $10
+		ld   [hl], $05
 		jp   .setInitialDamage
 ; --------------- frames #1-2 ---------------
 .damageLoop:

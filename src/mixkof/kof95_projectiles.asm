@@ -1,4 +1,50 @@
 ; Generated from Kak2X/kof95 commit d1a2372dbfc474ddcbb94a69ffdb4546a8d5ed08
+; Saisyu shares the KOF95 Iori/Kyo ground-fireball sheet. These labels are
+; suffixed because KOF96 already owns a different Iori mapping layout.
+OBJLstPtrTable_Proj_Iori_YamiBarai95:
+	dw OBJLstHdrA_Proj_Iori_YamiBarai95_0, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Iori_YamiBarai95_1, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Iori_YamiBarai95_2, OBJLSTPTR_NONE
+	dw OBJLstHdrA_Proj_Iori_YamiBarai95_1, OBJLSTPTR_NONE
+	dw OBJLSTPTR_NONE
+
+OBJLstHdrA_Proj_Iori_YamiBarai95_0:
+	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_07 ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $03 ; OBJ Count
+	db $30,$F2,$02
+	db $30,$FA,$04
+	db $30,$02,$06
+
+OBJLstHdrA_Proj_Iori_YamiBarai95_1:
+	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_07 ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
+	dw OBJLstHdrA_Proj_Benimaru_ThunderBall8.bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+
+OBJLstHdrA_Proj_Iori_YamiBarai95_2:
+	db OLF_NOBUF ; iOBJLstHdrA_Flags
+	db COLIBOX_00 ; iOBJLstHdrA_ColiBoxId
+	db COLIBOX_07 ; iOBJLstHdrA_HitboxId
+	db $FF,$FF,$FF ; iOBJLstHdrA_GFXPtr + iOBJLstHdrA_GFXBank
+	dw .bin ; iOBJLstHdrA_DataPtr
+	db $00 ; iOBJLstHdrA_XOffset
+	db $00 ; iOBJLstHdrA_YOffset
+.bin:
+	db $03 ; OBJ Count
+	db $30,$F2,$08
+	db $30,$FA,$0A
+	db $30,$02,$0C
+
 OBJLstPtrTable_Proj_Benimaru_ThunderBall:
 	dw OBJLstHdrA_Proj_Benimaru_ThunderBall0, OBJLSTPTR_NONE
 	dw OBJLstHdrA_Proj_Benimaru_ThunderBall0, OBJLSTPTR_NONE

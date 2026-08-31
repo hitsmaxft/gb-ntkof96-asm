@@ -103,8 +103,9 @@ MoveInputReader_Billy:
 	;             SELECT + B                        SELECT + A
 	; KOF96 facing-relative easy slots: F/DF/D/DB/B, completed DF/DB supers.
 	; Preserve the KOF95 intent: anti-air on DF, stationary spin on D,
-	; original DB/BDF moves on DB/B, and Chou Kaen on completed DF.
-	mMvIn_ChkEasyDir MoveInit_Billy_SansetsuKonChuudanUchi, MoveInit_Billy_KyoushuuHishouKon, MoveInit_Billy_SenpuuKon, MoveInit_Billy_SuzumeOtoshi, MoveInit_Billy_SansetsuKonChuudanUchi, MoveInit_Billy_ChouKaenSenpuuKon, MoveInputReader_Billy_NoMove
+	; and the original DB Suzume Otoshi on the back route. Billy only has four
+	; normal specials, so DB/B share Suzume rather than making F/B identical.
+	mMvIn_ChkEasyDir MoveInit_Billy_SansetsuKonChuudanUchi, MoveInit_Billy_KyoushuuHishouKon, MoveInit_Billy_SenpuuKon, MoveInit_Billy_SuzumeOtoshi, MoveInit_Billy_SuzumeOtoshi, MoveInit_Billy_ChouKaenSenpuuKon, MoveInputReader_Billy_NoMove
 	mMvIn_ChkGA Billy, .chkPunch, .chkKick
 
 .chkPunch:
@@ -271,9 +272,20 @@ MoveC_Billy_SenpuuKon:
 MoveC_Billy_KyoushuuHishouKon:
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
+	; Latch contact at the move entry, before the collision flag can be
+	; consumed by a later 96 handler. Once set, the descent loop may not arm
+	; another damage packet for this activation.
+	ld   hl, iPlInfo_ColiFlags
+	add  hl, bc
+	bit  PCFB_HITOTHER, [hl]
+	jr   z, .dispatch
+	ld   hl, iPlInfo_Billy_KyoushuuHit
+	add  hl, bc
+	ld   [hl], $01
+.dispatch:
 	; Depending on the visible frame...
 	mMvC_StartChkFrame
-		mMvC_ChkFrame $00, .anim
+		mMvC_ChkFrame $00, .obj0
 		mMvC_ChkFrame $01, .anim
 		mMvC_ChkFrame $02, .obj2
 		mMvC_ChkFrame $03, .obj3
@@ -281,6 +293,13 @@ MoveC_Billy_KyoushuuHishouKon:
 		mMvC_ChkFrame $05, .obj4
 		mMvC_ChkFrame $06, .obj6
 		mMvC_ChkFrame $07, .chkEnd
+; --------------- frame #0 ---------------
+.obj0:
+	mMvC_ValFrameStartFast .anim
+		ld   hl, iPlInfo_Billy_KyoushuuHit
+		add  hl, bc
+		ld   [hl], $00
+		jp   .anim
 ; --------------- frame #2 ---------------
 .obj2:
 	; Set manual control at the end, for the jump parts
@@ -303,12 +322,15 @@ MoveC_Billy_KyoushuuHishouKon:
 		mMvC_ChkMove MOVE_BILLY_KYOUSHUU_HISHOU_KON_H, .obj3_setJumpH
 	.obj3_setJumpL: ; Light
 		mMvC_SetSpeedH +$0100
-		mMvC_SetSpeedV -$1000
+		; KOF95 deliberately sent Billy far above its shorter playfield. In
+		; KOF96, -$1000 wraps/clamps at the top for dozens of frames and makes
+		; the horizontal landing point diverge from the visible arc.
+		mMvC_SetSpeedV -$0800
 		jp   .obj3_doGravity
 	.obj3_setJumpH: ; Heavy
 		mMvC_ChkMaxPow .obj3_setJumpE
 		mMvC_SetSpeedH +$0200
-		mMvC_SetSpeedV -$1800
+		mMvC_SetSpeedV -$0C00
 		jp   .obj3_doGravity
 	.obj3_setJumpE: ; Max Power Heavy
 		mMvC_SetSpeedH +$0040
@@ -340,6 +362,11 @@ MoveC_Billy_KyoushuuHishouKon:
 		; And deal another hit, deadly if the opponent is close.
 		; Because of the low gravity, the Max Power version deals half damage.
 	.setDamage:
+		ld   hl, iPlInfo_Billy_KyoushuuHit
+		add  hl, bc
+		ld   a, [hl]
+		or   a
+		jp   nz, .doGravityD
 		; KOF96 removed KOF95's mMvC_ChkNotMove helper; keep its exact test.
 		ld   hl, iPlInfo_MoveId
 		add  hl, bc
@@ -397,6 +424,16 @@ MoveC_Billy_KyoushuuHishouKon:
 		inc  hl
 		res  PF1B_NOSPECSTART, [hl]
 		;--
+		; Recovery frame #7 must never inherit an airborne hitbox/damage set.
+		ld   hl, iPlInfo_MoveDamageVal
+		add  hl, bc
+		xor  a
+		ld   [hl+], a
+		ld   [hl+], a
+		ld   [hl+], a
+		ld   [hl+], a
+		ld   [hl+], a
+		ld   [hl], a
 		mMvC_SetLandFrame $07, $07
 		jp   .ret
 ; --------------- common air movement code / frames #3-6 ---------------

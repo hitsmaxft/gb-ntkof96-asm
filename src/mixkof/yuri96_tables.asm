@@ -40,7 +40,8 @@ MoveAnimTbl_Yuri96:
 	mMvAnDef OBJLstPtrTable_Yuri_KoOuKen, $08, $03, $0A, HITTYPE_HIT_MID0, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Yuri_SaiHa, $10, $00, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Yuri_SaiHa, $10, $01, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
-	mMvAnDef OBJLstPtrTable_Yuri_HyakuRetsuBintaL, $58, $01, $04, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
+	; The long slap sequence is a fixed sustained animation; run it instantly.
+	mMvAnDef OBJLstPtrTable_Yuri_HyakuRetsuBintaL, $58, $00, $04, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Yuri_HyakuRetsuBintaH, $08, $01, $04, HITTYPE_HIT_MULTI1, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Yuri_KuuGaL, $0C, $01, $09, HITTYPE_LAUNCH_HIGH_UB, $00
 	mMvAnDef OBJLstPtrTable_Yuri_KuuGaH, $00, $FF, $09, HITTYPE_HIT_MID1, $00
@@ -50,8 +51,8 @@ MoveAnimTbl_Yuri96:
 	mMvAnDef OBJLstPtrTable_Yuri_HaohShoukouKen, $08, $01, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Yuri_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Yuri_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Yuri_HienHouOuKyaKu, $4C, $02, $09, HITTYPE_HIT_MULTI0, PF3_HEAVYHIT|PF3_CONTHIT
-	mMvAnDef OBJLstPtrTable_Yuri_HienHouOuKyaKu, $4C, $02, $09, HITTYPE_HIT_MULTI0, PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Yuri_HienHouOuKyaKu, $4C, $00, $09, HITTYPE_HIT_MULTI0, PF3_HEAVYHIT|PF3_CONTHIT
+	mMvAnDef OBJLstPtrTable_Yuri_HienHouOuKyaKu, $4C, $00, $09, HITTYPE_HIT_MULTI0, PF3_HEAVYHIT|PF3_CONTHIT
 	mMvAnDef OBJLstPtrTable_Yuri_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Yuri_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Yuri_ThrowG, $28, $0A, $00, $00, $00

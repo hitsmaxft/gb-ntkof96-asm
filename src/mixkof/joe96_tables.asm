@@ -40,8 +40,9 @@ MoveAnimTbl_Joe96:
 	mMvAnDef OBJLstPtrTable_Joe_HurricaneUpper, $08, $03, $0A, HITTYPE_HIT_MID0, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_SlashKickL, $10, $01, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_SlashKickL, $10, $04, $0A, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
-	mMvAnDef OBJLstPtrTable_Joe_Bakuretsuken, $24, $01, $04, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
-	mMvAnDef OBJLstPtrTable_Joe_Bakuretsuken, $24, $04, $04, HITTYPE_HIT_MID1, PF3_HEAVYHIT
+	; Compress the long mash sequence to the KOF96 cadence.
+	mMvAnDef OBJLstPtrTable_Joe_Bakuretsuken, $24, $00, $04, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
+	mMvAnDef OBJLstPtrTable_Joe_Bakuretsuken, $24, $01, $04, HITTYPE_HIT_MID1, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_TigerKickL, $14, $01, $09, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Joe_TigerKickL, $14, $02, $09, HITTYPE_HIT_MID1, $00
 	mMvAnDef OBJLstPtrTable_Joe_OugonNoKakato, $14, $01, $09, HITTYPE_HIT_MID0, PF3_CONTHIT
@@ -50,8 +51,8 @@ MoveAnimTbl_Joe96:
 	mMvAnDef OBJLstPtrTable_Joe_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Joe_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Joe_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Joe_HurricaneUpper, $08, $01, $02, HITTYPE_LAUNCH_SWOOPUP, $00
-	mMvAnDef OBJLstPtrTable_Joe_HurricaneUpper, $08, $01, $02, HITTYPE_LAUNCH_SWOOPUP, $00
+	mMvAnDef OBJLstPtrTable_Joe_HurricaneUpper, $08, $00, $02, HITTYPE_LAUNCH_SWOOPUP, $00
+	mMvAnDef OBJLstPtrTable_Joe_HurricaneUpper, $08, $00, $02, HITTYPE_LAUNCH_SWOOPUP, $00
 	mMvAnDef OBJLstPtrTable_Joe_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Joe_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Joe_ThrowG, $0C, $01, $00, $00, $00

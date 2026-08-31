@@ -251,17 +251,17 @@ MoveC_Benimaru_ShinkuuKatateGoma:
 		mMvC_SetDamageNext $08, HITTYPE_LAUNCH_HIGH_UB, PF3_HEAVYHIT
 		
 		; Set the number of attack loops.
-		; The light version loops 4 times, the heavy double that.
+		; KOF96-paced duration: about one third of the KOF95 4/8 loops.
 		mMvC_ChkMove MOVE_BENIMARU_SHINKUU_KATATE_GOMA_H, .obj0_setDelayH
 	.obj0_setDelayL:
 		ld   hl, iPlInfo_Benimaru_ShinkuuKatateGoma_LoopCount
 		add  hl, bc
-		ld   [hl], $04
+		ld   [hl], $02
 		jp   .anim
 	.obj0_setDelayH:
 		ld   hl, iPlInfo_Benimaru_ShinkuuKatateGoma_LoopCount
 		add  hl, bc
-		ld   [hl], $08
+		ld   [hl], $03
 		jp   .anim
 ; --------------- frame #1 ---------------
 ; Leg spin frame #0

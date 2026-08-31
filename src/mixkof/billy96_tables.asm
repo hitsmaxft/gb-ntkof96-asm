@@ -42,7 +42,9 @@ MoveAnimTbl_Billy96:
 	mMvAnDef OBJLstPtrTable_Billy_SansetsuKonChuudanUchi, $10,$01,$0A,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Billy_SansetsuKonChuudanUchi, $10,$03,$0A,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Billy_SenpuuKon, $0C,$00,$0A,HITTYPE_HIT_MID1,$00
-	mMvAnDef OBJLstPtrTable_Billy_SenpuuKon, $0C,$02,$0A,HITTYPE_HIT_MID1,$00
+	; Heavy spin used to hold every one of its ten mappings for three ticks.
+	; Instant mappings bring the sustained section to roughly one third.
+	mMvAnDef OBJLstPtrTable_Billy_SenpuuKon, $0C,$00,$0A,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Billy_SuzumeOtoshi, $10,$01,$04,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Billy_SuzumeOtoshi, $10,$04,$04,HITTYPE_HIT_MID1,$00
 	mMvAnDef OBJLstPtrTable_Billy_KyoushuuHishouKon, $1C,$01,$09,HITTYPE_LAUNCH_HIGH_UB,$00
@@ -53,8 +55,8 @@ MoveAnimTbl_Billy96:
 	mMvAnDef OBJLstPtrTable_Billy_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Billy_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Billy_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Billy_ChouKaenSenpuuKon, $40,$01,$20,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_FIRE
-	mMvAnDef OBJLstPtrTable_Billy_ChouKaenSenpuuKon, $40,$01,$20,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_FIRE
+	mMvAnDef OBJLstPtrTable_Billy_ChouKaenSenpuuKon, $40,$00,$20,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_FIRE
+	mMvAnDef OBJLstPtrTable_Billy_ChouKaenSenpuuKon, $40,$00,$20,HITTYPE_LAUNCH_HIGH_UB,PF3_HEAVYHIT|PF3_FIRE
 	mMvAnDef OBJLstPtrTable_Billy_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Billy_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Billy_ThrowG, $18,$0A,$00,$00,$00

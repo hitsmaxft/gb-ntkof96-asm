@@ -49,9 +49,147 @@ BGXDef_Play_HUD_CharName_Eiji:
 ; Recompose BILLY from resident BENIMARU/IORI/RALF/YURI glyphs.
 BGXDef_Play_HUD_CharName_Billy:
 	db $05, $16, $25, $1A, $1A, $02
+; Recompose SAISYU from resident KRAUSER/IORI/KYO glyphs.
+BGXDef_Play_HUD_CharName_Saisyu:
+	db $06, $3A, $36, $25, $3A, $02, $37
+BGXDef_Play_HUD_CharName_Rugal:
+	db $05, $13, $37, $3F, $24, $1A
+; The HUD is six tiles wide; the selector keeps the full NAKORURU spelling.
+BGXDef_Play_HUD_CharName_Nakoruru:
+	db $06, $1F, $24, $33, $15, $13, $37
+
+; Indexed by (CHAR_ID-CHAR_ID_KIM). Keep imported HUD descriptors here so
+; ROM0 does not grow two bytes for every migrated fighter.
+MixKOF_HUDImportedNamePtrTable:
+	dw BGXDef_Play_HUD_CharName_Kim
+	dw BGXDef_Play_HUD_CharName_Benimaru
+	dw BGXDef_Play_HUD_CharName_Yuri
+	dw BGXDef_Play_HUD_CharName_Joe
+	dw BGXDef_Play_HUD_CharName_Heidern
+	dw BGXDef_Play_HUD_CharName_Ralf
+	dw BGXDef_Play_HUD_CharName_Kensou
+	dw BGXDef_Play_HUD_CharName_Eiji
+	dw BGXDef_Play_HUD_CharName_Billy
+	dw BGXDef_Play_HUD_CharName_Saisyu
+	dw BGXDef_Play_HUD_CharName_Rugal
+	dw BGXDef_Play_HUD_CharName_Nakoruru
+	dw BGXDef_Play_HUD_CharName_Kyo
+	dw BGXDef_Play_HUD_CharName_Ryo
+	dw BGXDef_Play_HUD_CharName_Terry
+	dw BGXDef_Play_HUD_CharName_Athena
+	dw BGXDef_Play_HUD_CharName_Mai
+	dw BGXDef_Play_HUD_CharName_Iori
+
+; Compact 4x5, two characters per tile: "AB MENU". It is placed directly
+; below the original per-player PAUSE label, never on the bottom POW/MAX row.
+GFX_Play_PauseABMenu:
+	db $00,$00, $4C,$4C, $AA,$AA, $EC,$EC, $AA,$AA, $AC,$AC, $00,$00, $00,$00 ; AB
+	db $00,$00, $0A,$0A, $0E,$0E, $0E,$0E, $0A,$0A, $0A,$0A, $00,$00, $00,$00 ; _M
+	db $00,$00, $EA,$EA, $8E,$8E, $CE,$CE, $8E,$8E, $EA,$EA, $00,$00, $00,$00 ; EN
+	db $00,$00, $A0,$A0, $A0,$A0, $A0,$A0, $A0,$A0, $E0,$E0, $00,$00, $00,$00 ; U_
+GFX_Play_PauseABMenu.end:
+	ASSERT GFX_Play_PauseABMenu.end-GFX_Play_PauseABMenu == $40
+
+; Keep the original per-player PAUSE placement without consuming bank01's
+; exhausted ROM space. Tile IDs $F9-$FB are the resident PAUSE graphics;
+; $FC-$FF hold the compact A+B menu hint while paused.
+MixKOF_DrawPauseOriginal:
+	ld   hl, GFX_Play_PauseABMenu
+	ld   de, $8FC0
+	ld   b, $04
+	call CopyTiles
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .bg2P
+	ld   hl, vBGPause1P
+	jr   .draw
+.bg2P:
+	ld   hl, vBGPause2P
+.draw:
+	ld   b, $03
+	ld   a, $F9
+.loop:
+	push af
+	di
+	mWaitForVBlankOrHBlank
+	pop  af
+	ldi  [hl], a
+	ei
+	inc  a
+	dec  b
+	jr   nz, .loop
+	; Draw "AB MENU" one tile row below PAUSE, preserving the stage BG.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .hint2P
+	ld   hl, vBGPause1P+$20
+	jr   .hintPosReady
+.hint2P:
+	ld   hl, vBGPause2P+$20
+.hintPosReady:
+	ld   de, .hintTileIds
+	ld   bc, wPlayPauseHintBGBackup
+.hintLoop:
+	di
+	mWaitForVBlankOrHBlank
+	ld   a, [hl]
+	ld   [bc], a
+	inc  bc
+	ld   a, [de]
+	inc  de
+	ldi  [hl], a
+	ei
+	ld   a, c
+	cp   LOW(wPlayPauseHintBGBackup)+$04
+	jr   c, .hintLoop
+	ret
+.hintTileIds:
+	db $FC,$FD,$FE,$FF
+
+MixKOF_ClearPauseOriginal:
+	; Restore the four stage tiles hidden by the hint.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .hint2P
+	ld   hl, vBGPause1P+$20
+	jr   .hintPosReady
+.hint2P:
+	ld   hl, vBGPause2P+$20
+.hintPosReady:
+	ld   bc, wPlayPauseHintBGBackup
+.hintLoop:
+	di
+	mWaitForVBlankOrHBlank
+	ld   a, [bc]
+	inc  bc
+	ldi  [hl], a
+	ei
+	ld   a, c
+	cp   LOW(wPlayPauseHintBGBackup)+$04
+	jr   c, .hintLoop
+	; Clear the original PAUSE label.
+	ld   a, [wPauseFlags]
+	bit  PLB1, a
+	jr   z, .bg2P
+	ld   hl, vBGPause1P
+	jr   .clear
+.bg2P:
+	ld   hl, vBGPause2P
+.clear:
+	ld   b, $03
+.loop:
+	di
+	mWaitForVBlankOrHBlank
+	xor  a
+	ldi  [hl], a
+	ei
+	dec  b
+	jr   nz, .loop
+	ret
 
 ; GFX_Char_Icons is extended and relocated to bank25.
 GFXLZ_Play_HUD: INCBIN "data/gfx/play_hud.lzc"
+
 BG_Play_HUD_Time: INCBIN "data/bg/play_hud_time.bin"
 BG_Play_HUD_HealthBarL: INCBIN "data/bg/play_hud_healthbarl.bin"
 BG_Play_HUD_HealthBarR: INCBIN "data/bg/play_hud_healthbarr.bin"
@@ -5228,7 +5366,7 @@ MoveInputS_CheckEasyMoveTapKeys_Banked:
 	inc  a
 	jp   z, .none
 	dec  a
-	jr   nz, .held
+	jp   nz, .held
 
 	; Explicit neutral chords are actions, not strength-selecting specials.
 	push hl
@@ -5249,7 +5387,30 @@ MoveInputS_CheckEasyMoveTapKeys_Banked:
 		call MoveInputS_ChkInputDir
 		jr   c, .superDB
 
-		call Play_Pl_GetDirKeys_ByXFlipR
+		; MoveInputS_DispatchEasyMoveDir uses D as its ground/air flag, so DE no
+		; longer points at this player's OBJInfo here. Read the held direction
+		; directly and normalize it with the player's internal facing flag.
+		; This also avoids a one-frame dependency on the visible sprite flip.
+		ld   hl, iPlInfo_JoyKeys
+		add  hl, bc
+		ld   a, [hl]
+		and  KEY_RIGHT|KEY_LEFT|KEY_UP|KEY_DOWN
+		push af
+			ld   hl, iPlInfo_PlId
+			add  hl, bc
+			bit  0, [hl]
+			ld   hl, wOBJInfo_Pl1+iOBJInfo_OBJLstFlags
+			jr   z, .gotFacingPtr
+			ld   hl, wOBJInfo_Pl2+iOBJInfo_OBJLstFlags
+		.gotFacingPtr:
+			bit  SPRXB_PLDIR_R, [hl]
+			jr   z, .facingLeft
+		pop  af
+		jr   .gotRelativeDir
+	.facingLeft:
+		pop  af
+		xor  KEY_RIGHT|KEY_LEFT
+	.gotRelativeDir:
 		ld   d, a
 		and  KEY_DOWN|KEY_RIGHT
 		cp   KEY_DOWN|KEY_RIGHT

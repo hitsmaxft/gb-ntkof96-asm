@@ -50,8 +50,8 @@ MoveAnimTbl_Heidern96:
 	mMvAnDef OBJLstPtrTable_Heidern_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Heidern_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Heidern_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Heidern_NeckRoller, $18, $01, $04, HITTYPE_HIT_MULTI1, PF3_HEAVYHIT
-	mMvAnDef OBJLstPtrTable_Heidern_NeckRoller, $18, $01, $04, HITTYPE_HIT_MULTI1, PF3_HEAVYHIT
+	mMvAnDef OBJLstPtrTable_Heidern_NeckRoller, $18, $00, $04, HITTYPE_HIT_MULTI1, PF3_HEAVYHIT
+	mMvAnDef OBJLstPtrTable_Heidern_NeckRoller, $18, $00, $04, HITTYPE_HIT_MULTI1, PF3_HEAVYHIT
 	mMvAnDef OBJLstPtrTable_Heidern_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Heidern_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Heidern_ThrowG, $0C, $0A, $00, $00, $00

@@ -252,6 +252,9 @@ Module_CharSel:
 
 	; Draw character portraits
 	call CharSel_DrawUnlockedChars
+	ld   b, BANK(MixKOF_DrawAllVariantMarkers)
+	ld   hl, MixKOF_DrawAllVariantMarkers
+	rst  $08
 	
 	call IsInTeamMode		; Are we in Team mode?
 	jp   c, .drawBG_Team	; If so, jump
@@ -600,14 +603,14 @@ Module_CharSel:
 	inc  hl
 	ld   [hl], HIGH(OBJLstPtrTable_CharSel_Flip)
 	
-	; LEONA <-> LEONA'
+	; LEONA <-> LEONA' (row 2, column 1)
 	ld   hl, wOBJInfo3+iOBJInfo_Status
 	ld   de, OBJInfoInit_CharSel_Cursor
 	call OBJLstS_InitFrom
 	ld   hl, wOBJInfo3+iOBJInfo_Status
 	ld   [hl], $00
 	ld   hl, wOBJInfo3+iOBJInfo_X
-	ld   [hl], $60
+	ld   [hl], $18
 	ld   hl, wOBJInfo3+iOBJInfo_Y
 	ld   [hl], $18
 	ld   hl, wOBJInfo3+iOBJInfo_TileIDBase
@@ -617,16 +620,16 @@ Module_CharSel:
 	inc  hl
 	ld   [hl], HIGH(OBJLstPtrTable_CharSel_Flip)
 	
-	; CHIZURU <-> KAGURA
+	; CHIZURU <-> KAGURA (boss row, column 0)
 	ld   hl, wOBJInfo4+iOBJInfo_Status
 	ld   de, OBJInfoInit_CharSel_Cursor
 	call OBJLstS_InitFrom
 	ld   hl, wOBJInfo4+iOBJInfo_Status
 	ld   [hl], $00
 	ld   hl, wOBJInfo4+iOBJInfo_X
-	ld   [hl], $18
+	ld   [hl], $00
 	ld   hl, wOBJInfo4+iOBJInfo_Y
-	ld   [hl], $18
+	ld   [hl], $48
 	ld   hl, wOBJInfo4+iOBJInfo_TileIDBase
 	ld   [hl], $46
 	ld   hl, wOBJInfo4+iOBJInfo_OBJLstPtrTbl_Low
@@ -746,7 +749,8 @@ CharSel_Mode_Confirmed:
 ; After all three characters are selected.
 CharSel_Mode_Ready:
 	call CharSel_AnimCursorPalSlow
-	call CharSel_BlinkStartText
+	; Keep the full character name visible. The old blinking START label shared
+	; the same row and overwrote the first five letters of long names.
 	
 	; Autoconfirm checks
 	call CharSelect_IsCPUOpponent		; Is the current player the CPU opponent?
@@ -776,7 +780,6 @@ CharSel_Mode_Ready:
 ; =============== .removeAll ===============
 .removeAll
 	; Remove all three characters from the team.
-	call CharSel_HideStartText	; For changing mode
 	call CharSel_RemoveChar
 	call CharSel_RemoveChar
 	call CharSel_RemoveChar
@@ -785,7 +788,6 @@ CharSel_Mode_Ready:
 ; =============== .removeOne ===============
 .removeOne:
 	; Remove the third character from the team
-	call CharSel_HideStartText	; For changing mode
 	call CharSel_RemoveChar
 	
 ; =============== .switchToSelectMode ===============
@@ -806,7 +808,6 @@ CharSel_Mode_Ready:
 ; =============== .confirm ===============
 .confirm:
 	; Disable controls for current player by switching to the next mode.
-	call CharSel_HideStartText
 	call CharSel_HideCursor
 	call CharSel_SetPlInfo
 	; Switch for the current player
@@ -1080,33 +1081,20 @@ CharSel_SetRandomPortrait:
 
 	;--
 	;
-	; Generate a random portrait ID
-	; A = HIGH(Rand * $12)
-	; Since the cursor randomizer can't be done with serial mode anyway,
-	; the English version uses the LY version.
+	; Generate a uniform random portrait ID across the complete 6x5 mixed
+	; roster. Masking gives $00-$1F; reject the three out-of-range values and
+	; let CharSel_IsPortraitLocked below reject empty, reserved or locked slots.
+	; Since the cursor randomizer can't be used in serial mode anyway, the
+	; English version uses the LY variant.
 	;
 IF !REV_VER_2
 	call Rand			; A = Random byte
 ELSE
 	call RandLY
 ENDC
-	push hl
-		ld   h, $00		; HL = A
-		ld   l, a
-		push hl
-REPT 4
-			sla  l		; HL *= $10
-			rl   h
-ENDR
-			push hl
-			pop  bc		; Move to BC
-		pop  hl
-		
-		sla  l			; HL = A * 2
-		rl   h
-		add  hl, bc		; Merge those (HL = A * $12)
-		ld   a, h		; Only pick the high byte (which will always be in $00-$11 range)
-	pop  hl
+	and  a, $1F
+	cp   CHARSEL_ID_RESERVED0
+	jp   nc, .genRandomPos
 	;--
 	
 	; Regenerate it if the portrait is locked 
@@ -1193,6 +1181,12 @@ ENDR
 			inc  de					; + 2
 		.setChar:
 			ld   a, [de]			; Get character ID from sequence
+			ld   [wCharSelVariantWork], a
+			ld   b, BANK(MixKOF_ResolveCPUVariantToken)
+			ld   hl, MixKOF_ResolveCPUVariantToken
+			rst  $08
+			ld   a, [wCharSelVariantWork]
+			ld   [de], a			; Keep defeated-portrait drawing in range.
 		pop  hl
 	pop  de
 	
@@ -1398,6 +1392,17 @@ CharSel_StartPortraitFlip_CheckChar:
 	ld   b, BANK(MixKOF_LoadCharSelPortrait)
 	ld   hl, MixKOF_LoadCharSelPortrait
 	rst  $08
+	; Update the filled square in this portrait's version list immediately;
+	; the marker gutter is independent of the portrait flip animation.
+	ld   b, BANK(MixKOF_DrawVariantMarker)
+	ld   hl, MixKOF_DrawVariantMarker
+	rst  $08
+	; Position the reused flip OBJ over the active grid cell. The original
+	; three objects had hard-coded coordinates for Iori/Leona/Chizuru, which
+	; made newly added shared-name variants animate at unrelated locations.
+	ld   b, BANK(MixKOF_PositionVariantFlipOBJ)
+	ld   hl, MixKOF_PositionVariantFlipOBJ
+	rst  $08
 
 	; Start the correct flip animation and save the redraw arguments.
 	ld   a, [wCharSelVariantFlipOffset]
@@ -1430,9 +1435,25 @@ CharSel_StartPortraitFlip_CheckChar:
 ; cursor ID, flip OBJInfo offset, requirement flags, variant count,
 ; then [character ID, portrait ID, derived asset index] for every version.
 .variantTbl:
-	db CHARSEL_ID_IORI, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHARSEL_ID_KYO, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_KYO/2,   CHARSEL_ID_KYO, CHARSEL_ID_KYO
+	db CHAR_ID_KYO95/2, CHARSEL_ID_KYO, 29+0
+	db CHARSEL_ID_TERRY, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_TERRY/2,   CHARSEL_ID_TERRY, CHARSEL_ID_TERRY
+	db CHAR_ID_TERRY95/2, CHARSEL_ID_TERRY, 29+2
+	db CHARSEL_ID_RYO, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_RYO/2,   CHARSEL_ID_RYO, CHARSEL_ID_RYO
+	db CHAR_ID_RYO95/2, CHARSEL_ID_RYO, 29+1
+	db CHARSEL_ID_IORI, LOW(wOBJInfo_IoriFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 3
 	db CHAR_ID_IORI/2,  CHARSEL_ID_IORI, CHARSEL_ID_IORI
 	db CHAR_ID_OIORI/2, CHARSEL_ID_IORI, 29+6
+	db CHAR_ID_IORI95/2, CHARSEL_ID_IORI, 29+5
+	db CHARSEL_ID_MAI, LOW(wOBJInfo_LeonaFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_MAI/2,   CHARSEL_ID_MAI, CHARSEL_ID_MAI
+	db CHAR_ID_MAI95/2, CHARSEL_ID_MAI, 29+4
+	db CHARSEL_ID_ATHENA, LOW(wOBJInfo_LeonaFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
+	db CHAR_ID_ATHENA/2,   CHARSEL_ID_ATHENA, CHARSEL_ID_ATHENA
+	db CHAR_ID_ATHENA95/2, CHARSEL_ID_ATHENA, 29+3
 	db CHARSEL_ID_LEONA, LOW(wOBJInfo_LeonaFlip-wOBJInfo_IoriFlip), CHARSEL_VARIANTF_UNLOCK_OTHER, 2
 	db CHAR_ID_LEONA/2,  CHARSEL_ID_LEONA, CHARSEL_ID_LEONA
 	db CHAR_ID_OLEONA/2, CHARSEL_ID_LEONA, 29+7
@@ -2534,15 +2555,14 @@ CharSel_RefreshNameAndCursor:
 	; Display the character name
 	push af
 		ld   c, a
-		; The expanded single-page roster starts at portrait $11. Keep the
-		; original slots on the native character-ID table so START variants
-		; (O.Iori/O.Leona/Kagura) retain their distinct names, while every
-		; imported or reserved slot uses the expansion-bank portrait table.
-		cp   $11
-		jr   nc, .portraitName
+		; Use the native character-ID name table for every KOF96 fighter,
+		; regardless of its grid position. This keeps START variants such as
+		; Kagura named correctly after moving Chizuru to the boss row.
 		call CharSel_GetCharIdByPortraitId
 		cp   CHAR_ID_NONE
 		jr   z, .portraitName
+		cp   CHAR_ID_KIM/2
+		jr   nc, .portraitName
 		call CharSel_PrintCharName
 		jr   .nameDone
 	.portraitName:
@@ -3229,16 +3249,11 @@ CharSelect_IsLastWinner:
 CharSel_IdMapTbl:
 	db CHAR_ID_KYO/2,    CHAR_ID_ANDY/2,    CHAR_ID_TERRY/2,    CHAR_ID_RYO/2,      CHAR_ID_ROBERT/2,  CHAR_ID_IORI/2
 	db CHAR_ID_DAIMON/2, CHAR_ID_MAI/2,     CHAR_ID_GEESE/2,    CHAR_ID_MRBIG/2,    CHAR_ID_KRAUSER/2, CHAR_ID_MATURE/2
-	db CHAR_ID_ATHENA/2, CHAR_ID_CHIZURU/2, CHAR_ID_MRKARATE/2, CHAR_ID_GOENITZ/2,  CHAR_ID_LEONA/2
-	; Imported KOF95 fighters with gameplay registration.
-	db CHAR_ID_BENIMARU/2, CHAR_ID_YURI/2
-	db CHAR_ID_JOE/2, CHAR_ID_HEIDERN/2, CHAR_ID_RALF/2
-	db CHAR_ID_KENSOU/2
-	db CHAR_ID_KIM/2
-	db CHAR_ID_EIJI/2
-	db CHAR_ID_BILLY/2
-	ds 3, CHAR_ID_NONE
-	; One reserved cell completes the single 6x5 navigation grid.
+	db CHAR_ID_ATHENA/2, CHAR_ID_LEONA/2, CHAR_ID_BENIMARU/2, CHAR_ID_YURI/2, CHAR_ID_JOE/2, CHAR_ID_HEIDERN/2
+	db CHAR_ID_RALF/2, CHAR_ID_KENSOU/2, CHAR_ID_KIM/2, CHAR_ID_EIJI/2, CHAR_ID_BILLY/2, CHAR_ID_NAKORURU/2
+	; KOF96 bosses followed by KOF95 boss slots.
+	db CHAR_ID_CHIZURU/2, CHAR_ID_GOENITZ/2, CHAR_ID_MRKARATE/2, CHAR_ID_SAISYU/2, CHAR_ID_RUGAL/2
+	; One empty cell completes the single 6x5 navigation grid.
 	db CHAR_ID_NONE
 .end:
 ; Relative tile IDs for portraits

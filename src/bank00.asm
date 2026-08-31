@@ -5400,14 +5400,20 @@ Play_LoadStage:
 		; A = CPU opponent
 		ld   a, [wJoyActivePl]
 		or   a				; Playing on the 2P side?
-		jp   nz, .pl2Active	; If so, jump
+		jr   nz, .pl2Active	; If so, jump
 	.pl1Active:
 		ld   hl, wPlInfo_Pl2+iPlInfo_CharId		; HL = Ptr to 2P CPU char id
-		jp   .getIdx
+		jr   .getIdx
 	.pl2Active:
 		ld   hl, wPlInfo_Pl1+iPlInfo_CharId		; HL = Ptr to 1p CPU char id
 	.getIdx:
 		ld   a, [hl]	; A = CharId * 2
+		cp   CHAR_ID_KIM
+		jr   c, .getNativeStage
+		ld   a, STAGE_ID_HERO
+		ld   [wStageId], a
+		jr   .stageReady
+	.getNativeStage:
 
 		; Index the Char-to-Stage mapping table
 		srl  a				; /2 to balance out the *2
@@ -5418,6 +5424,7 @@ Play_LoadStage:
 		add  hl, de			; Index it
 		ld   a, [hl]		; A = StageId
 		ld   [wStageId], a	; Save it
+	.stageReady:
 
 		;--
 		; The extra round fighting against IORI' or LEONA' uses an hardcoded stage.
@@ -5425,10 +5432,10 @@ Play_LoadStage:
 		;       Likely a leftover from 95,
 		ld   a, [wCharSeqId]
 		cp   STAGESEQ_BONUS	; RoundId == STAGESEQ_BONUS?
-		jp   nz, .load		; If not, skip
+		jr   nz, .load		; If not, skip
 		ld   a, STAGE_ID_STADIUM_EXTRA
 		ld   [wStageId], a
-		jp   .load
+		jr   .load
 		;--
 	.load:
 
@@ -6468,11 +6475,12 @@ Module_Play:
 	; Load projectile graphics over
 	call Play_LoadProjectileOBJInfo
 
-	; Start the main gameplay loop
-	ld   a, BANK(Play_Main) ; BANK $01
-	ld   [MBC1RomBank], a
-	ldh  [hROMBank], a
-	jp   Play_Main
+	; Start persistent character helpers after Play_LoadProjectileOBJInfo has
+	; finished clearing/reinitializing all projectile and sparkle OBJInfo slots.
+	; The helper then switches to the normal main gameplay loop.
+	ld   b, BANK(MixKOF_StartPlayWithPersistentHelpers)
+	ld   hl, MixKOF_StartPlayWithPersistentHelpers
+	jp   $0000
 
 ; =============== Play_InitRound ===============
 ; Initializes the round variables, including both players.
@@ -8249,18 +8257,7 @@ Play_HUD_Draw1PCharName:
 	;      (name length + tile IDs relative to GFXLZ_Play_HUD_CharNames).
 	;
 
-	; Seek to ptr table entry
-	ld   b, $00							; BC = CharId * 2
-	ld   c, a
-	ld   hl, Play_HUD_CharNamesPtrTable ; HL = Ptr table with BGX tilemaps
-	add  hl, bc							; Seek to entry
-	; Read out the ptr to DE
-	ld   e, [hl]
-	inc  hl
-	ld   d, [hl]
-	; And move it to HL
-	push de
-	pop  hl
+	call Play_HUD_GetCharNamePtr
 
 	;--
 	;
@@ -8316,18 +8313,7 @@ Play_HUD_Draw2PCharName:
 	;      (name length + tile IDs relative to GFXLZ_Play_HUD_CharNames).
 	;
 
-	; Seek to ptr table entry
-	ld   b, $00							; BC = CharId * 2
-	ld   c, a
-	ld   hl, Play_HUD_CharNamesPtrTable ; HL = Ptr table with BGX tilemaps
-	add  hl, bc							; Seek to entry
-	; Read out the ptr to DE
-	ld   e, [hl]
-	inc  hl
-	ld   d, [hl]
-	; And move it to HL
-	push de
-	pop  hl
+	call Play_HUD_GetCharNamePtr
 
 	;--
 	ldi  a, [hl]		; Read name length; HL = Ptr to "BGX" tilemap
@@ -8386,6 +8372,24 @@ BG_Play_HUD_CharName1P: INCBIN "data/bg/play_hud_charname1p.bin"
 BG_Play_HUD_CharName1P_Unused_Extra: INCBIN "data/bg/play_hud_charname1p_unused_extra.bin"
 BG_Play_HUD_CharName2P: INCBIN "data/bg/play_hud_charname2p.bin"
 BG_Play_HUD_CharName2P_Unused_Extra: INCBIN "data/bg/play_hud_charname2p_unused_extra.bin"
+; Resolve native names from ROM0 and imported names from the bank1D table.
+; Character IDs are already doubled, so they directly index word tables.
+Play_HUD_GetCharNamePtr:
+	cp   CHAR_ID_KIM
+	jr   c, .native
+	sub  CHAR_ID_KIM
+	ld   hl, MixKOF_HUDImportedNamePtrTable
+	jr   .lookup
+.native:
+	ld   hl, Play_HUD_CharNamesPtrTable
+.lookup:
+	ld   b, $00
+	ld   c, a
+	add  hl, bc
+	ldi  a, [hl]
+	ld   h, [hl]
+	ld   l, a
+	ret
 Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_Kyo ; CHAR_ID_KYO
 	dw BGXDef_Play_HUD_CharName_Daimon ; CHAR_ID_DAIMON
@@ -8407,15 +8411,6 @@ Play_HUD_CharNamesPtrTable:
 	dw BGXDef_Play_HUD_CharName_OIori ; CHAR_ID_OIORI
 	dw BGXDef_Play_HUD_CharName_OLeona ; CHAR_ID_OLEONA
 	dw BGXDef_Play_HUD_CharName_Kagura ; CHAR_ID_KAGURA
-	dw BGXDef_Play_HUD_CharName_Kim ; CHAR_ID_KIM
-	dw BGXDef_Play_HUD_CharName_Benimaru ; CHAR_ID_BENIMARU
-	dw BGXDef_Play_HUD_CharName_Yuri ; CHAR_ID_YURI
-	dw BGXDef_Play_HUD_CharName_Joe ; CHAR_ID_JOE
-	dw BGXDef_Play_HUD_CharName_Heidern ; CHAR_ID_HEIDERN
-	dw BGXDef_Play_HUD_CharName_Ralf ; CHAR_ID_RALF
-	dw BGXDef_Play_HUD_CharName_Kensou ; CHAR_ID_KENSOU
-	dw BGXDef_Play_HUD_CharName_Eiji ; CHAR_ID_EIJI
-	dw BGXDef_Play_HUD_CharName_Billy ; CHAR_ID_BILLY
 
 ; =============== Play_DrawHUDEmptyBars ===============
 ; Draws the tilemaps for all empty bars in the HUD.

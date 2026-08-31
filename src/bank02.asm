@@ -488,28 +488,61 @@ MoveC_Base_Roll:
 	call Play_Pl_MoveByColiBoxOverlapX
 	mMvC_ValLoaded .ret
 
+	; Start the fixed timer on the first visible frame. This keeps bank00's
+	; size-sensitive input patch unchanged and works for both roll entry slots.
+	ld   hl, iOBJInfo_Status
+	add  hl, de
+	bit  OSTB_GFXNEWLOAD, [hl]
+	jr   z, .dodgeChkCounter
+	ld   hl, iPlInfo_Dodge95_TimeLeft
+	add  hl, bc
+	ld   [hl], $1E
+
 	; A new A/B press during the dodge starts its counterattack. KOF96 has no
 	; dedicated dodge-counter slot, so use the universal ground A+B attack.
+.dodgeChkCounter:
 	call Play_Pl_AddToJoyBufKeysLH
 	jr   c, .dodgeCounter
 
-	; Stay stationary while sharing the roll animation's recovery/end frames.
-	mMvC_StartChkFrame
-		mMvC_ChkFrame $03, .obj3
-		mMvC_ChkFrame $04, .obj4
-	jp   .anim
+	; KOF95 dodges are a single 30-frame pose. Do not use the imported sprite
+	; table's animation-end bit here: KOF96's double-buffer loader does not set
+	; it consistently for every converted one-frame table.
+	ld   hl, iPlInfo_Dodge95_TimeLeft
+	add  hl, bc
+	ld   a, [hl]
+	or   a
+	jr   z, .dodgeEnd
+	dec  [hl]
+	jp   nz, .anim
+.dodgeEnd:
+	call .clearDodgeFlags
+	call Play_Pl_EndMove
+	jp   .ret
 
 .dodgeCounter:
+	call .clearDodgeFlags
+	ld   a, MOVE_SHARED_ATTACK_G
+	call Pl_SetMove_StopSpeed
+	mMvC_PlaySound SFX_HEAVY
+	jp   .ret
+
+.clearDodgeFlags:
 	ld   hl, iPlInfo_Flags1
 	add  hl, bc
 	res  PF1B_INVULN, [hl]
 	inc  hl
 	res  PF2B_NOHURTBOX, [hl]
 	res  PF2B_NOCOLIBOX, [hl]
-	ld   a, MOVE_SHARED_ATTACK_G
-	call Pl_SetMove_StopSpeed
-	mMvC_PlaySound SFX_HEAVY
-	jp   .ret
+	; A throw/push can leave velocity behind while the collision box is
+	; disabled. Never carry that displacement into idle.
+	ld   hl, iOBJInfo_SpeedX
+	add  hl, de
+	xor  a
+	ldi  [hl], a
+	ldi  [hl], a
+	ldi  [hl], a
+	ld   [hl], a
+	ret
 	
 ; --------------- frame #0 ---------------
 .obj0:

@@ -50,8 +50,8 @@ MoveAnimTbl_Benimaru96:
 	mMvAnDef OBJLstPtrTable_Benimaru_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Benimaru_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Benimaru_Idle, $00,$01,$00,$00,$00
-	mMvAnDef OBJLstPtrTable_Benimaru_Raikouken, $14, $01, $0A, HITTYPE_HIT_MID0, PF3_SUPERALT
-	mMvAnDef OBJLstPtrTable_Benimaru_Raikouken, $14, $01, $0A, HITTYPE_HIT_MID0, PF3_SUPERALT
+	mMvAnDef OBJLstPtrTable_Benimaru_Raikouken, $14, $00, $0A, HITTYPE_HIT_MID0, PF3_SUPERALT
+	mMvAnDef OBJLstPtrTable_Benimaru_Raikouken, $14, $00, $0A, HITTYPE_HIT_MID0, PF3_SUPERALT
 	mMvAnDef OBJLstPtrTable_Benimaru_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Benimaru_Idle, $00,$01,$00,$00,$00
 	mMvAnDef OBJLstPtrTable_Benimaru_ThrowG, $0C, $0A, $00, $00, $00
