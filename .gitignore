@@ -1,7 +1,10 @@
 # trash
 trash/
 
-# build output
+# current build output
+/build/
+
+# legacy root build output
 kof96.gb
 kof96.gbc
 kof96.map

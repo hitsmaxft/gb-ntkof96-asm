@@ -32,6 +32,6 @@ pkgs.mkShell {
 
   shellHook = ''
     echo "KOF96 development shell: $(rgbasm --version)"
-    echo "Build the modified Japanese ROM with: ./build.sh jp"
+    echo "Build and package the modified Japanese ROM with: make jp"
   '';
 }

@@ -2370,7 +2370,7 @@ ELSE
 	bit  7, a
 	jp   nz, Play_CPU_SetJoyKeysJumpUF
 	
-	jp   .idle
+	jr   .idle
 .valNormEasy:
 	;
 	; NORMAL/EASY ONLY

@@ -21,7 +21,7 @@ jobs:
       - name: Install RGBDS build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bison build-essential flex libpng-dev pkg-config
+          sudo apt-get install --yes bison build-essential flex libpng-dev pkg-config unzip zip
 
       - name: Build pinned RGBDS 0.7.0
         env:
@@ -46,27 +46,25 @@ jobs:
         run: |
           test "$(rgbasm --version)" = "rgbasm v0.7.0"
           bash -n build.sh
+          make help
 
       - name: Build ROM
-        run: ./build.sh jp
+        run: make jp
 
-      - name: Package ROM and checksums
+      - name: Verify ROM package
         run: |
           set -euo pipefail
-          test "$(stat --format='%s' kof96.gb)" = "524288"
-          mkdir --parents dist
-          cp kof96.gb dist/ntkof96_super_cancel_kyo_chains_timed_easy_moves.gb
-          (
-            cd dist
-            sha256sum ntkof96_super_cancel_kyo_chains_timed_easy_moves.gb > SHA256SUMS
-          )
+          test "$(stat --format='%s' build/jp/kof96.gb)" = "1048576"
+          (cd build/jp && sha256sum --check SHA256SUMS)
+          unzip -t build/jp/kof96-jp.zip
 
       - name: Upload ROM artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ntkof96-super-cancel-kyo-chains-timed-easy-moves
+          name: kof96-mixkof-jp
           path: |
-            dist/ntkof96_super_cancel_kyo_chains_timed_easy_moves.gb
-            dist/SHA256SUMS
+            build/jp/kof96.gb
+            build/jp/SHA256SUMS
+            build/jp/kof96-jp.zip
           if-no-files-found: error
           compression-level: 0

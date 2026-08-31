@@ -14,18 +14,26 @@ To assemble, run one of the included batch scripts:
 - **build-nojunk.cmd** for a version of the game without padding areas. Currently, it builds a Japanese-language version running on the English version's engine.
 
 On Unix-like systems, enter the pinned RGBDS 0.7.0 environment and use the
-portable build script:
+Makefile. `make` defaults to the Japanese mixed-roster build:
 
 ```sh
 nix-shell
-./build.sh jp
+make             # same as make jp
+make en
+make all
+make clean
 ```
+
+`make jp` and `make en` place all generated files under
+`build/<variant>/`. Every build creates the ROM, object file, map, symbols,
+`README.txt`, `SHA256SUMS`, and a ZIP containing the ROM and its two metadata
+files. The portable script remains available as `./build.sh jp|en` and
+also packages a ZIP by default.
 
 GitHub Actions also builds the modified ROM on every push and pull request.
 Run **Build modified ROM** manually from the Actions page when needed, then
-download the
-`ntkof96-options-all-dips-full-pow-super-cancel-ai-fixed-select-tap-specials`
-artifact. It contains the `.gb` file and `SHA256SUMS`.
+download the `kof96-mixkof-jp` artifact. It contains the `.gb` file,
+`SHA256SUMS`, and the ready-to-use ZIP package.
 
 ## Modified Japanese build
 
